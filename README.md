@@ -1,5 +1,7 @@
 # Honeybadger CLI
 
+[![Test](https://github.com/honeybadger-io/cli/actions/workflows/test.yml/badge.svg)](https://github.com/honeybadger-io/cli/actions/workflows/test.yml)
+
 A command-line interface for interacting with Honeybadger's Reporting API.
 
 ## Installation

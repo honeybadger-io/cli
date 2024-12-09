@@ -1,0 +1,34 @@
+linters:
+  enable:
+    - gofmt
+    - govet
+    - goimports
+    - gosimple
+    - staticcheck
+    - typecheck
+    - unused
+    - gosec
+    - misspell
+    - revive
+
+linters-settings:
+  govet:
+    check-shadowing: true
+  goimports:
+    local-prefixes: github.com/honeybadger-io/cli
+  revive:
+    rules:
+      - name: exported
+        arguments:
+          - disableStutteringCheck
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+run:
+  deadline: 5m
+  tests: true
+  skip-dirs:
+    - vendor/
