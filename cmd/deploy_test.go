@@ -22,11 +22,15 @@ func TestDeployCommand(t *testing.T) {
 		// Restore original values after test
 		apiEndpoint = originalEndpoint
 		http.DefaultClient = originalClient
-		os.Setenv("HONEYBADGER_API_KEY", originalEnvAPIKey)
+		if err := os.Setenv("HONEYBADGER_API_KEY", originalEnvAPIKey); err != nil {
+			t.Errorf("error restoring environment variable: %v", err)
+		}
 	}()
 
 	// Unset environment variable for tests
-	os.Unsetenv("HONEYBADGER_API_KEY")
+	if err := os.Unsetenv("HONEYBADGER_API_KEY"); err != nil {
+		t.Errorf("error unsetting environment variable: %v", err)
+	}
 
 	tests := []struct {
 		name           string
@@ -43,16 +47,16 @@ func TestDeployCommand(t *testing.T) {
 			expectedError:  false,
 		},
 		{
-			name:           "missing api key",
-			args:           []string{"--environment", "production"},
-			apiKey:         "",
-			expectedError:  true,
+			name:          "missing api key",
+			args:          []string{"--environment", "production"},
+			apiKey:        "",
+			expectedError: true,
 		},
 		{
-			name:           "missing required environment",
-			args:           []string{"--repository", "github.com/org/repo"},
-			apiKey:         "test-api-key",
-			expectedError:  true,
+			name:          "missing required environment",
+			args:          []string{"--repository", "github.com/org/repo"},
+			apiKey:        "test-api-key",
+			expectedError: true,
 		},
 		{
 			name:           "unauthorized",

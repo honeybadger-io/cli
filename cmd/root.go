@@ -31,7 +31,9 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is config/honeybadger.yml)")
 	rootCmd.PersistentFlags().StringVar(&apiKey, "api-key", "", "Honeybadger API key")
-	viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key"))
+	if err := viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key")); err != nil {
+		fmt.Printf("error binding api-key flag: %v\n", err)
+	}
 }
 
 func initConfig() {

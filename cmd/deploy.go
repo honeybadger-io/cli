@@ -72,10 +72,17 @@ revision, and the local username of the person deploying.`,
 		if err != nil {
 			return fmt.Errorf("error sending request: %w", err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				fmt.Printf("error closing response body: %v\n", err)
+			}
+		}()
 
 		if resp.StatusCode != http.StatusCreated {
-			body, _ := io.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return fmt.Errorf("error reading response body: %w", err)
+			}
 			return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
 		}
 
@@ -87,10 +94,12 @@ revision, and the local username of the person deploying.`,
 func init() {
 	rootCmd.AddCommand(deployCmd)
 
-	deployCmd.Flags().StringVarP(&environment, "environment", "e", "", "Environment being deployed to (e.g., production)")
+	deployCmd.Flags().StringVarP(&environment, "environment", "e", "", "Environment being deployed to")
 	deployCmd.Flags().StringVarP(&repository, "repository", "r", "", "Repository being deployed")
 	deployCmd.Flags().StringVarP(&revision, "revision", "v", "", "Revision being deployed")
-	deployCmd.Flags().StringVarP(&localUser, "user", "u", "", "Local username of the person deploying")
+	deployCmd.Flags().StringVarP(&localUser, "user", "u", "", "Local username")
 
-	deployCmd.MarkFlagRequired("environment")
+	if err := deployCmd.MarkFlagRequired("environment"); err != nil {
+		fmt.Printf("error marking environment flag as required: %v\n", err)
+	}
 }
