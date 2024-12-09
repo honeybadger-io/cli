@@ -8,6 +8,7 @@ on:
 
 jobs:
   test:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     name: Test
     runs-on: ${{ matrix.os }}
     strategy:
@@ -34,6 +35,7 @@ jobs:
       run: go test -v -race ./...
 
   lint:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     name: Lint
     runs-on: ubuntu-latest
     steps:
