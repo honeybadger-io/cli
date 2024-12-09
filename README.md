@@ -56,6 +56,34 @@ Optional flags:
 - `-v, --revision`: Revision being deployed
 - `-u, --user`: Local username of the person deploying
 
+## Development
+
+When adding new functionality, please also add corresponding tests.
+
+To run tests locally:
+```bash
+go test ./...
+```
+
+### Releasing
+
+To publish a new release:
+
+1. Create and push a new tag with the version number:
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+
+2. The release workflow will automatically:
+   - Build binaries for multiple platforms (Linux, macOS, Windows)
+   - Create a GitHub release with the binaries
+   - Generate a changelog from commit messages
+
+   The binaries will be available for download from the GitHub releases page.
+
+Note: Commits with messages containing `[skip ci]` will skip the test workflow, but the release workflow will still run when a tag is pushed.
+
 ## License
 
 MIT License
