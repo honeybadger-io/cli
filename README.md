@@ -58,12 +58,24 @@ Optional flags:
 
 ## Development
 
-When adding new functionality, please also add corresponding tests.
+Pull requests are welcome. If you're adding a new feature, please [submit an issue](https://github.com/honeybadger-io/cli/issues/new) as a preliminary step; that way you can be (moderately) sure that your pull request will be accepted.
+
+When adding or changing functionality, please also add or update corresponding tests.
 
 To run tests locally:
+
 ```bash
 go test ./...
 ```
+
+### To contribute your code:
+
+1. Fork it.
+1. Create a topic branch `git checkout -b my_branch`
+1. Make your changes and add an entry to the [CHANGELOG](CHANGELOG.md).
+1. Commit your changes `git commit -am "Boom"`
+1. Push to your branch `git push origin my_branch`
+1. Send a [pull request](https://github.com/honeybadger-io/cli/pulls)
 
 ### Releasing
 
@@ -75,7 +87,7 @@ To publish a new release:
    git push origin v1.0.0
    ```
 
-2. The release workflow will automatically:
+1. The release workflow will automatically:
    - Build binaries for multiple platforms (Linux, macOS, Windows)
    - Create a GitHub release with the binaries
    - Generate a changelog from commit messages
@@ -86,4 +98,4 @@ Note: Commits with messages containing `[skip ci]` will skip the test workflow, 
 
 ## License
 
-MIT License
+MIT License. See the [LICENSE](https://raw.githubusercontent.com/honeybadger-io/cli/master/LICENSE) file in this repository for details.
