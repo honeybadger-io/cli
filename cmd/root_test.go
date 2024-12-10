@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,7 +21,11 @@ func TestConfigurationLoading(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			log.Fatalf("Failed to remove directory: %v", err)
+		}
+	}()
 
 	// Create a test config file
 	configContent := `
@@ -28,12 +33,12 @@ api_key: config-api-key
 endpoint: https://config.honeybadger.io
 `
 	configPath := filepath.Join(tmpDir, "honeybadger.yml")
-	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 		t.Fatalf("Failed to write config file: %v", err)
 	}
 
 	tests := []struct {
-		name           string
+		name          string
 		envAPIKey     string
 		envEndpoint   string
 		useConfigFile bool
@@ -41,36 +46,36 @@ endpoint: https://config.honeybadger.io
 		wantEndpoint  string
 	}{
 		{
-			name:           "environment variables take precedence over config file",
-			envAPIKey:      "env-api-key",
-			envEndpoint:    "https://env.honeybadger.io",
-			useConfigFile:  true,
-			wantAPIKey:     "env-api-key",
-			wantEndpoint:   "https://env.honeybadger.io",
+			name:          "environment variables take precedence over config file",
+			envAPIKey:     "env-api-key",
+			envEndpoint:   "https://env.honeybadger.io",
+			useConfigFile: true,
+			wantAPIKey:    "env-api-key",
+			wantEndpoint:  "https://env.honeybadger.io",
 		},
 		{
-			name:           "config file values used when no environment variables",
-			envAPIKey:      "",
-			envEndpoint:    "",
-			useConfigFile:  true,
-			wantAPIKey:     "config-api-key",
-			wantEndpoint:   "https://config.honeybadger.io",
+			name:          "config file values used when no environment variables",
+			envAPIKey:     "",
+			envEndpoint:   "",
+			useConfigFile: true,
+			wantAPIKey:    "config-api-key",
+			wantEndpoint:  "https://config.honeybadger.io",
 		},
 		{
-			name:           "default values used when no config",
-			envAPIKey:      "",
-			envEndpoint:    "",
-			useConfigFile:  false,
-			wantAPIKey:     "",
-			wantEndpoint:   "https://api.honeybadger.io",
+			name:          "default values used when no config",
+			envAPIKey:     "",
+			envEndpoint:   "",
+			useConfigFile: false,
+			wantAPIKey:    "",
+			wantEndpoint:  "https://api.honeybadger.io",
 		},
 		{
-			name:           "partial environment override",
-			envAPIKey:      "env-api-key",
-			envEndpoint:    "",
-			useConfigFile:  true,
-			wantAPIKey:     "env-api-key",
-			wantEndpoint:   "https://config.honeybadger.io",
+			name:          "partial environment override",
+			envAPIKey:     "env-api-key",
+			envEndpoint:   "",
+			useConfigFile: true,
+			wantAPIKey:    "env-api-key",
+			wantEndpoint:  "https://config.honeybadger.io",
 		},
 	}
 
@@ -81,8 +86,12 @@ endpoint: https://config.honeybadger.io
 
 			// Restore original environment after test
 			defer func() {
-				os.Setenv("HONEYBADGER_API_KEY", originalAPIKey)
-				os.Setenv("HONEYBADGER_ENDPOINT", originalEndpoint)
+				if err := os.Setenv("HONEYBADGER_API_KEY", originalAPIKey); err != nil {
+					t.Errorf("error restoring environment variable: %v", err)
+				}
+				if err := os.Setenv("HONEYBADGER_ENDPOINT", originalEndpoint); err != nil {
+					t.Errorf("error restoring environment variable: %v", err)
+				}
 				cfgFile = originalConfigFile
 			}()
 
