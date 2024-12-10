@@ -15,12 +15,10 @@ import (
 
 func TestDeployCommand(t *testing.T) {
 	// Save original values
-	originalEndpoint := apiEndpoint
 	originalClient := http.DefaultClient
 	originalEnvAPIKey := os.Getenv("HONEYBADGER_API_KEY")
 	defer func() {
 		// Restore original values after test
-		apiEndpoint = originalEndpoint
 		http.DefaultClient = originalClient
 		if err := os.Setenv("HONEYBADGER_API_KEY", originalEnvAPIKey); err != nil {
 			t.Errorf("error restoring environment variable: %v", err)
@@ -95,9 +93,6 @@ func TestDeployCommand(t *testing.T) {
 			}))
 			defer server.Close()
 
-			// Set API endpoint to test server
-			apiEndpoint = server.URL
-
 			// Override the default HTTP client
 			http.DefaultClient = server.Client()
 
@@ -109,6 +104,7 @@ func TestDeployCommand(t *testing.T) {
 			if tt.apiKey != "" {
 				viper.Set("api_key", tt.apiKey)
 			}
+			viper.Set("endpoint", server.URL)
 
 			// Create a new command for each test to avoid flag conflicts
 			cmd := &cobra.Command{Use: "deploy"}

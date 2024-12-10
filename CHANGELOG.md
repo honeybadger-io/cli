@@ -6,6 +6,10 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Made API endpoint configurable
+
 ## [0.1.0] - 2024-12-09
 
 ### Added

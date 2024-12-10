@@ -21,6 +21,7 @@ By default, the CLI looks for a configuration file at `config/honeybadger.yml` i
 Example configuration file:
 ```yaml
 api_key: your-api-key-here
+endpoint: https://api.honeybadger.io  # Optional, use https://eu-api.honeybadger.io for EU region
 ```
 
 ### Environment Variables
@@ -29,6 +30,7 @@ You can set configuration using environment variables prefixed with `HONEYBADGER
 
 ```bash
 export HONEYBADGER_API_KEY=your-api-key-here
+export HONEYBADGER_ENDPOINT=https://eu-api.honeybadger.io  # Optional, for EU region
 ```
 
 ### Command-line Flags
@@ -36,6 +38,7 @@ export HONEYBADGER_API_KEY=your-api-key-here
 Global flags that apply to all commands:
 
 - `--api-key`: Your Honeybadger API key
+- `--endpoint`: Honeybadger endpoint (default: https://api.honeybadger.io)
 - `--config`: Path to configuration file
 
 ## Usage

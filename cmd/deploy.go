@@ -17,7 +17,6 @@ var (
 	repository  string
 	revision    string
 	localUser   string
-	apiEndpoint = "https://api.honeybadger.io"
 )
 
 type deployPayload struct {
@@ -46,6 +45,8 @@ revision, and the local username of the person deploying.`,
 		if environment == "" {
 			return fmt.Errorf("environment is required. Set it using --environment flag")
 		}
+
+		apiEndpoint := viper.GetString("endpoint")
 
 		payload := deployPayload{}
 		payload.Deploy.Environment = environment
