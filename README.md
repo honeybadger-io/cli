@@ -87,6 +87,13 @@ To run tests locally:
 go test ./...
 ```
 
+To build and test local binaries:
+
+```bash
+go build -o ./hb
+./hb run --id check-123 -- /usr/local/bin/backup.sh
+```
+
 ### To contribute your code:
 
 1. Fork it.
