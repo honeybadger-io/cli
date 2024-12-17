@@ -8,6 +8,7 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Added support for running commands and reporting their status
 - Made API endpoint configurable
 
 ## [0.1.0] - 2024-12-09
