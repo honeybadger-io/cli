@@ -59,6 +59,22 @@ Optional flags:
 - `-v, --revision`: Revision being deployed
 - `-u, --user`: Local username of the person deploying
 
+### Run Command
+
+Report a check-in to Honeybadger using either an ID or a slug:
+
+```bash
+# Using ID
+hb run --id check-123
+
+# Using slug
+hb run --slug daily-backup
+```
+
+Required flags (one of):
+- `-i, --id`: Check-in ID to report
+- `-s, --slug`: Check-in slug to report
+
 ## Development
 
 Pull requests are welcome. If you're adding a new feature, please [submit an issue](https://github.com/honeybadger-io/cli/issues/new) as a preliminary step; that way you can be (moderately) sure that your pull request will be accepted.
