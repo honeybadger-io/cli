@@ -61,7 +61,7 @@ Example:
 			cmdArgs = args[1:]
 		}
 
-		execCmd := exec.Command(command, cmdArgs...)
+		execCmd := exec.Command(command, cmdArgs...) // nolint:gosec
 		var stdout, stderr bytes.Buffer
 		execCmd.Stdout = &stdout
 		execCmd.Stderr = &stderr
@@ -115,7 +115,7 @@ Example:
 		if err != nil {
 			return fmt.Errorf("failed to send request: %w", err)
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() // nolint:errcheck
 
 		// Check response status
 		if resp.StatusCode != http.StatusOK {
@@ -125,10 +125,10 @@ Example:
 
 		// Print command output to user's terminal
 		if stdout.Len() > 0 {
-			os.Stdout.Write(stdout.Bytes())
+			os.Stdout.Write(stdout.Bytes()) // nolint:errcheck,gosec
 		}
 		if stderr.Len() > 0 {
-			os.Stderr.Write(stderr.Bytes())
+			os.Stderr.Write(stderr.Bytes()) // nolint:errcheck,gosec
 		}
 
 		fmt.Printf("\nCheck-in successfully reported to Honeybadger (duration: %ds)\n", duration)

@@ -53,7 +53,7 @@ exit 0
 
 	tmpDir := t.TempDir()
 	scriptPath := filepath.Join(tmpDir, "test"+scriptExt)
-	err := os.WriteFile(scriptPath, []byte(scriptContent), 0700)
+	err := os.WriteFile(scriptPath, []byte(scriptContent), 0600)
 	require.NoError(t, err)
 
 	// Create a failing script
@@ -70,7 +70,7 @@ echo "Hello from failing script!"
 exit 42
 `
 	}
-	err = os.WriteFile(failingScriptPath, []byte(failingScriptContent), 0700)
+	err = os.WriteFile(failingScriptPath, []byte(failingScriptContent), 0600)
 	require.NoError(t, err)
 
 	tests := []struct {
