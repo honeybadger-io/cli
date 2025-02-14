@@ -61,14 +61,14 @@ Optional flags:
 
 ### Run Command
 
-Report a check-in to Honeybadger using either an ID or a slug:
+Run a command and report its status to Honeybadger using either an ID or a slug:
 
 ```bash
 # Using ID
-hb run --id check-123
+hb run --id check-123 -- command
 
 # Using slug
-hb run --slug daily-backup
+hb run --slug daily-backup -- command
 ```
 
 Required flags (one of):
