@@ -101,12 +101,6 @@ func init() {
 }
 
 func reportMetrics(hostname string) error {
-	// Check API key first
-	apiKey := viper.GetString("api_key")
-	if apiKey == "" {
-		return fmt.Errorf("API key not configured")
-	}
-
 	cpuPercent, err := cpu.Percent(time.Second, false)
 	if err != nil {
 		return fmt.Errorf("error getting CPU metrics: %w", err)

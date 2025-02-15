@@ -39,6 +39,49 @@ func TestAgentCommand(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "API key not configured")
 	})
+}
+
+func TestMetricsCollection(t *testing.T) {
+	// Save original values
+	originalEndpoint := endpoint
+	originalEnvAPIKey := os.Getenv("HONEYBADGER_API_KEY")
+	defer func() {
+		// Restore original values after test
+		endpoint = originalEndpoint
+		if err := os.Setenv("HONEYBADGER_API_KEY", originalEnvAPIKey); err != nil {
+			t.Errorf("error restoring environment variable: %v", err)
+		}
+	}()
+
+	// Unset environment variable for tests
+	if err := os.Unsetenv("HONEYBADGER_API_KEY"); err != nil {
+		t.Errorf("error unsetting environment variable: %v", err)
+	}
+
+	// Set up test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	// Use test server endpoint
+	endpoint = server.URL
+
+	t.Run("handles invalid endpoint", func(t *testing.T) {
+		// Configure viper
+		viper.Reset()
+		viper.Set("api_key", "test-api-key")
+
+		// Set invalid endpoint
+		endpoint = "http://invalid-endpoint"
+
+		hostname, err := os.Hostname()
+		require.NoError(t, err)
+
+		err = reportMetrics(hostname)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "error sending metrics")
+	})
 
 	t.Run("reports metrics successfully", func(t *testing.T) {
 		// Reset viper config
@@ -102,73 +145,5 @@ func TestAgentCommand(t *testing.T) {
 			assert.GreaterOrEqual(t, disk.UsedPercent, float64(0))
 			assert.LessOrEqual(t, disk.UsedPercent, float64(100))
 		}
-	})
-}
-
-func TestMetricsCollection(t *testing.T) {
-	// Save original values
-	originalEndpoint := endpoint
-	originalEnvAPIKey := os.Getenv("HONEYBADGER_API_KEY")
-	defer func() {
-		// Restore original values after test
-		endpoint = originalEndpoint
-		if err := os.Setenv("HONEYBADGER_API_KEY", originalEnvAPIKey); err != nil {
-			t.Errorf("error restoring environment variable: %v", err)
-		}
-	}()
-
-	// Unset environment variable for tests
-	if err := os.Unsetenv("HONEYBADGER_API_KEY"); err != nil {
-		t.Errorf("error unsetting environment variable: %v", err)
-	}
-
-	// Set up test server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	// Use test server endpoint
-	endpoint = server.URL
-
-	t.Run("collects metrics without error", func(t *testing.T) {
-		// Configure viper
-		viper.Reset()
-		viper.Set("api_key", "test-api-key")
-
-		hostname, err := os.Hostname()
-		require.NoError(t, err)
-
-		err = reportMetrics(hostname)
-		require.NoError(t, err)
-	})
-
-	t.Run("handles missing API key", func(t *testing.T) {
-		// Reset viper config and ensure API key is not set
-		viper.Reset()
-		viper.Set("api_key", "")
-
-		hostname, err := os.Hostname()
-		require.NoError(t, err)
-
-		err = reportMetrics(hostname)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "API key not configured")
-	})
-
-	t.Run("handles invalid endpoint", func(t *testing.T) {
-		// Configure viper
-		viper.Reset()
-		viper.Set("api_key", "test-api-key")
-
-		// Set invalid endpoint
-		endpoint = "http://invalid-endpoint"
-
-		hostname, err := os.Hostname()
-		require.NoError(t, err)
-
-		err = reportMetrics(hostname)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "error sending metrics")
 	})
 }
