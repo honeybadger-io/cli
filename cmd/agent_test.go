@@ -88,7 +88,7 @@ func TestMetricsCollection(t *testing.T) {
 		viper.Reset()
 
 		// Set up test server
-		var receivedPayload metricsPayload
+		var receivedEvents []map[string]interface{}
 		var receivedAPIKey string
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Check request headers
@@ -96,9 +96,13 @@ func TestMetricsCollection(t *testing.T) {
 			assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 
 			// Parse and validate payload
+			var event map[string]interface{}
 			decoder := json.NewDecoder(r.Body)
-			err := decoder.Decode(&receivedPayload)
+			err := decoder.Decode(&event)
 			require.NoError(t, err)
+
+			// Store the event
+			receivedEvents = append(receivedEvents, event)
 
 			w.WriteHeader(http.StatusOK)
 		}))
@@ -118,32 +122,56 @@ func TestMetricsCollection(t *testing.T) {
 		// Wait for metrics to be reported
 		time.Sleep(2 * time.Second)
 
-		// Validate received payload
+		// Validate API key
 		assert.Equal(t, "test-api-key", receivedAPIKey)
-		assert.Equal(t, "system.metrics", receivedPayload.Event)
-		assert.NotEmpty(t, receivedPayload.Ts)
-		assert.NotEmpty(t, receivedPayload.Host)
+
+		// Ensure we received at least 3 events (CPU, memory, and at least one disk)
+		assert.GreaterOrEqual(t, len(receivedEvents), 3)
+
+		// Helper function to find event by type
+		findEvent := func(eventType string) map[string]interface{} {
+			for _, event := range receivedEvents {
+				if event["event_type"].(string) == eventType {
+					return event
+				}
+			}
+			return nil
+		}
 
 		// Validate CPU metrics
-		assert.NotZero(t, receivedPayload.CPU.NumCPUs)
-		assert.GreaterOrEqual(t, receivedPayload.CPU.UsedPercent, float64(0))
-		assert.LessOrEqual(t, receivedPayload.CPU.UsedPercent, float64(100))
+		cpuEvent := findEvent("report.system.cpu")
+		assert.NotNil(t, cpuEvent)
+		assert.Equal(t, "test-host", cpuEvent["host"])
+		assert.NotEmpty(t, cpuEvent["ts"])
+		assert.NotZero(t, cpuEvent["num_cpus"])
+		assert.GreaterOrEqual(t, cpuEvent["used_percent"].(float64), float64(0))
+		assert.LessOrEqual(t, cpuEvent["used_percent"].(float64), float64(100))
 
 		// Validate memory metrics
-		assert.NotZero(t, receivedPayload.Memory.Total)
-		assert.NotZero(t, receivedPayload.Memory.Used)
-		assert.GreaterOrEqual(t, receivedPayload.Memory.UsedPercent, float64(0))
-		assert.LessOrEqual(t, receivedPayload.Memory.UsedPercent, float64(100))
+		memoryEvent := findEvent("report.system.memory")
+		assert.NotNil(t, memoryEvent)
+		assert.Equal(t, "test-host", memoryEvent["host"])
+		assert.NotEmpty(t, memoryEvent["ts"])
+		assert.NotZero(t, memoryEvent["total_bytes"])
+		assert.NotZero(t, memoryEvent["used_bytes"])
+		assert.GreaterOrEqual(t, memoryEvent["used_percent"].(float64), float64(0))
+		assert.LessOrEqual(t, memoryEvent["used_percent"].(float64), float64(100))
 
 		// Validate disk metrics
-		assert.NotEmpty(t, receivedPayload.Disks)
-		for _, disk := range receivedPayload.Disks {
-			assert.NotEmpty(t, disk.Mountpoint)
-			assert.NotEmpty(t, disk.Device)
-			assert.NotEmpty(t, disk.Fstype)
-			assert.NotZero(t, disk.Total)
-			assert.GreaterOrEqual(t, disk.UsedPercent, float64(0))
-			assert.LessOrEqual(t, disk.UsedPercent, float64(100))
+		var foundDiskEvent bool
+		for _, event := range receivedEvents {
+			if event["event_type"].(string) == "report.system.disk" {
+				foundDiskEvent = true
+				assert.Equal(t, "test-host", event["host"])
+				assert.NotEmpty(t, event["ts"])
+				assert.NotEmpty(t, event["mountpoint"])
+				assert.NotEmpty(t, event["device"])
+				assert.NotEmpty(t, event["fstype"])
+				assert.NotZero(t, event["total_bytes"])
+				assert.GreaterOrEqual(t, event["used_percent"].(float64), float64(0))
+				assert.LessOrEqual(t, event["used_percent"].(float64), float64(100))
+			}
 		}
+		assert.True(t, foundDiskEvent, "No disk metrics were received")
 	})
 }

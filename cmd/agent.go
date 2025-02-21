@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"strings"
@@ -22,25 +23,10 @@ var (
 	interval int
 )
 
-type diskMetrics struct {
-	Mountpoint  string  `json:"mountpoint"`
-	Device      string  `json:"device"`
-	Fstype      string  `json:"fstype"`
-	Total       uint64  `json:"total_bytes"`
-	Used        uint64  `json:"used_bytes"`
-	Free        uint64  `json:"free_bytes"`
-	UsedPercent float64 `json:"used_percent"`
-}
-
-type memoryMetrics struct {
-	Total       uint64  `json:"total_bytes"`
-	Used        uint64  `json:"used_bytes"`
-	Free        uint64  `json:"free_bytes"`
-	Available   uint64  `json:"available_bytes"`
-	UsedPercent float64 `json:"used_percent"`
-}
-
-type cpuMetrics struct {
+type cpuPayload struct {
+	Ts          string  `json:"ts"`
+	Event       string  `json:"event_type"`
+	Host        string  `json:"host"`
 	UsedPercent float64 `json:"used_percent"`
 	LoadAvg1    float64 `json:"load_avg_1"`
 	LoadAvg5    float64 `json:"load_avg_5"`
@@ -48,13 +34,28 @@ type cpuMetrics struct {
 	NumCPUs     int     `json:"num_cpus"`
 }
 
-type metricsPayload struct {
-	Ts     string        `json:"ts"`
-	Event  string        `json:"event"`
-	Host   string        `json:"host"`
-	CPU    cpuMetrics    `json:"cpu"`
-	Memory memoryMetrics `json:"memory"`
-	Disks  []diskMetrics `json:"disks"`
+type memoryPayload struct {
+	Ts          string  `json:"ts"`
+	Event       string  `json:"event_type"`
+	Host        string  `json:"host"`
+	Total       uint64  `json:"total_bytes"`
+	Used        uint64  `json:"used_bytes"`
+	Free        uint64  `json:"free_bytes"`
+	Available   uint64  `json:"available_bytes"`
+	UsedPercent float64 `json:"used_percent"`
+}
+
+type diskPayload struct {
+	Ts          string  `json:"ts"`
+	Event       string  `json:"event_type"`
+	Host        string  `json:"host"`
+	Mountpoint  string  `json:"mountpoint"`
+	Device      string  `json:"device"`
+	Fstype      string  `json:"fstype"`
+	Total       uint64  `json:"total_bytes"`
+	Used        uint64  `json:"used_bytes"`
+	Free        uint64  `json:"free_bytes"`
+	UsedPercent float64 `json:"used_percent"`
 }
 
 // agentCmd represents the agent command
@@ -100,82 +101,8 @@ func init() {
 	agentCmd.Flags().IntVarP(&interval, "interval", "i", 60, "Reporting interval in seconds")
 }
 
-func reportMetrics(hostname string) error {
-	cpuPercent, err := cpu.Percent(time.Second, false)
-	if err != nil {
-		return fmt.Errorf("error getting CPU metrics: %w", err)
-	}
-
-	virtualMem, err := mem.VirtualMemory()
-	if err != nil {
-		return fmt.Errorf("error getting memory metrics: %w", err)
-	}
-
-	parts, err := disk.Partitions(false)
-	if err != nil {
-		return fmt.Errorf("error getting disk partitions: %w", err)
-	}
-
-	// Get usage for all partitions
-	var disks []diskMetrics
-	for _, part := range parts {
-		// Skip pseudo filesystems
-		if part.Fstype == "devfs" || part.Fstype == "autofs" || part.Fstype == "nullfs" ||
-			strings.HasPrefix(part.Fstype, "fuse.") ||
-			strings.Contains(part.Mountpoint, "/System/Volumes") {
-			continue
-		}
-
-		usage, err := disk.Usage(part.Mountpoint)
-		if err != nil {
-			// Log error but continue with other partitions
-			fmt.Fprintf(os.Stderr, "Error getting disk usage for %s: %v\n", part.Mountpoint, err)
-			continue
-		}
-
-		disks = append(disks, diskMetrics{
-			Mountpoint:  part.Mountpoint,
-			Device:      part.Device,
-			Fstype:      part.Fstype,
-			Total:       usage.Total,
-			Used:        usage.Used,
-			Free:        usage.Free,
-			UsedPercent: usage.UsedPercent,
-		})
-	}
-
-	loadAvg, err := load.Avg()
-	if err != nil {
-		return fmt.Errorf("error getting load average: %w", err)
-	}
-
-	// Get number of CPUs
-	numCPU, err := cpu.Counts(true)
-	if err != nil {
-		numCPU = 0 // fallback if we can't get the count
-	}
-
-	payload := metricsPayload{
-		Ts:    time.Now().UTC().Format(time.RFC3339),
-		Event: "system.metrics",
-		Host:  hostname,
-		CPU: cpuMetrics{
-			UsedPercent: cpuPercent[0],
-			LoadAvg1:    loadAvg.Load1,
-			LoadAvg5:    loadAvg.Load5,
-			LoadAvg15:   loadAvg.Load15,
-			NumCPUs:     numCPU,
-		},
-		Memory: memoryMetrics{
-			Total:       virtualMem.Total,
-			Used:        virtualMem.Used,
-			Free:        virtualMem.Free,
-			Available:   virtualMem.Available,
-			UsedPercent: virtualMem.UsedPercent,
-		},
-		Disks: disks,
-	}
-
+// sendMetric sends a single metric event to Honeybadger
+func sendMetric(payload interface{}) error {
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("error marshaling metrics: %w", err)
@@ -203,6 +130,101 @@ func reportMetrics(hostname string) error {
 	if resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("received error response: %s\n%s", resp.Status, body)
+	}
+
+	return nil
+}
+
+func reportMetrics(hostname string) error {
+	timestamp := time.Now().UTC().Format(time.RFC3339)
+
+	// Collect and send CPU metrics
+	cpuPercent, err := cpu.Percent(time.Second, false)
+	if err != nil {
+		return fmt.Errorf("error getting CPU metrics: %w", err)
+	}
+
+	loadAvg, err := load.Avg()
+	if err != nil {
+		return fmt.Errorf("error getting load average: %w", err)
+	}
+
+	numCPU, err := cpu.Counts(true)
+	if err != nil {
+		numCPU = 0 // fallback if we can't get the count
+	}
+
+	cpuPayload := cpuPayload{
+		Ts:          timestamp,
+		Event:       "report.system.cpu",
+		Host:        hostname,
+		UsedPercent: math.Round(cpuPercent[0]*100) / 100,
+		LoadAvg1:    loadAvg.Load1,
+		LoadAvg5:    loadAvg.Load5,
+		LoadAvg15:   loadAvg.Load15,
+		NumCPUs:     numCPU,
+	}
+	if err := sendMetric(cpuPayload); err != nil {
+		return fmt.Errorf("error sending CPU metrics: %w", err)
+	}
+
+	// Collect and send memory metrics
+	virtualMem, err := mem.VirtualMemory()
+	if err != nil {
+		return fmt.Errorf("error getting memory metrics: %w", err)
+	}
+
+	memoryPayload := memoryPayload{
+		Ts:          timestamp,
+		Event:       "report.system.memory",
+		Host:        hostname,
+		Total:       virtualMem.Total,
+		Used:        virtualMem.Used,
+		Free:        virtualMem.Free,
+		Available:   virtualMem.Available,
+		UsedPercent: math.Round(virtualMem.UsedPercent*100) / 100,
+	}
+	if err := sendMetric(memoryPayload); err != nil {
+		return fmt.Errorf("error sending memory metrics: %w", err)
+	}
+
+	// Collect and send disk metrics
+	parts, err := disk.Partitions(false)
+	if err != nil {
+		return fmt.Errorf("error getting disk partitions: %w", err)
+	}
+
+	// Send metrics for each disk partition
+	for _, part := range parts {
+		// Skip pseudo filesystems
+		if part.Fstype == "devfs" || part.Fstype == "autofs" || part.Fstype == "nullfs" ||
+			strings.HasPrefix(part.Fstype, "fuse.") ||
+			strings.Contains(part.Mountpoint, "/System/Volumes") {
+			continue
+		}
+
+		usage, err := disk.Usage(part.Mountpoint)
+		if err != nil {
+			// Log error but continue with other partitions
+			fmt.Fprintf(os.Stderr, "Error getting disk usage for %s: %v\n", part.Mountpoint, err)
+			continue
+		}
+
+		diskPayload := diskPayload{
+			Ts:          timestamp,
+			Event:       "report.system.disk",
+			Host:        hostname,
+			Mountpoint:  part.Mountpoint,
+			Device:      part.Device,
+			Fstype:      part.Fstype,
+			Total:       usage.Total,
+			Used:        usage.Used,
+			Free:        usage.Free,
+			UsedPercent: math.Round(usage.UsedPercent*100) / 100,
+		}
+		if err := sendMetric(diskPayload); err != nil {
+			return fmt.Errorf("error sending disk metrics for %s: %w", part.Mountpoint, err)
+		}
 	}
 
 	return nil
