@@ -59,6 +59,22 @@ Optional flags:
 - `-v, --revision`: Revision being deployed
 - `-u, --user`: Local username of the person deploying
 
+### Agent Command
+
+Start a metrics reporting agent that collects and sends system metrics to Honeybadger Insights:
+
+```bash
+hb agent
+```
+
+The agent collects and reports the following metrics:
+- CPU usage and load averages
+- Memory usage (total, used, free, available)
+- Disk usage for all mounted filesystems
+
+Optional flags:
+- `--interval`: Reporting interval in seconds (default: 60)
+
 ## Development
 
 Pull requests are welcome. If you're adding a new feature, please [submit an issue](https://github.com/honeybadger-io/cli/issues/new) as a preliminary step; that way you can be (moderately) sure that your pull request will be accepted.
