@@ -197,7 +197,7 @@ func reportMetrics(hostname string) error {
 	// Send metrics for each disk partition
 	for _, part := range parts {
 		// Skip pseudo filesystems
-		if part.Fstype == "devfs" || part.Fstype == "autofs" || part.Fstype == "nullfs" ||
+		if part.Fstype == "devfs" || part.Fstype == "autofs" || part.Fstype == "nullfs" || part.Fstype == "squashfs" ||
 			strings.HasPrefix(part.Fstype, "fuse.") ||
 			strings.Contains(part.Mountpoint, "/System/Volumes") {
 			continue
