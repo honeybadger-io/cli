@@ -5,7 +5,6 @@ linters:
     - govet
     - ineffassign
     - staticcheck
-    - typecheck
     - unused
     - gosec
     - gofmt
