@@ -46,11 +46,7 @@ var projectsListCmd = &cobra.Command{
 			)
 		}
 
-		endpoint := viper.GetString("endpoint")
-		// Projects API uses app.honeybadger.io, not api.honeybadger.io
-		if endpoint == "https://api.honeybadger.io" {
-			endpoint = "https://app.honeybadger.io"
-		}
+		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
 
 		// Create API client
 		client := hbapi.NewClient().
@@ -116,11 +112,7 @@ var projectsGetCmd = &cobra.Command{
 			)
 		}
 
-		endpoint := viper.GetString("endpoint")
-		// Projects API uses app.honeybadger.io, not api.honeybadger.io
-		if endpoint == "https://api.honeybadger.io" {
-			endpoint = "https://app.honeybadger.io"
-		}
+		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
 
 		// Create API client
 		client := hbapi.NewClient().
@@ -221,11 +213,7 @@ Example JSON payload:
 			)
 		}
 
-		endpoint := viper.GetString("endpoint")
-		// Projects API uses app.honeybadger.io, not api.honeybadger.io
-		if endpoint == "https://api.honeybadger.io" {
-			endpoint = "https://app.honeybadger.io"
-		}
+		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
 
 		// Create API client
 		client := hbapi.NewClient().
@@ -233,21 +221,9 @@ Example JSON payload:
 			WithAuthToken(authToken)
 
 		// Parse JSON input
-		var jsonData []byte
-		var err error
-
-		if len(projectCLIInputJSON) >= 7 && projectCLIInputJSON[:7] == "file://" {
-			// Read from file
-			filePath := projectCLIInputJSON[7:]
-			jsonData, err = os.ReadFile(
-				filePath,
-			) // #nosec G304 - User-provided file path is expected for CLI
-			if err != nil {
-				return fmt.Errorf("failed to read JSON file: %w", err)
-			}
-		} else {
-			// Use direct JSON string
-			jsonData = []byte(projectCLIInputJSON)
+		jsonData, err := readJSONInput(projectCLIInputJSON)
+		if err != nil {
+			return fmt.Errorf("failed to read JSON input: %w", err)
 		}
 
 		// Parse the payload structure
@@ -314,11 +290,7 @@ Example JSON payload:
 			)
 		}
 
-		endpoint := viper.GetString("endpoint")
-		// Projects API uses app.honeybadger.io, not api.honeybadger.io
-		if endpoint == "https://api.honeybadger.io" {
-			endpoint = "https://app.honeybadger.io"
-		}
+		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
 
 		// Create API client
 		client := hbapi.NewClient().
@@ -326,21 +298,9 @@ Example JSON payload:
 			WithAuthToken(authToken)
 
 		// Parse JSON input
-		var jsonData []byte
-		var err error
-
-		if len(projectCLIInputJSON) >= 7 && projectCLIInputJSON[:7] == "file://" {
-			// Read from file
-			filePath := projectCLIInputJSON[7:]
-			jsonData, err = os.ReadFile(
-				filePath,
-			) // #nosec G304 - User-provided file path is expected for CLI
-			if err != nil {
-				return fmt.Errorf("failed to read JSON file: %w", err)
-			}
-		} else {
-			// Use direct JSON string
-			jsonData = []byte(projectCLIInputJSON)
+		jsonData, err := readJSONInput(projectCLIInputJSON)
+		if err != nil {
+			return fmt.Errorf("failed to read JSON input: %w", err)
 		}
 
 		// Parse the payload structure
@@ -379,11 +339,7 @@ var projectsDeleteCmd = &cobra.Command{
 			)
 		}
 
-		endpoint := viper.GetString("endpoint")
-		// Projects API uses app.honeybadger.io, not api.honeybadger.io
-		if endpoint == "https://api.honeybadger.io" {
-			endpoint = "https://app.honeybadger.io"
-		}
+		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
 
 		// Create API client
 		client := hbapi.NewClient().
@@ -414,11 +370,7 @@ var projectsOccurrencesCmd = &cobra.Command{
 			)
 		}
 
-		endpoint := viper.GetString("endpoint")
-		// Projects API uses app.honeybadger.io, not api.honeybadger.io
-		if endpoint == "https://api.honeybadger.io" {
-			endpoint = "https://app.honeybadger.io"
-		}
+		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
 
 		// Create API client
 		client := hbapi.NewClient().
@@ -505,11 +457,7 @@ var projectsIntegrationsCmd = &cobra.Command{
 			)
 		}
 
-		endpoint := viper.GetString("endpoint")
-		// Projects API uses app.honeybadger.io, not api.honeybadger.io
-		if endpoint == "https://api.honeybadger.io" {
-			endpoint = "https://app.honeybadger.io"
-		}
+		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
 
 		// Create API client
 		client := hbapi.NewClient().
@@ -579,11 +527,7 @@ var projectsReportsCmd = &cobra.Command{
 			)
 		}
 
-		endpoint := viper.GetString("endpoint")
-		// Projects API uses app.honeybadger.io, not api.honeybadger.io
-		if endpoint == "https://api.honeybadger.io" {
-			endpoint = "https://app.honeybadger.io"
-		}
+		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
 
 		// Create API client
 		client := hbapi.NewClient().

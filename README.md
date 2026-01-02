@@ -306,7 +306,7 @@ See https://docs.honeybadger.io/api/faults/ for more information.
 Execute BadgerQL queries against your Honeybadger Insights data. **Requires**: `--auth-token` or `HONEYBADGER_AUTH_TOKEN` (personal auth token)
 
 ```bash
-# Query CPU usage
+# Basic query for timestamps and previews
 hb insights query --project-id 12345 --query "fields @ts, @preview | sort @ts"
 
 # Query with timezone

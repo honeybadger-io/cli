@@ -58,11 +58,7 @@ Examples:
 			)
 		}
 
-		endpoint := viper.GetString("endpoint")
-		// Insights API uses app.honeybadger.io, not api.honeybadger.io
-		if endpoint == "https://api.honeybadger.io" {
-			endpoint = "https://app.honeybadger.io"
-		}
+		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
 
 		// Create API client
 		client := hbapi.NewClient().

@@ -46,11 +46,7 @@ var faultsListCmd = &cobra.Command{
 			)
 		}
 
-		endpoint := viper.GetString("endpoint")
-		// Faults API uses app.honeybadger.io, not api.honeybadger.io
-		if endpoint == "https://api.honeybadger.io" {
-			endpoint = "https://app.honeybadger.io"
-		}
+		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
 
 		// Create API client
 		client := hbapi.NewClient().
@@ -134,11 +130,7 @@ var faultsGetCmd = &cobra.Command{
 			)
 		}
 
-		endpoint := viper.GetString("endpoint")
-		// Faults API uses app.honeybadger.io, not api.honeybadger.io
-		if endpoint == "https://api.honeybadger.io" {
-			endpoint = "https://app.honeybadger.io"
-		}
+		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
 
 		// Create API client
 		client := hbapi.NewClient().
@@ -220,11 +212,7 @@ var faultsNoticesCmd = &cobra.Command{
 			)
 		}
 
-		endpoint := viper.GetString("endpoint")
-		// Faults API uses app.honeybadger.io, not api.honeybadger.io
-		if endpoint == "https://api.honeybadger.io" {
-			endpoint = "https://app.honeybadger.io"
-		}
+		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
 
 		// Create API client
 		client := hbapi.NewClient().
@@ -291,11 +279,7 @@ var faultsCountsCmd = &cobra.Command{
 			)
 		}
 
-		endpoint := viper.GetString("endpoint")
-		// Faults API uses app.honeybadger.io, not api.honeybadger.io
-		if endpoint == "https://api.honeybadger.io" {
-			endpoint = "https://app.honeybadger.io"
-		}
+		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
 
 		// Create API client
 		client := hbapi.NewClient().
@@ -357,11 +341,7 @@ var faultsAffectedUsersCmd = &cobra.Command{
 			)
 		}
 
-		endpoint := viper.GetString("endpoint")
-		// Faults API uses app.honeybadger.io, not api.honeybadger.io
-		if endpoint == "https://api.honeybadger.io" {
-			endpoint = "https://app.honeybadger.io"
-		}
+		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
 
 		// Create API client
 		client := hbapi.NewClient().
