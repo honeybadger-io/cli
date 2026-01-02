@@ -41,7 +41,9 @@ var projectsListCmd = &cobra.Command{
 	RunE: func(_ *cobra.Command, _ []string) error {
 		authToken := viper.GetString("auth_token")
 		if authToken == "" {
-			return fmt.Errorf("auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable")
+			return fmt.Errorf(
+				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
+			)
 		}
 
 		endpoint := viper.GetString("endpoint")
@@ -109,7 +111,9 @@ var projectsGetCmd = &cobra.Command{
 
 		authToken := viper.GetString("auth_token")
 		if authToken == "" {
-			return fmt.Errorf("auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable")
+			return fmt.Errorf(
+				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
+			)
 		}
 
 		endpoint := viper.GetString("endpoint")
@@ -212,7 +216,9 @@ Example JSON payload:
 
 		authToken := viper.GetString("auth_token")
 		if authToken == "" {
-			return fmt.Errorf("auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable")
+			return fmt.Errorf(
+				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
+			)
 		}
 
 		endpoint := viper.GetString("endpoint")
@@ -233,7 +239,9 @@ Example JSON payload:
 		if len(projectCLIInputJSON) >= 7 && projectCLIInputJSON[:7] == "file://" {
 			// Read from file
 			filePath := projectCLIInputJSON[7:]
-			jsonData, err = os.ReadFile(filePath) // #nosec G304 - User-provided file path is expected for CLI
+			jsonData, err = os.ReadFile(
+				filePath,
+			) // #nosec G304 - User-provided file path is expected for CLI
 			if err != nil {
 				return fmt.Errorf("failed to read JSON file: %w", err)
 			}
@@ -301,7 +309,9 @@ Example JSON payload:
 
 		authToken := viper.GetString("auth_token")
 		if authToken == "" {
-			return fmt.Errorf("auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable")
+			return fmt.Errorf(
+				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
+			)
 		}
 
 		endpoint := viper.GetString("endpoint")
@@ -322,7 +332,9 @@ Example JSON payload:
 		if len(projectCLIInputJSON) >= 7 && projectCLIInputJSON[:7] == "file://" {
 			// Read from file
 			filePath := projectCLIInputJSON[7:]
-			jsonData, err = os.ReadFile(filePath) // #nosec G304 - User-provided file path is expected for CLI
+			jsonData, err = os.ReadFile(
+				filePath,
+			) // #nosec G304 - User-provided file path is expected for CLI
 			if err != nil {
 				return fmt.Errorf("failed to read JSON file: %w", err)
 			}
@@ -362,7 +374,9 @@ var projectsDeleteCmd = &cobra.Command{
 
 		authToken := viper.GetString("auth_token")
 		if authToken == "" {
-			return fmt.Errorf("auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable")
+			return fmt.Errorf(
+				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
+			)
 		}
 
 		endpoint := viper.GetString("endpoint")
@@ -395,7 +409,9 @@ var projectsOccurrencesCmd = &cobra.Command{
 	RunE: func(_ *cobra.Command, _ []string) error {
 		authToken := viper.GetString("auth_token")
 		if authToken == "" {
-			return fmt.Errorf("auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable")
+			return fmt.Errorf(
+				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
+			)
 		}
 
 		endpoint := viper.GetString("endpoint")
@@ -484,7 +500,9 @@ var projectsIntegrationsCmd = &cobra.Command{
 
 		authToken := viper.GetString("auth_token")
 		if authToken == "" {
-			return fmt.Errorf("auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable")
+			return fmt.Errorf(
+				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
+			)
 		}
 
 		endpoint := viper.GetString("endpoint")
@@ -556,7 +574,9 @@ var projectsReportsCmd = &cobra.Command{
 
 		authToken := viper.GetString("auth_token")
 		if authToken == "" {
-			return fmt.Errorf("auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable")
+			return fmt.Errorf(
+				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
+			)
 		}
 
 		endpoint := viper.GetString("endpoint")
@@ -591,7 +611,12 @@ var projectsReportsCmd = &cobra.Command{
 		}
 
 		ctx := context.Background()
-		report, err := client.Projects.GetReport(ctx, projectID, hbapi.ProjectReportType(projectReportType), options)
+		report, err := client.Projects.GetReport(
+			ctx,
+			projectID,
+			hbapi.ProjectReportType(projectReportType),
+			options,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to get report: %w", err)
 		}
@@ -634,21 +659,27 @@ func init() {
 	projectsCmd.AddCommand(projectsReportsCmd)
 
 	// Flags for list command
-	projectsListCmd.Flags().StringVarP(&projectOutputFormat, "output", "o", "table", "Output format (table or json)")
-	projectsListCmd.Flags().StringVar(&projectAccountID, "account-id", "", "Filter projects by account ID")
+	projectsListCmd.Flags().
+		StringVarP(&projectOutputFormat, "output", "o", "table", "Output format (table or json)")
+	projectsListCmd.Flags().
+		StringVar(&projectAccountID, "account-id", "", "Filter projects by account ID")
 
 	// Flags for get command
 	projectsGetCmd.Flags().IntVar(&projectID, "id", 0, "Project ID")
-	projectsGetCmd.Flags().StringVarP(&projectOutputFormat, "output", "o", "text", "Output format (text or json)")
+	projectsGetCmd.Flags().
+		StringVarP(&projectOutputFormat, "output", "o", "text", "Output format (text or json)")
 
 	if err := projectsGetCmd.MarkFlagRequired("id"); err != nil {
 		fmt.Printf("error marking id flag as required: %v\n", err)
 	}
 
 	// Flags for create command
-	projectsCreateCmd.Flags().StringVar(&projectAccountID, "account-id", "", "Account ID to create project in")
-	projectsCreateCmd.Flags().StringVar(&projectCLIInputJSON, "cli-input-json", "", "JSON payload (string or file://path)")
-	projectsCreateCmd.Flags().StringVarP(&projectOutputFormat, "output", "o", "text", "Output format (text or json)")
+	projectsCreateCmd.Flags().
+		StringVar(&projectAccountID, "account-id", "", "Account ID to create project in")
+	projectsCreateCmd.Flags().
+		StringVar(&projectCLIInputJSON, "cli-input-json", "", "JSON payload (string or file://path)")
+	projectsCreateCmd.Flags().
+		StringVarP(&projectOutputFormat, "output", "o", "text", "Output format (text or json)")
 
 	if err := projectsCreateCmd.MarkFlagRequired("account-id"); err != nil {
 		fmt.Printf("error marking account-id flag as required: %v\n", err)
@@ -659,7 +690,8 @@ func init() {
 
 	// Flags for update command
 	projectsUpdateCmd.Flags().IntVar(&projectID, "id", 0, "Project ID")
-	projectsUpdateCmd.Flags().StringVar(&projectCLIInputJSON, "cli-input-json", "", "JSON payload (string or file://path)")
+	projectsUpdateCmd.Flags().
+		StringVar(&projectCLIInputJSON, "cli-input-json", "", "JSON payload (string or file://path)")
 
 	if err := projectsUpdateCmd.MarkFlagRequired("id"); err != nil {
 		fmt.Printf("error marking id flag as required: %v\n", err)
@@ -676,14 +708,19 @@ func init() {
 	}
 
 	// Flags for occurrences command
-	projectsOccurrencesCmd.Flags().IntVar(&projectID, "id", 0, "Project ID (optional - if not specified, shows all projects)")
-	projectsOccurrencesCmd.Flags().StringVar(&projectOccurrencesPeriod, "period", "day", "Time period (hour, day, week, or month)")
-	projectsOccurrencesCmd.Flags().StringVar(&projectOccurrencesEnv, "environment", "", "Filter by environment")
-	projectsOccurrencesCmd.Flags().StringVarP(&projectOutputFormat, "output", "o", "table", "Output format (table or json)")
+	projectsOccurrencesCmd.Flags().
+		IntVar(&projectID, "id", 0, "Project ID (optional - if not specified, shows all projects)")
+	projectsOccurrencesCmd.Flags().
+		StringVar(&projectOccurrencesPeriod, "period", "day", "Time period (hour, day, week, or month)")
+	projectsOccurrencesCmd.Flags().
+		StringVar(&projectOccurrencesEnv, "environment", "", "Filter by environment")
+	projectsOccurrencesCmd.Flags().
+		StringVarP(&projectOutputFormat, "output", "o", "table", "Output format (table or json)")
 
 	// Flags for integrations command
 	projectsIntegrationsCmd.Flags().IntVar(&projectID, "id", 0, "Project ID")
-	projectsIntegrationsCmd.Flags().StringVarP(&projectOutputFormat, "output", "o", "table", "Output format (table or json)")
+	projectsIntegrationsCmd.Flags().
+		StringVarP(&projectOutputFormat, "output", "o", "table", "Output format (table or json)")
 
 	if err := projectsIntegrationsCmd.MarkFlagRequired("id"); err != nil {
 		fmt.Printf("error marking id flag as required: %v\n", err)
@@ -691,11 +728,16 @@ func init() {
 
 	// Flags for reports command
 	projectsReportsCmd.Flags().IntVar(&projectID, "id", 0, "Project ID")
-	projectsReportsCmd.Flags().StringVar(&projectReportType, "type", "", "Report type (notices_by_class, notices_by_location, notices_by_user, notices_per_day)")
-	projectsReportsCmd.Flags().StringVar(&projectReportStart, "start", "", "Start time (RFC3339 format)")
-	projectsReportsCmd.Flags().StringVar(&projectReportStop, "stop", "", "Stop time (RFC3339 format)")
-	projectsReportsCmd.Flags().StringVar(&projectReportEnv, "environment", "", "Filter by environment")
-	projectsReportsCmd.Flags().StringVarP(&projectOutputFormat, "output", "o", "table", "Output format (table or json)")
+	projectsReportsCmd.Flags().
+		StringVar(&projectReportType, "type", "", "Report type (notices_by_class, notices_by_location, notices_by_user, notices_per_day)")
+	projectsReportsCmd.Flags().
+		StringVar(&projectReportStart, "start", "", "Start time (RFC3339 format)")
+	projectsReportsCmd.Flags().
+		StringVar(&projectReportStop, "stop", "", "Stop time (RFC3339 format)")
+	projectsReportsCmd.Flags().
+		StringVar(&projectReportEnv, "environment", "", "Filter by environment")
+	projectsReportsCmd.Flags().
+		StringVarP(&projectOutputFormat, "output", "o", "table", "Output format (table or json)")
 
 	if err := projectsReportsCmd.MarkFlagRequired("id"); err != nil {
 		fmt.Printf("error marking id flag as required: %v\n", err)

@@ -32,10 +32,14 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is config/honeybadger.yml)")
-	rootCmd.PersistentFlags().StringVar(&apiKey, "api-key", "", "Honeybadger API key (for Reporting API)")
-	rootCmd.PersistentFlags().StringVar(&authToken, "auth-token", "", "Honeybadger personal auth token (for Data API)")
-	rootCmd.PersistentFlags().StringVar(&endpoint, "endpoint", defaultEndpoint, "Honeybadger endpoint")
+	rootCmd.PersistentFlags().
+		StringVar(&cfgFile, "config", "", "config file (default is config/honeybadger.yml)")
+	rootCmd.PersistentFlags().
+		StringVar(&apiKey, "api-key", "", "Honeybadger API key (for Reporting API)")
+	rootCmd.PersistentFlags().
+		StringVar(&authToken, "auth-token", "", "Honeybadger personal auth token (for Data API)")
+	rootCmd.PersistentFlags().
+		StringVar(&endpoint, "endpoint", defaultEndpoint, "Honeybadger endpoint")
 
 	if err := viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key")); err != nil {
 		fmt.Printf("error binding api-key flag: %v\n", err)

@@ -39,7 +39,9 @@ revision, and the local username of the person deploying.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		apiKey := viper.GetString("api_key")
 		if apiKey == "" {
-			return fmt.Errorf("API key is required. Set it using --api-key flag or HONEYBADGER_API_KEY environment variable")
+			return fmt.Errorf(
+				"API key is required. Set it using --api-key flag or HONEYBADGER_API_KEY environment variable",
+			)
 		}
 
 		if environment == "" {
@@ -60,7 +62,11 @@ revision, and the local username of the person deploying.`,
 			return fmt.Errorf("error marshaling payload: %w", err)
 		}
 
-		req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/deploys", apiEndpoint), bytes.NewBuffer(jsonPayload))
+		req, err := http.NewRequest(
+			"POST",
+			fmt.Sprintf("%s/v1/deploys", apiEndpoint),
+			bytes.NewBuffer(jsonPayload),
+		)
 		if err != nil {
 			return fmt.Errorf("error creating request: %w", err)
 		}
@@ -95,7 +101,8 @@ revision, and the local username of the person deploying.`,
 func init() {
 	rootCmd.AddCommand(deployCmd)
 
-	deployCmd.Flags().StringVarP(&environment, "environment", "e", "", "Environment being deployed to")
+	deployCmd.Flags().
+		StringVarP(&environment, "environment", "e", "", "Environment being deployed to")
 	deployCmd.Flags().StringVarP(&repository, "repository", "r", "", "Repository being deployed")
 	deployCmd.Flags().StringVarP(&revision, "revision", "v", "", "Revision being deployed")
 	deployCmd.Flags().StringVarP(&localUser, "user", "u", "", "Local username")

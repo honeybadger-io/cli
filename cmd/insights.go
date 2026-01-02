@@ -14,10 +14,10 @@ import (
 )
 
 var (
-	insightsProjectID   int
-	insightsQuery       string
-	insightsTimestamp   string
-	insightsTimezone    string
+	insightsProjectID    int
+	insightsQuery        string
+	insightsTimestamp    string
+	insightsTimezone     string
 	insightsOutputFormat string
 )
 
@@ -53,7 +53,9 @@ Examples:
 
 		authToken := viper.GetString("auth_token")
 		if authToken == "" {
-			return fmt.Errorf("auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable")
+			return fmt.Errorf(
+				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
+			)
 		}
 
 		endpoint := viper.GetString("endpoint")
@@ -101,7 +103,11 @@ Examples:
 			if response.Meta.StartAt != "" {
 				startTime, _ := time.Parse(time.RFC3339, response.Meta.StartAt)
 				endTime, _ := time.Parse(time.RFC3339, response.Meta.EndAt)
-				fmt.Printf("Time Range: %s to %s\n", startTime.Format("2006-01-02 15:04:05"), endTime.Format("2006-01-02 15:04:05"))
+				fmt.Printf(
+					"Time Range: %s to %s\n",
+					startTime.Format("2006-01-02 15:04:05"),
+					endTime.Format("2006-01-02 15:04:05"),
+				)
 			}
 			fmt.Println()
 
@@ -165,10 +171,14 @@ func init() {
 
 	// Flags for query command
 	insightsQueryCmd.Flags().IntVar(&insightsProjectID, "project-id", 0, "Project ID")
-	insightsQueryCmd.Flags().StringVarP(&insightsQuery, "query", "q", "", "BadgerQL query to execute")
-	insightsQueryCmd.Flags().StringVar(&insightsTimestamp, "ts", "", "Timestamp for the query (RFC3339 format)")
-	insightsQueryCmd.Flags().StringVar(&insightsTimezone, "timezone", "", "Timezone for the query (e.g., 'America/New_York')")
-	insightsQueryCmd.Flags().StringVarP(&insightsOutputFormat, "output", "o", "table", "Output format (table or json)")
+	insightsQueryCmd.Flags().
+		StringVarP(&insightsQuery, "query", "q", "", "BadgerQL query to execute")
+	insightsQueryCmd.Flags().
+		StringVar(&insightsTimestamp, "ts", "", "Timestamp for the query (RFC3339 format)")
+	insightsQueryCmd.Flags().
+		StringVar(&insightsTimezone, "timezone", "", "Timezone for the query (e.g., 'America/New_York')")
+	insightsQueryCmd.Flags().
+		StringVarP(&insightsOutputFormat, "output", "o", "table", "Output format (table or json)")
 
 	// Mark required flags
 	if err := insightsQueryCmd.MarkFlagRequired("project-id"); err != nil {

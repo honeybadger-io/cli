@@ -11,6 +11,15 @@ linters:
     - revive
     - misspell
 
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+    - golines
+    - swaggo
+
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0

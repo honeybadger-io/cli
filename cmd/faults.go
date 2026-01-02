@@ -41,7 +41,9 @@ var faultsListCmd = &cobra.Command{
 
 		authToken := viper.GetString("auth_token")
 		if authToken == "" {
-			return fmt.Errorf("auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable")
+			return fmt.Errorf(
+				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
+			)
 		}
 
 		endpoint := viper.GetString("endpoint")
@@ -127,7 +129,9 @@ var faultsGetCmd = &cobra.Command{
 
 		authToken := viper.GetString("auth_token")
 		if authToken == "" {
-			return fmt.Errorf("auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable")
+			return fmt.Errorf(
+				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
+			)
 		}
 
 		endpoint := viper.GetString("endpoint")
@@ -211,7 +215,9 @@ var faultsNoticesCmd = &cobra.Command{
 
 		authToken := viper.GetString("auth_token")
 		if authToken == "" {
-			return fmt.Errorf("auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable")
+			return fmt.Errorf(
+				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
+			)
 		}
 
 		endpoint := viper.GetString("endpoint")
@@ -280,7 +286,9 @@ var faultsCountsCmd = &cobra.Command{
 
 		authToken := viper.GetString("auth_token")
 		if authToken == "" {
-			return fmt.Errorf("auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable")
+			return fmt.Errorf(
+				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
+			)
 		}
 
 		endpoint := viper.GetString("endpoint")
@@ -344,7 +352,9 @@ var faultsAffectedUsersCmd = &cobra.Command{
 
 		authToken := viper.GetString("auth_token")
 		if authToken == "" {
-			return fmt.Errorf("auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable")
+			return fmt.Errorf(
+				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
+			)
 		}
 
 		endpoint := viper.GetString("endpoint")
@@ -404,26 +414,35 @@ func init() {
 
 	// Flags for list command
 	faultsListCmd.Flags().StringVarP(&faultQuery, "query", "q", "", "Search query to filter faults")
-	faultsListCmd.Flags().StringVar(&faultOrder, "order", "recent", "Order faults by 'recent' or 'frequent'")
-	faultsListCmd.Flags().IntVar(&faultLimit, "limit", 25, "Maximum number of faults to return (max 25)")
-	faultsListCmd.Flags().StringVarP(&faultOutputFormat, "output", "o", "table", "Output format (table or json)")
+	faultsListCmd.Flags().
+		StringVar(&faultOrder, "order", "recent", "Order faults by 'recent' or 'frequent'")
+	faultsListCmd.Flags().
+		IntVar(&faultLimit, "limit", 25, "Maximum number of faults to return (max 25)")
+	faultsListCmd.Flags().
+		StringVarP(&faultOutputFormat, "output", "o", "table", "Output format (table or json)")
 
 	// Flags for get command
 	faultsGetCmd.Flags().IntVar(&faultID, "id", 0, "Fault ID")
-	faultsGetCmd.Flags().StringVarP(&faultOutputFormat, "output", "o", "text", "Output format (text or json)")
+	faultsGetCmd.Flags().
+		StringVarP(&faultOutputFormat, "output", "o", "text", "Output format (text or json)")
 
 	// Flags for notices command
 	faultsNoticesCmd.Flags().IntVar(&faultID, "id", 0, "Fault ID")
-	faultsNoticesCmd.Flags().IntVar(&faultLimit, "limit", 25, "Maximum number of notices to return (max 25)")
-	faultsNoticesCmd.Flags().StringVarP(&faultOutputFormat, "output", "o", "table", "Output format (table or json)")
+	faultsNoticesCmd.Flags().
+		IntVar(&faultLimit, "limit", 25, "Maximum number of notices to return (max 25)")
+	faultsNoticesCmd.Flags().
+		StringVarP(&faultOutputFormat, "output", "o", "table", "Output format (table or json)")
 
 	// Flags for counts command
-	faultsCountsCmd.Flags().StringVarP(&faultOutputFormat, "output", "o", "text", "Output format (text or json)")
+	faultsCountsCmd.Flags().
+		StringVarP(&faultOutputFormat, "output", "o", "text", "Output format (text or json)")
 
 	// Flags for affected-users command
 	faultsAffectedUsersCmd.Flags().IntVar(&faultID, "id", 0, "Fault ID")
-	faultsAffectedUsersCmd.Flags().StringVarP(&faultAffectedUserQuery, "query", "q", "", "Search query to filter users")
-	faultsAffectedUsersCmd.Flags().StringVarP(&faultOutputFormat, "output", "o", "table", "Output format (table or json)")
+	faultsAffectedUsersCmd.Flags().
+		StringVarP(&faultAffectedUserQuery, "query", "q", "", "Search query to filter users")
+	faultsAffectedUsersCmd.Flags().
+		StringVarP(&faultOutputFormat, "output", "o", "table", "Output format (table or json)")
 
 	// Mark required flags
 	if err := faultsGetCmd.MarkFlagRequired("id"); err != nil {

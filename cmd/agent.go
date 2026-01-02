@@ -20,9 +20,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-var (
-	interval int
-)
+var interval int
 
 type cpuPayload struct {
 	Ts          string  `json:"ts"`
@@ -70,7 +68,9 @@ Metrics are aggregated and reported at a configurable interval (default: 60 seco
 		// Check for API key before starting
 		apiKey := viper.GetString("api_key")
 		if apiKey == "" {
-			return fmt.Errorf("API key not configured. Use --api-key flag or set HONEYBADGER_API_KEY environment variable")
+			return fmt.Errorf(
+				"API key not configured. Use --api-key flag or set HONEYBADGER_API_KEY environment variable",
+			)
 		}
 
 		ctx := context.Background()
@@ -109,7 +109,11 @@ func sendMetric(payload interface{}) error {
 		return fmt.Errorf("error marshaling metrics: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/events", endpoint), strings.NewReader(string(jsonData)+"\n"))
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("%s/v1/events", endpoint),
+		strings.NewReader(string(jsonData)+"\n"),
+	)
 	if err != nil {
 		return fmt.Errorf("error creating request: %w", err)
 	}
@@ -198,7 +202,8 @@ func reportMetrics(hostname string) error {
 	// Send metrics for each disk partition
 	for _, part := range parts {
 		// Skip pseudo filesystems
-		if part.Fstype == "devfs" || part.Fstype == "autofs" || part.Fstype == "nullfs" || part.Fstype == "squashfs" ||
+		if part.Fstype == "devfs" || part.Fstype == "autofs" || part.Fstype == "nullfs" ||
+			part.Fstype == "squashfs" ||
 			strings.HasPrefix(part.Fstype, "fuse.") ||
 			strings.Contains(part.Mountpoint, "/System/Volumes") {
 			continue
