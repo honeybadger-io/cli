@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -93,7 +94,7 @@ func convertEndpointForDataAPI(endpoint string) string {
 
 // readJSONInput reads JSON from either a direct string or a file path prefixed with 'file://'
 func readJSONInput(input string) ([]byte, error) {
-	if len(input) >= 7 && input[:7] == "file://" {
+	if strings.HasPrefix(input, "file://") {
 		// Read from file
 		filePath := input[7:]
 		return os.ReadFile(filePath) // #nosec G304 - User-provided file path is expected for CLI
