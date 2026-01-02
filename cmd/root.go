@@ -65,4 +65,16 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
 	}
+
+	// Override with explicit flags if they were provided
+	// This gives command-line flags precedence over environment variables
+	if rootCmd.PersistentFlags().Changed("api-key") {
+		viper.Set("api_key", apiKey)
+	}
+	if rootCmd.PersistentFlags().Changed("auth-token") {
+		viper.Set("auth_token", authToken)
+	}
+	if rootCmd.PersistentFlags().Changed("endpoint") {
+		viper.Set("endpoint", endpoint)
+	}
 }
