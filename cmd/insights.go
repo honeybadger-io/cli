@@ -43,7 +43,7 @@ Examples:
 
   # Query at a specific timestamp
   hb insights query --project-id 12345 --query "SELECT * FROM report.system.disk" --ts "2024-01-01T00:00:00Z"`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		if insightsProjectID == 0 {
 			return fmt.Errorf("project ID is required. Set it using --project-id flag")
 		}
@@ -112,47 +112,47 @@ Examples:
 			if len(response.Meta.Fields) > 0 {
 				for i, field := range response.Meta.Fields {
 					if i > 0 {
-						fmt.Fprint(w, "\t")
+						_, _ = fmt.Fprint(w, "\t")
 					}
-					fmt.Fprint(w, field)
+					_, _ = fmt.Fprint(w, field)
 				}
-				fmt.Fprintln(w)
+				_, _ = fmt.Fprintln(w)
 			}
 
 			// Print rows
 			for _, row := range response.Results {
 				for i, field := range response.Meta.Fields {
 					if i > 0 {
-						fmt.Fprint(w, "\t")
+						_, _ = fmt.Fprint(w, "\t")
 					}
 					// Format the value based on type
 					value := row[field]
 					if value == nil {
-						fmt.Fprint(w, "NULL")
+						_, _ = fmt.Fprint(w, "NULL")
 					} else {
 						switch v := value.(type) {
 						case float64:
 							// Round to 2 decimal places if it's a float
 							if v == float64(int64(v)) {
-								fmt.Fprintf(w, "%d", int64(v))
+								_, _ = fmt.Fprintf(w, "%d", int64(v))
 							} else {
-								fmt.Fprintf(w, "%.2f", v)
+								_, _ = fmt.Fprintf(w, "%.2f", v)
 							}
 						case string:
 							// Try to parse as timestamp for better display
 							if t, err := time.Parse(time.RFC3339, v); err == nil {
-								fmt.Fprint(w, t.Format("2006-01-02 15:04:05"))
+								_, _ = fmt.Fprint(w, t.Format("2006-01-02 15:04:05"))
 							} else {
-								fmt.Fprint(w, v)
+								_, _ = fmt.Fprint(w, v)
 							}
 						default:
-							fmt.Fprintf(w, "%v", v)
+							_, _ = fmt.Fprintf(w, "%v", v)
 						}
 					}
 				}
-				fmt.Fprintln(w)
+				_, _ = fmt.Fprintln(w)
 			}
-			w.Flush()
+			_ = w.Flush()
 		}
 
 		return nil

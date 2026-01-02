@@ -13,13 +13,12 @@ import (
 )
 
 var (
-	faultsProjectID      int
-	faultID              int
-	faultQuery           string
-	faultEnvironment     string
-	faultOrder           string
-	faultLimit           int
-	faultOutputFormat    string
+	faultsProjectID        int
+	faultID                int
+	faultQuery             string
+	faultOrder             string
+	faultLimit             int
+	faultOutputFormat      string
 	faultAffectedUserQuery string
 )
 
@@ -35,7 +34,7 @@ var faultsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List faults for a project",
 	Long:  `List all faults for a specific project with optional filtering.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		if faultsProjectID == 0 {
 			return fmt.Errorf("project ID is required. Set it using --project-id flag")
 		}
@@ -80,7 +79,7 @@ var faultsListCmd = &cobra.Command{
 		default:
 			// Table format
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "ID\tCLASS\tMESSAGE\tENV\tNOTICES\tRESOLVED\tLAST SEEN")
+			_, _ = fmt.Fprintln(w, "ID\tCLASS\tMESSAGE\tENV\tNOTICES\tRESOLVED\tLAST SEEN")
 			for _, fault := range response.Results {
 				lastSeen := "Never"
 				if fault.LastNoticeAt != nil {
@@ -97,7 +96,7 @@ var faultsListCmd = &cobra.Command{
 					resolved = "✓"
 				}
 
-				fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%d\t%s\t%s\n",
+				_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%d\t%s\t%s\n",
 					fault.ID,
 					fault.Klass,
 					message,
@@ -106,7 +105,7 @@ var faultsListCmd = &cobra.Command{
 					resolved,
 					lastSeen)
 			}
-			w.Flush()
+			_ = w.Flush()
 		}
 
 		return nil
@@ -118,7 +117,7 @@ var faultsGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get a fault by ID",
 	Long:  `Get detailed information about a specific fault.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		if faultsProjectID == 0 {
 			return fmt.Errorf("project ID is required. Set it using --project-id flag")
 		}
@@ -202,7 +201,7 @@ var faultsNoticesCmd = &cobra.Command{
 	Use:   "notices",
 	Short: "List notices for a fault",
 	Long:  `List individual error occurrences (notices) for a specific fault.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		if faultsProjectID == 0 {
 			return fmt.Errorf("project ID is required. Set it using --project-id flag")
 		}
@@ -248,21 +247,21 @@ var faultsNoticesCmd = &cobra.Command{
 		default:
 			// Table format
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "ID\tMESSAGE\tENVIRONMENT\tHOSTNAME\tCREATED")
+			_, _ = fmt.Fprintln(w, "ID\tMESSAGE\tENVIRONMENT\tHOSTNAME\tCREATED")
 			for _, notice := range response.Results {
 				message := notice.Message
 				if len(message) > 60 {
 					message = message[:57] + "..."
 				}
 
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 					notice.ID,
 					message,
 					notice.EnvironmentName,
 					notice.Environment.Hostname,
 					notice.CreatedAt.Format("2006-01-02 15:04:05"))
 			}
-			w.Flush()
+			_ = w.Flush()
 		}
 
 		return nil
@@ -274,7 +273,7 @@ var faultsCountsCmd = &cobra.Command{
 	Use:   "counts",
 	Short: "Get fault counts for a project",
 	Long:  `Get summary counts of faults grouped by environment and status.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		if faultsProjectID == 0 {
 			return fmt.Errorf("project ID is required. Set it using --project-id flag")
 		}
@@ -314,15 +313,15 @@ var faultsCountsCmd = &cobra.Command{
 
 			if len(counts.Environments) > 0 {
 				w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-				fmt.Fprintln(w, "ENVIRONMENT\tRESOLVED\tIGNORED\tCOUNT")
+				_, _ = fmt.Fprintln(w, "ENVIRONMENT\tRESOLVED\tIGNORED\tCOUNT")
 				for _, env := range counts.Environments {
-					fmt.Fprintf(w, "%s\t%v\t%v\t%d\n",
+					_, _ = fmt.Fprintf(w, "%s\t%v\t%v\t%d\n",
 						env.Environment,
 						env.Resolved,
 						env.Ignored,
 						env.Count)
 				}
-				w.Flush()
+				_ = w.Flush()
 			}
 		}
 
@@ -335,7 +334,7 @@ var faultsAffectedUsersCmd = &cobra.Command{
 	Use:   "affected-users",
 	Short: "List users affected by a fault",
 	Long:  `List all users who have been affected by a specific fault.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		if faultsProjectID == 0 {
 			return fmt.Errorf("project ID is required. Set it using --project-id flag")
 		}
@@ -381,11 +380,11 @@ var faultsAffectedUsersCmd = &cobra.Command{
 		default:
 			// Table format
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "USER\tOCCURRENCES")
+			_, _ = fmt.Fprintln(w, "USER\tOCCURRENCES")
 			for _, user := range users {
-				fmt.Fprintf(w, "%s\t%d\n", user.User, user.Count)
+				_, _ = fmt.Fprintf(w, "%s\t%d\n", user.User, user.Count)
 			}
-			w.Flush()
+			_ = w.Flush()
 		}
 
 		return nil

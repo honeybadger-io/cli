@@ -1,3 +1,4 @@
+// Package cmd provides command-line interface commands for the Honeybadger CLI.
 package cmd
 
 import (
@@ -65,7 +66,7 @@ var agentCmd = &cobra.Command{
 	Long: `Start a persistent process that periodically reports host metrics to Honeybadger's Insights API.
 This command collects and reports system metrics such as CPU usage, memory usage, disk usage, and load averages.
 Metrics are aggregated and reported at a configurable interval (default: 60 seconds).`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		// Check for API key before starting
 		apiKey := viper.GetString("api_key")
 		if apiKey == "" {

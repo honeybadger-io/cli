@@ -36,7 +36,7 @@ var deployCmd = &cobra.Command{
 	Long: `Report a deployment to Honeybadger's Reporting API.
 This command sends deployment information including environment, repository,
 revision, and the local username of the person deploying.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		apiKey := viper.GetString("api_key")
 		if apiKey == "" {
 			return fmt.Errorf("API key is required. Set it using --api-key flag or HONEYBADGER_API_KEY environment variable")

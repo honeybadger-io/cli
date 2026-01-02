@@ -38,7 +38,7 @@ var projectsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all projects",
 	Long:  `List all projects accessible with your API key.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		authToken := viper.GetString("auth_token")
 		if authToken == "" {
 			return fmt.Errorf("auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable")
@@ -81,16 +81,16 @@ var projectsListCmd = &cobra.Command{
 		default:
 			// Table format
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "ID\tNAME\tACTIVE\tFAULTS\tUNRESOLVED")
+			_, _ = fmt.Fprintln(w, "ID\tNAME\tACTIVE\tFAULTS\tUNRESOLVED")
 			for _, project := range response.Results {
-				fmt.Fprintf(w, "%d\t%s\t%v\t%d\t%d\n",
+				_, _ = fmt.Fprintf(w, "%d\t%s\t%v\t%d\t%d\n",
 					project.ID,
 					project.Name,
 					project.Active,
 					project.FaultCount,
 					project.UnresolvedFaultCount)
 			}
-			w.Flush()
+			_ = w.Flush()
 		}
 
 		return nil
@@ -102,7 +102,7 @@ var projectsGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get a project by ID",
 	Long:  `Get detailed information about a specific project.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		if projectID == 0 {
 			return fmt.Errorf("project ID is required. Set it using --id flag")
 		}
@@ -202,7 +202,7 @@ Example JSON payload:
     "user_search_field": "user_id"
   }
 }`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		if projectAccountID == "" {
 			return fmt.Errorf("account ID is required. Set it using --account-id flag")
 		}
@@ -233,7 +233,7 @@ Example JSON payload:
 		if len(projectCLIInputJSON) >= 7 && projectCLIInputJSON[:7] == "file://" {
 			// Read from file
 			filePath := projectCLIInputJSON[7:]
-			jsonData, err = os.ReadFile(filePath)
+			jsonData, err = os.ReadFile(filePath) // #nosec G304 - User-provided file path is expected for CLI
 			if err != nil {
 				return fmt.Errorf("failed to read JSON file: %w", err)
 			}
@@ -291,7 +291,7 @@ Example JSON payload:
     "purge_days": 120
   }
 }`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		if projectID == 0 {
 			return fmt.Errorf("project ID is required. Set it using --id flag")
 		}
@@ -322,7 +322,7 @@ Example JSON payload:
 		if len(projectCLIInputJSON) >= 7 && projectCLIInputJSON[:7] == "file://" {
 			// Read from file
 			filePath := projectCLIInputJSON[7:]
-			jsonData, err = os.ReadFile(filePath)
+			jsonData, err = os.ReadFile(filePath) // #nosec G304 - User-provided file path is expected for CLI
 			if err != nil {
 				return fmt.Errorf("failed to read JSON file: %w", err)
 			}
@@ -355,7 +355,7 @@ var projectsDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a project",
 	Long:  `Delete a project by ID. This action cannot be undone.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		if projectID == 0 {
 			return fmt.Errorf("project ID is required. Set it using --id flag")
 		}
@@ -392,7 +392,7 @@ var projectsOccurrencesCmd = &cobra.Command{
 	Use:   "occurrences",
 	Short: "Get occurrence counts for projects",
 	Long:  `Get occurrence counts for all projects or a specific project over time.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		authToken := viper.GetString("auth_token")
 		if authToken == "" {
 			return fmt.Errorf("auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable")
@@ -434,11 +434,11 @@ var projectsOccurrencesCmd = &cobra.Command{
 				fmt.Println(string(jsonBytes))
 			default:
 				w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-				fmt.Fprintln(w, "TIMESTAMP\tCOUNT")
+				_, _ = fmt.Fprintln(w, "TIMESTAMP\tCOUNT")
 				for _, count := range result {
-					fmt.Fprintf(w, "%d\t%d\n", count[0], count[1])
+					_, _ = fmt.Fprintf(w, "%d\t%d\n", count[0], count[1])
 				}
-				w.Flush()
+				_ = w.Flush()
 			}
 		} else {
 			result, err := client.Projects.GetAllOccurrenceCounts(ctx, options)
@@ -458,11 +458,11 @@ var projectsOccurrencesCmd = &cobra.Command{
 				for projectIDStr, counts := range result {
 					fmt.Printf("Project %s:\n", projectIDStr)
 					w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-					fmt.Fprintln(w, "  TIMESTAMP\tCOUNT")
+					_, _ = fmt.Fprintln(w, "  TIMESTAMP\tCOUNT")
 					for _, count := range counts {
-						fmt.Fprintf(w, "  %d\t%d\n", count[0], count[1])
+						_, _ = fmt.Fprintf(w, "  %d\t%d\n", count[0], count[1])
 					}
-					w.Flush()
+					_ = w.Flush()
 					fmt.Println()
 				}
 			}
@@ -477,7 +477,7 @@ var projectsIntegrationsCmd = &cobra.Command{
 	Use:   "integrations",
 	Short: "Get integrations for a project",
 	Long:  `Get all notification channels/integrations configured for a project.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		if projectID == 0 {
 			return fmt.Errorf("project ID is required. Set it using --id flag")
 		}
@@ -514,7 +514,7 @@ var projectsIntegrationsCmd = &cobra.Command{
 			fmt.Println(string(jsonBytes))
 		default:
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "ID\tTYPE\tACTIVE\tEVENTS")
+			_, _ = fmt.Fprintln(w, "ID\tTYPE\tACTIVE\tEVENTS")
 			for _, integration := range integrations {
 				active := " "
 				if integration.Active {
@@ -524,13 +524,13 @@ var projectsIntegrationsCmd = &cobra.Command{
 				if len(integration.Events) > 0 {
 					events = fmt.Sprintf("%v", integration.Events)
 				}
-				fmt.Fprintf(w, "%d\t%s\t%s\t%s\n",
+				_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\n",
 					integration.ID,
 					integration.Type,
 					active,
 					events)
 			}
-			w.Flush()
+			_ = w.Flush()
 		}
 
 		return nil
@@ -546,7 +546,7 @@ var projectsReportsCmd = &cobra.Command{
   - notices_by_location: Group notices by location
   - notices_by_user: Group notices by user
   - notices_per_day: Count notices per day`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		if projectID == 0 {
 			return fmt.Errorf("project ID is required. Set it using --id flag")
 		}
@@ -609,13 +609,13 @@ var projectsReportsCmd = &cobra.Command{
 			for _, row := range report {
 				for i, col := range row {
 					if i > 0 {
-						fmt.Fprint(w, "\t")
+						_, _ = fmt.Fprint(w, "\t")
 					}
-					fmt.Fprintf(w, "%v", col)
+					_, _ = fmt.Fprintf(w, "%v", col)
 				}
-				fmt.Fprintln(w)
+				_, _ = fmt.Fprintln(w)
 			}
-			w.Flush()
+			_ = w.Flush()
 		}
 
 		return nil
