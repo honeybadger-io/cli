@@ -11,16 +11,6 @@ linters:
     - revive
     - misspell
 
-settings:
-  revive:
-    rules:
-      - name: exported
-
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-
-run:
-  tests: true
-  skip-dirs:
-    - vendor
