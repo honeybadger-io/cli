@@ -82,3 +82,22 @@ func initConfig() {
 		viper.Set("endpoint", endpoint)
 	}
 }
+
+// convertEndpointForDataAPI converts api.honeybadger.io to app.honeybadger.io for Data API calls
+func convertEndpointForDataAPI(endpoint string) string {
+	if endpoint == "https://api.honeybadger.io" {
+		return "https://app.honeybadger.io"
+	}
+	return endpoint
+}
+
+// readJSONInput reads JSON from either a direct string or a file path prefixed with 'file://'
+func readJSONInput(input string) ([]byte, error) {
+	if len(input) >= 7 && input[:7] == "file://" {
+		// Read from file
+		filePath := input[7:]
+		return os.ReadFile(filePath) // #nosec G304 - User-provided file path is expected for CLI
+	}
+	// Use direct JSON string
+	return []byte(input), nil
+}
