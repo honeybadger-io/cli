@@ -86,8 +86,11 @@ func initConfig() {
 
 // convertEndpointForDataAPI converts api.honeybadger.io to app.honeybadger.io for Data API calls
 func convertEndpointForDataAPI(endpoint string) string {
-	if endpoint == "https://api.honeybadger.io" {
+	switch endpoint {
+	case "https://api.honeybadger.io":
 		return "https://app.honeybadger.io"
+	case "https://eu-api.honeybadger.io":
+		return "https://eu-app.honeybadger.io"
 	}
 	return endpoint
 }
