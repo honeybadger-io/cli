@@ -19,7 +19,7 @@ builds:
       - arm64
     binary: hb
     ldflags:
-      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+      - -s -w -X github.com/honeybadger-io/cli/cmd.Version={{.Version}} -X github.com/honeybadger-io/cli/cmd.Commit={{.Commit}} -X github.com/honeybadger-io/cli/cmd.Date={{.Date}}
 
 archives:
   - format: tar.gz
