@@ -1,3 +1,8 @@
+# .goreleaser.yml
+# Documentation: https://goreleaser.com
+
+version: 2
+
 before:
   hooks:
     - go mod tidy
@@ -7,17 +12,14 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
-      - windows
       - darwin
+      - windows
     goarch:
       - amd64
       - arm64
-    ignore:
-      - goos: windows
-        goarch: arm64
     binary: hb
     ldflags:
-      - -s -w -X github.com/honeybadger-io/cli/cmd.Version={{.Version}}
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
 
 archives:
   - format: tar.gz
@@ -25,20 +27,67 @@ archives:
       {{ .ProjectName }}_
       {{- title .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "arm64" }}arm64
+      {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
+    # Use zip for Windows
     format_overrides:
       - goos: windows
         format: zip
 
 checksum:
-  name_template: 'checksums.txt'
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
 
 changelog:
   sort: asc
   filters:
     exclude:
-      - '^docs:'
-      - '^test:'
-      - '^ci:'
-      - '^chore:'
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - '\[skip ci\]'
+
+# Homebrew tap configuration
+brews:
+  - name: honeybadger
+
+    # Repository to push the formula to
+    repository:
+      owner: honeybadger-io
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+
+    # Git author for formula commits
+    commit_author:
+      name: honeybadger-bot
+      email: support@honeybadger.io
+
+    # Folder inside the tap repo
+    directory: Formula
+
+    # Formula metadata
+    homepage: "https://www.honeybadger.io/"
+    description: "CLI tool to interact with the Honeybadger API"
+    license: "MIT"
+
+    # Skip upload during snapshot/development releases
+    skip_upload: auto
+
+    # Installation instructions
+    install: |
+      bin.install "hb"
+
+    # Test block for `brew test`
+    test: |
+      system "#{bin}/hb", "--help"
+
+# Optional: Create GitHub release
+release:
+  github:
+    owner: honeybadger-io
+    name: cli
+  draft: false
+  prerelease: auto
+  name_template: "{{.ProjectName}} v{{.Version}}"
