@@ -15,6 +15,13 @@ var (
 	authToken       string
 	endpoint        string
 	defaultEndpoint = "https://api.honeybadger.io"
+
+	// Version is the version string set via ldflags during build
+	Version string
+	// Commit is the git commit hash set via ldflags during build
+	Commit string
+	// Date is the build date set via ldflags during build
+	Date string
 )
 
 // rootCmd represents the base command when called without any subcommands
