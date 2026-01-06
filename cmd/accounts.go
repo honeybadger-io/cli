@@ -23,9 +23,10 @@ var (
 
 // accountsCmd represents the accounts command
 var accountsCmd = &cobra.Command{
-	Use:   "accounts",
-	Short: "Manage Honeybadger accounts",
-	Long:  `View and manage your Honeybadger accounts, users, and invitations.`,
+	Use:     "accounts",
+	Short:   "Manage Honeybadger accounts",
+	GroupID: GroupDataAPI,
+	Long:    `View and manage your Honeybadger accounts, users, and invitations.`,
 }
 
 // accountsListCmd represents the accounts list command

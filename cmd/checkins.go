@@ -21,9 +21,10 @@ var (
 
 // checkinsCmd represents the checkins command
 var checkinsCmd = &cobra.Command{
-	Use:   "checkins",
-	Short: "Manage Honeybadger check-ins",
-	Long:  `View and manage check-ins (cron job monitoring) for your Honeybadger projects.`,
+	Use:     "checkins",
+	Short:   "Manage Honeybadger check-ins",
+	GroupID: GroupDataAPI,
+	Long:    `View and manage check-ins (cron job monitoring) for your Honeybadger projects.`,
 }
 
 // checkinsListCmd represents the checkins list command

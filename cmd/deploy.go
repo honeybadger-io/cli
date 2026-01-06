@@ -31,8 +31,9 @@ type deployPayload struct {
 
 // deployCmd represents the deploy command
 var deployCmd = &cobra.Command{
-	Use:   "deploy",
-	Short: "Report a deployment to Honeybadger",
+	Use:     "deploy",
+	Short:   "Report a deployment to Honeybadger",
+	GroupID: GroupReportingAPI,
 	Long: `Report a deployment to Honeybadger's Reporting API.
 This command sends deployment information including environment, repository,
 revision, and the local username of the person deploying.`,

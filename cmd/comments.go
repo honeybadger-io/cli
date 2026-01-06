@@ -22,9 +22,10 @@ var (
 
 // commentsCmd represents the comments command
 var commentsCmd = &cobra.Command{
-	Use:   "comments",
-	Short: "Manage fault comments",
-	Long:  `View and manage comments on faults in your Honeybadger projects.`,
+	Use:     "comments",
+	Short:   "Manage fault comments",
+	GroupID: GroupDataAPI,
+	Long:    `View and manage comments on faults in your Honeybadger projects.`,
 }
 
 // commentsListCmd represents the comments list command

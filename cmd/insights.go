@@ -23,9 +23,10 @@ var (
 
 // insightsCmd represents the insights command
 var insightsCmd = &cobra.Command{
-	Use:   "insights",
-	Short: "Query Honeybadger Insights data",
-	Long:  `Execute BadgerQL queries against your Honeybadger Insights data.`,
+	Use:     "insights",
+	Short:   "Query Honeybadger Insights data",
+	GroupID: GroupDataAPI,
+	Long:    `Execute BadgerQL queries against your Honeybadger Insights data.`,
 }
 
 // insightsQueryCmd represents the insights query command

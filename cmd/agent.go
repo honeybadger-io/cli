@@ -59,8 +59,9 @@ type diskPayload struct {
 
 // agentCmd represents the agent command
 var agentCmd = &cobra.Command{
-	Use:   "agent",
-	Short: "Start a metrics reporting agent",
+	Use:     "agent",
+	Short:   "Start a metrics reporting agent",
+	GroupID: GroupReportingAPI,
 	Long: `Start a persistent process that periodically reports host metrics to Honeybadger's Insights API.
 This command collects and reports system metrics such as CPU usage, memory usage, disk usage, and load averages.
 Metrics are aggregated and reported at a configurable interval (default: 60 seconds).`,

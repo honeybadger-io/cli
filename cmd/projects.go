@@ -28,9 +28,10 @@ var (
 
 // projectsCmd represents the projects command
 var projectsCmd = &cobra.Command{
-	Use:   "projects",
-	Short: "Manage Honeybadger projects",
-	Long:  `View and manage your Honeybadger projects.`,
+	Use:     "projects",
+	Short:   "Manage Honeybadger projects",
+	GroupID: GroupDataAPI,
+	Long:    `View and manage your Honeybadger projects.`,
 }
 
 // projectsListCmd represents the projects list command

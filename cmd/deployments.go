@@ -25,9 +25,10 @@ var (
 
 // deploymentsCmd represents the deployments command
 var deploymentsCmd = &cobra.Command{
-	Use:   "deployments",
-	Short: "View and manage deployments",
-	Long:  `View and manage deployment records for your Honeybadger projects.`,
+	Use:     "deployments",
+	Short:   "View and manage deployments",
+	GroupID: GroupDataAPI,
+	Long:    `View and manage deployment records for your Honeybadger projects.`,
 }
 
 // deploymentsListCmd represents the deployments list command

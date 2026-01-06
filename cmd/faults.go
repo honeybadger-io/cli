@@ -24,9 +24,10 @@ var (
 
 // faultsCmd represents the faults command
 var faultsCmd = &cobra.Command{
-	Use:   "faults",
-	Short: "Manage Honeybadger faults",
-	Long:  `View and manage faults (errors) in your Honeybadger projects.`,
+	Use:     "faults",
+	Short:   "Manage Honeybadger faults",
+	GroupID: GroupDataAPI,
+	Long:    `View and manage faults (errors) in your Honeybadger projects.`,
 }
 
 // faultsListCmd represents the faults list command

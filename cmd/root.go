@@ -24,12 +24,25 @@ var (
 	Date string
 )
 
+// Command group IDs
+const (
+	GroupReportingAPI = "reporting"
+	GroupDataAPI      = "data"
+)
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "hb",
 	Short: "Honeybadger CLI tool",
-	Long: `A command line interface for interacting with Honeybadger's Reporting API.
-This tool allows you to manage deployments and other reporting features.`,
+	Long: `A command line interface for interacting with Honeybadger.
+
+This tool provides access to two APIs:
+
+  Reporting API - For sending data to Honeybadger (deployments, metrics)
+                  Authenticate with --api-key or HONEYBADGER_API_KEY
+
+  Data API      - For reading and managing your Honeybadger data
+                  Authenticate with --auth-token or HONEYBADGER_AUTH_TOKEN`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -39,6 +52,16 @@ func Execute() error {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+
+	// Add command groups
+	rootCmd.AddGroup(&cobra.Group{
+		ID:    GroupReportingAPI,
+		Title: "Reporting API Commands (use --api-key):",
+	})
+	rootCmd.AddGroup(&cobra.Group{
+		ID:    GroupDataAPI,
+		Title: "Data API Commands (use --auth-token):",
+	})
 
 	rootCmd.PersistentFlags().
 		StringVar(&cfgFile, "config", "", "config file (default is config/honeybadger.yml)")

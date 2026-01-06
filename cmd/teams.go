@@ -25,9 +25,10 @@ var (
 
 // teamsCmd represents the teams command
 var teamsCmd = &cobra.Command{
-	Use:   "teams",
-	Short: "Manage Honeybadger teams",
-	Long:  `View and manage teams, team members, and team invitations.`,
+	Use:     "teams",
+	Short:   "Manage Honeybadger teams",
+	GroupID: GroupDataAPI,
+	Long:    `View and manage teams, team members, and team invitations.`,
 }
 
 // teamsListCmd represents the teams list command

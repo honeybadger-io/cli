@@ -21,9 +21,10 @@ var (
 
 // environmentsCmd represents the environments command
 var environmentsCmd = &cobra.Command{
-	Use:   "environments",
-	Short: "Manage project environments",
-	Long:  `View and manage environments for your Honeybadger projects.`,
+	Use:     "environments",
+	Short:   "Manage project environments",
+	GroupID: GroupDataAPI,
+	Long:    `View and manage environments for your Honeybadger projects.`,
 }
 
 // environmentsListCmd represents the environments list command

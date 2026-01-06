@@ -21,9 +21,10 @@ var (
 
 // statuspagesCmd represents the statuspages command
 var statuspagesCmd = &cobra.Command{
-	Use:   "statuspages",
-	Short: "Manage status pages",
-	Long:  `View and manage status pages for your Honeybadger accounts.`,
+	Use:     "statuspages",
+	Short:   "Manage status pages",
+	GroupID: GroupDataAPI,
+	Long:    `View and manage status pages for your Honeybadger accounts.`,
 }
 
 // statuspagesListCmd represents the statuspages list command

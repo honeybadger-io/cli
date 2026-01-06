@@ -24,9 +24,10 @@ var (
 
 // uptimeCmd represents the uptime command
 var uptimeCmd = &cobra.Command{
-	Use:   "uptime",
-	Short: "Manage uptime monitoring",
-	Long:  `View and manage uptime monitoring sites, outages, and checks for your Honeybadger projects.`,
+	Use:     "uptime",
+	Short:   "Manage uptime monitoring",
+	GroupID: GroupDataAPI,
+	Long:    `View and manage uptime monitoring sites, outages, and checks for your Honeybadger projects.`,
 }
 
 // uptimeSitesCmd represents the uptime sites parent command
