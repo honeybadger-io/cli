@@ -14,7 +14,7 @@ import (
 
 var (
 	accountsOutputFormat string
-	accountID            int
+	accountID            string
 	accountUserID        int
 	accountUserRole      string
 	accountInvitationID  int
@@ -65,7 +65,7 @@ var accountsListCmd = &cobra.Command{
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 			_, _ = fmt.Fprintln(w, "ID\tNAME\tEMAIL")
 			for _, account := range accounts {
-				_, _ = fmt.Fprintf(w, "%d\t%s\t%s\n",
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n",
 					account.ID,
 					account.Name,
 					account.Email)
@@ -83,7 +83,7 @@ var accountsGetCmd = &cobra.Command{
 	Short: "Get an account by ID",
 	Long:  `Get detailed information about a specific account including quota and API stats.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if accountID == 0 {
+		if accountID == "" {
 			return fmt.Errorf("account ID is required. Set it using --id flag")
 		}
 
@@ -115,7 +115,7 @@ var accountsGetCmd = &cobra.Command{
 			fmt.Println(string(jsonBytes))
 		default:
 			fmt.Printf("Account Details:\n")
-			fmt.Printf("  ID: %d\n", account.ID)
+			fmt.Printf("  ID: %s\n", account.ID)
 			fmt.Printf("  Name: %s\n", account.Name)
 			fmt.Printf("  Email: %s\n", account.Email)
 			if account.Active != nil {
@@ -139,7 +139,7 @@ var accountsUsersListCmd = &cobra.Command{
 	Short: "List users for an account",
 	Long:  `List all users associated with an account.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if accountID == 0 {
+		if accountID == "" {
 			return fmt.Errorf("account ID is required. Set it using --account-id flag")
 		}
 
@@ -192,7 +192,7 @@ var accountsUsersGetCmd = &cobra.Command{
 	Short: "Get a user by ID",
 	Long:  `Get detailed information about a specific user in an account.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if accountID == 0 {
+		if accountID == "" {
 			return fmt.Errorf("account ID is required. Set it using --account-id flag")
 		}
 		if accountUserID == 0 {
@@ -243,7 +243,7 @@ var accountsUsersUpdateCmd = &cobra.Command{
 	Short: "Update a user's role",
 	Long:  `Update a user's role in an account. Valid roles: Member, Billing, Admin, Owner.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if accountID == 0 {
+		if accountID == "" {
 			return fmt.Errorf("account ID is required. Set it using --account-id flag")
 		}
 		if accountUserID == 0 {
@@ -296,7 +296,7 @@ var accountsUsersRemoveCmd = &cobra.Command{
 	Short: "Remove a user from an account",
 	Long:  `Remove a user from an account. This action cannot be undone.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if accountID == 0 {
+		if accountID == "" {
 			return fmt.Errorf("account ID is required. Set it using --account-id flag")
 		}
 		if accountUserID == 0 {
@@ -340,7 +340,7 @@ var accountsInvitationsListCmd = &cobra.Command{
 	Short: "List invitations for an account",
 	Long:  `List all pending invitations for an account.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if accountID == 0 {
+		if accountID == "" {
 			return fmt.Errorf("account ID is required. Set it using --account-id flag")
 		}
 
@@ -398,7 +398,7 @@ var accountsInvitationsGetCmd = &cobra.Command{
 	Short: "Get an invitation by ID",
 	Long:  `Get detailed information about a specific invitation.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if accountID == 0 {
+		if accountID == "" {
 			return fmt.Errorf("account ID is required. Set it using --account-id flag")
 		}
 		if accountInvitationID == 0 {
@@ -467,7 +467,7 @@ Example JSON payload:
   }
 }`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if accountID == 0 {
+		if accountID == "" {
 			return fmt.Errorf("account ID is required. Set it using --account-id flag")
 		}
 		if accountCLIInputJSON == "" {
@@ -540,7 +540,7 @@ Example JSON payload:
   }
 }`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if accountID == 0 {
+		if accountID == "" {
 			return fmt.Errorf("account ID is required. Set it using --account-id flag")
 		}
 		if accountInvitationID == 0 {
@@ -610,7 +610,7 @@ var accountsInvitationsDeleteCmd = &cobra.Command{
 	Short: "Delete an invitation",
 	Long:  `Delete a pending invitation. This action cannot be undone.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if accountID == 0 {
+		if accountID == "" {
 			return fmt.Errorf("account ID is required. Set it using --account-id flag")
 		}
 		if accountInvitationID == 0 {
@@ -675,13 +675,13 @@ func init() {
 		StringVarP(&accountsOutputFormat, "output", "o", "table", "Output format (table or json)")
 
 	// Flags for get command
-	accountsGetCmd.Flags().IntVar(&accountID, "id", 0, "Account ID")
+	accountsGetCmd.Flags().StringVar(&accountID, "id", "", "Account ID")
 	accountsGetCmd.Flags().
 		StringVarP(&accountsOutputFormat, "output", "o", "text", "Output format (text or json)")
 	_ = accountsGetCmd.MarkFlagRequired("id")
 
 	// Common account ID flag for users subcommands
-	accountsUsersCmd.PersistentFlags().IntVar(&accountID, "account-id", 0, "Account ID")
+	accountsUsersCmd.PersistentFlags().StringVar(&accountID, "account-id", "", "Account ID")
 
 	// Flags for users list
 	accountsUsersListCmd.Flags().
@@ -707,7 +707,7 @@ func init() {
 	_ = accountsUsersRemoveCmd.MarkFlagRequired("user-id")
 
 	// Common account ID flag for invitations subcommands
-	accountsInvitationsCmd.PersistentFlags().IntVar(&accountID, "account-id", 0, "Account ID")
+	accountsInvitationsCmd.PersistentFlags().StringVar(&accountID, "account-id", "", "Account ID")
 
 	// Flags for invitations list
 	accountsInvitationsListCmd.Flags().
