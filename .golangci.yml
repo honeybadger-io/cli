@@ -13,19 +13,13 @@ linters:
 
 formatters:
   enable:
+    - gci
     - gofmt
-
-linters-settings:
-  revive:
-    rules:
-      - name: exported
+    - gofumpt
+    - goimports
+    - golines
+    - swaggo
 
 issues:
-  exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
-  exclude-dirs:
-    - vendor/
-
-run:
-  tests: true
