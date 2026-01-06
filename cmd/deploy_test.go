@@ -38,8 +38,17 @@ func TestDeployCommand(t *testing.T) {
 		expectedError  bool
 	}{
 		{
-			name:           "successful deploy",
-			args:           []string{"--environment", "production", "--repository", "github.com/org/repo", "--revision", "abc123", "--user", "testuser"},
+			name: "successful deploy",
+			args: []string{
+				"--environment",
+				"production",
+				"--repository",
+				"github.com/org/repo",
+				"--revision",
+				"abc123",
+				"--user",
+				"testuser",
+			},
 			apiKey:         "test-api-key",
 			expectedStatus: http.StatusCreated,
 			expectedError:  false,
@@ -68,29 +77,31 @@ func TestDeployCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a test server
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				// Verify request
-				assert.Equal(t, "POST", r.Method)
-				assert.Equal(t, "/v1/deploys", r.URL.Path)
-				assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
-				assert.Equal(t, tt.apiKey, r.Header.Get("X-API-Key"))
+			server := httptest.NewServer(
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					// Verify request
+					assert.Equal(t, "POST", r.Method)
+					assert.Equal(t, "/v1/deploys", r.URL.Path)
+					assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+					assert.Equal(t, tt.apiKey, r.Header.Get("X-API-Key"))
 
-				if tt.apiKey == "invalid-key" {
-					w.WriteHeader(http.StatusUnauthorized)
-					return
-				}
+					if tt.apiKey == "invalid-key" {
+						w.WriteHeader(http.StatusUnauthorized)
+						return
+					}
 
-				// Verify payload
-				var payload deployPayload
-				err := json.NewDecoder(r.Body).Decode(&payload)
-				assert.NoError(t, err)
+					// Verify payload
+					var payload deployPayload
+					err := json.NewDecoder(r.Body).Decode(&payload)
+					assert.NoError(t, err)
 
-				// Verify timestamp format
-				_, err = time.Parse(time.RFC3339, payload.Deploy.Timestamp)
-				assert.NoError(t, err)
+					// Verify timestamp format
+					_, err = time.Parse(time.RFC3339, payload.Deploy.Timestamp)
+					assert.NoError(t, err)
 
-				w.WriteHeader(tt.expectedStatus)
-			}))
+					w.WriteHeader(tt.expectedStatus)
+				}),
+			)
 			defer server.Close()
 
 			// Override the default HTTP client
@@ -108,7 +119,8 @@ func TestDeployCommand(t *testing.T) {
 
 			// Create a new command for each test to avoid flag conflicts
 			cmd := &cobra.Command{Use: "deploy"}
-			cmd.Flags().StringVarP(&environment, "environment", "e", "", "Environment being deployed to")
+			cmd.Flags().
+				StringVarP(&environment, "environment", "e", "", "Environment being deployed to")
 			cmd.Flags().StringVarP(&repository, "repository", "r", "", "Repository being deployed")
 			cmd.Flags().StringVarP(&revision, "revision", "v", "", "Revision being deployed")
 			cmd.Flags().StringVarP(&localUser, "user", "u", "", "Local username")
