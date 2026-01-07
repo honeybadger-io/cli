@@ -22,6 +22,8 @@ github.com/honeybadger-io/api-go v0.1.0 h1:KmzuDflewX85Elq5CbQvbsKvZursulaXXcinq
 github.com/honeybadger-io/api-go v0.1.0/go.mod h1:VurinfWN9qR1Bd9Zju2pIDgG1vIi5Qq3GpcsfToQiBU=
 github.com/honeybadger-io/api-go v0.1.1-0.20260106224518-c2ce6691f85e h1:YocPRdN2cSA8UCnsgLxjHeCXBWGAtQUFJWHVwjya9tA=
 github.com/honeybadger-io/api-go v0.1.1-0.20260106224518-c2ce6691f85e/go.mod h1:VurinfWN9qR1Bd9Zju2pIDgG1vIi5Qq3GpcsfToQiBU=
+github.com/honeybadger-io/api-go v0.1.1-0.20260107210008-3111ea9586ee h1:ktb4AGHDhrxKBqN2KqTdhT+xvgobQB93SoiHxkrbpyA=
+github.com/honeybadger-io/api-go v0.1.1-0.20260107210008-3111ea9586ee/go.mod h1:VurinfWN9qR1Bd9Zju2pIDgG1vIi5Qq3GpcsfToQiBU=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/kr/pretty v0.2.1/go.mod h1:ipq/a2n7PKx3OHsz4KJII5eveXtPO4qwEXGdVfWzfnI=
