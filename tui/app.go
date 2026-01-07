@@ -87,11 +87,7 @@ func (a *App) setupLayout() {
 
 		switch event.Rune() {
 		case 'q':
-			if len(a.navStack) > 1 {
-				a.Pop()
-			} else {
-				a.app.Stop()
-			}
+			a.app.Stop()
 			return nil
 		case 'r':
 			if len(a.navStack) > 0 {
@@ -206,7 +202,7 @@ func (a *App) ShowHelp() {
   ↓/j        Move down
   Enter/→/l  Select/Drill down
   Esc/←/h    Go back
-  q          Quit (or go back)
+  q          Quit
 
 [green]Actions:[white]
   r          Refresh current view
