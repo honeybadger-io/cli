@@ -137,6 +137,7 @@ func (v *FaultsView) renderTable() {
 	}
 
 	v.table.Select(1, 0)
+	v.table.ScrollToBeginning()
 }
 
 // HandleInput handles keyboard input
@@ -451,6 +452,7 @@ func (v *NoticesView) renderTable() {
 	}
 
 	v.table.Select(1, 0)
+	v.table.ScrollToBeginning()
 }
 
 // HandleInput handles keyboard input
@@ -550,6 +552,7 @@ func (v *AffectedUsersView) renderTable() {
 	}
 
 	v.table.Select(1, 0)
+	v.table.ScrollToBeginning()
 }
 
 // HandleInput handles keyboard input

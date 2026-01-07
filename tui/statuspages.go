@@ -98,6 +98,7 @@ func (v *StatuspagesView) renderTable() {
 	}
 
 	v.table.Select(1, 0)
+	v.table.ScrollToBeginning()
 }
 
 // HandleInput handles keyboard input

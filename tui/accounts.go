@@ -110,6 +110,7 @@ func (v *AccountsView) renderTable() {
 	}
 
 	v.table.Select(1, 0)
+	v.table.ScrollToBeginning()
 }
 
 // HandleInput handles keyboard input
@@ -287,6 +288,7 @@ func (v *AccountUsersView) renderTable() {
 	}
 
 	v.table.Select(1, 0)
+	v.table.ScrollToBeginning()
 }
 
 // HandleInput handles keyboard input
@@ -391,6 +393,7 @@ func (v *AccountInvitationsView) renderTable() {
 	}
 
 	v.table.Select(1, 0)
+	v.table.ScrollToBeginning()
 }
 
 // HandleInput handles keyboard input

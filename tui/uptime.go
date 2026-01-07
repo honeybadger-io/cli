@@ -124,6 +124,7 @@ func (v *UptimeSitesView) renderTable() {
 	}
 
 	v.table.Select(1, 0)
+	v.table.ScrollToBeginning()
 }
 
 // HandleInput handles keyboard input
@@ -424,6 +425,7 @@ func (v *OutagesView) renderTable() {
 	}
 
 	v.table.Select(1, 0)
+	v.table.ScrollToBeginning()
 }
 
 // HandleInput handles keyboard input
@@ -543,6 +545,7 @@ func (v *UptimeChecksView) renderTable() {
 	}
 
 	v.table.Select(1, 0)
+	v.table.ScrollToBeginning()
 }
 
 // HandleInput handles keyboard input

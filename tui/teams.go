@@ -104,6 +104,7 @@ func (v *TeamsView) renderTable() {
 	}
 
 	v.table.Select(1, 0)
+	v.table.ScrollToBeginning()
 }
 
 // HandleInput handles keyboard input
@@ -273,6 +274,7 @@ func (v *TeamMembersView) renderTable() {
 	}
 
 	v.table.Select(1, 0)
+	v.table.ScrollToBeginning()
 }
 
 // HandleInput handles keyboard input
@@ -383,6 +385,7 @@ func (v *TeamInvitationsView) renderTable() {
 	}
 
 	v.table.Select(1, 0)
+	v.table.ScrollToBeginning()
 }
 
 // HandleInput handles keyboard input
