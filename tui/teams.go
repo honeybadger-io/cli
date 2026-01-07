@@ -47,7 +47,7 @@ func (v *TeamsView) setupTable() {
 		v.table.SetCell(0, col, cell)
 	}
 
-	v.table.SetSelectedFunc(func(row, col int) {
+	v.table.SetSelectedFunc(func(row, _ int) {
 		if row > 0 && row <= len(v.teams) {
 			team := v.teams[row-1]
 			v.drillDown(team)
@@ -87,11 +87,20 @@ func (v *TeamsView) Refresh() error {
 func (v *TeamsView) renderTable() {
 	clearTableRows(v.table)
 
+	if len(v.teams) == 0 {
+		showEmptyState(v.table, "No teams found")
+		return
+	}
+
 	for i, team := range v.teams {
 		row := i + 1
 		v.table.SetCell(row, 0, tview.NewTableCell(fmt.Sprintf("%d", team.ID)).SetExpansion(1))
 		v.table.SetCell(row, 1, tview.NewTableCell(team.Name).SetExpansion(3))
-		v.table.SetCell(row, 2, tview.NewTableCell(team.CreatedAt.Format("2006-01-02 15:04")).SetExpansion(2))
+		v.table.SetCell(
+			row,
+			2,
+			tview.NewTableCell(team.CreatedAt.Format("2006-01-02 15:04")).SetExpansion(2),
+		)
 	}
 
 	v.table.Select(1, 0)
@@ -365,7 +374,11 @@ func (v *TeamInvitationsView) renderTable() {
 		v.table.SetCell(row, 0, tview.NewTableCell(fmt.Sprintf("%d", inv.ID)).SetExpansion(1))
 		v.table.SetCell(row, 1, tview.NewTableCell(inv.Email).SetExpansion(2))
 		v.table.SetCell(row, 2, tview.NewTableCell(admin).SetExpansion(1))
-		v.table.SetCell(row, 3, tview.NewTableCell(inv.CreatedAt.Format("2006-01-02")).SetExpansion(1))
+		v.table.SetCell(
+			row,
+			3,
+			tview.NewTableCell(inv.CreatedAt.Format("2006-01-02")).SetExpansion(1),
+		)
 		v.table.SetCell(row, 4, tview.NewTableCell(accepted).SetExpansion(1))
 	}
 

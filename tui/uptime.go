@@ -47,7 +47,7 @@ func (v *UptimeSitesView) setupTable() {
 		v.table.SetCell(0, col, cell)
 	}
 
-	v.table.SetSelectedFunc(func(row, col int) {
+	v.table.SetSelectedFunc(func(row, _ int) {
 		if row > 0 && row <= len(v.sites) {
 			site := v.sites[row-1]
 			v.drillDown(site)
@@ -110,9 +110,17 @@ func (v *UptimeSitesView) renderTable() {
 		v.table.SetCell(row, 0, tview.NewTableCell(site.ID).SetExpansion(1))
 		v.table.SetCell(row, 1, tview.NewTableCell(site.Name).SetExpansion(2))
 		v.table.SetCell(row, 2, tview.NewTableCell(url).SetExpansion(3))
-		v.table.SetCell(row, 3, tview.NewTableCell(site.State).SetTextColor(stateColor).SetExpansion(1))
+		v.table.SetCell(
+			row,
+			3,
+			tview.NewTableCell(site.State).SetTextColor(stateColor).SetExpansion(1),
+		)
 		v.table.SetCell(row, 4, tview.NewTableCell(active).SetExpansion(1))
-		v.table.SetCell(row, 5, tview.NewTableCell(fmt.Sprintf("%dm", site.Frequency)).SetExpansion(1))
+		v.table.SetCell(
+			row,
+			5,
+			tview.NewTableCell(fmt.Sprintf("%dm", site.Frequency)).SetExpansion(1),
+		)
 	}
 
 	v.table.Select(1, 0)
@@ -293,7 +301,10 @@ func (v *SiteDetailsView) renderDetails() {
 	}
 
 	if s.LastCheckedAt != nil {
-		text += fmt.Sprintf("\n\n[yellow]Last Checked:[white] %s", s.LastCheckedAt.Format("2006-01-02 15:04:05"))
+		text += fmt.Sprintf(
+			"\n\n[yellow]Last Checked:[white] %s",
+			s.LastCheckedAt.Format("2006-01-02 15:04:05"),
+		)
 	}
 
 	v.textView.SetText(text)
@@ -361,9 +372,14 @@ func (v *OutagesView) Render() tview.Primitive {
 
 // Refresh reloads the data
 func (v *OutagesView) Refresh() error {
-	outages, err := v.app.Client().Uptime.ListOutages(v.app.Context(), v.projectID, v.siteID, hbapi.OutageListOptions{
-		Limit: 25,
-	})
+	outages, err := v.app.Client().Uptime.ListOutages(
+		v.app.Context(),
+		v.projectID,
+		v.siteID,
+		hbapi.OutageListOptions{
+			Limit: 25,
+		},
+	)
 	if err != nil {
 		return fmt.Errorf("failed to list outages: %w", err)
 	}
@@ -393,9 +409,17 @@ func (v *OutagesView) renderTable() {
 
 		reason := truncateString(outage.Reason, 40)
 
-		v.table.SetCell(row, 0, tview.NewTableCell(outage.DownAt.Format("2006-01-02 15:04")).SetExpansion(2))
+		v.table.SetCell(
+			row,
+			0,
+			tview.NewTableCell(outage.DownAt.Format("2006-01-02 15:04")).SetExpansion(2),
+		)
 		v.table.SetCell(row, 1, tview.NewTableCell(upAt).SetExpansion(2))
-		v.table.SetCell(row, 2, tview.NewTableCell(fmt.Sprintf("%d", outage.Status)).SetExpansion(1))
+		v.table.SetCell(
+			row,
+			2,
+			tview.NewTableCell(fmt.Sprintf("%d", outage.Status)).SetExpansion(1),
+		)
 		v.table.SetCell(row, 3, tview.NewTableCell(reason).SetExpansion(3))
 	}
 
@@ -467,9 +491,14 @@ func (v *UptimeChecksView) Render() tview.Primitive {
 
 // Refresh reloads the data
 func (v *UptimeChecksView) Refresh() error {
-	checks, err := v.app.Client().Uptime.ListUptimeChecks(v.app.Context(), v.projectID, v.siteID, hbapi.UptimeCheckListOptions{
-		Limit: 25,
-	})
+	checks, err := v.app.Client().Uptime.ListUptimeChecks(
+		v.app.Context(),
+		v.projectID,
+		v.siteID,
+		hbapi.UptimeCheckListOptions{
+			Limit: 25,
+		},
+	)
 	if err != nil {
 		return fmt.Errorf("failed to list uptime checks: %w", err)
 	}
@@ -499,10 +528,18 @@ func (v *UptimeChecksView) renderTable() {
 			upColor = tcell.ColorGreen
 		}
 
-		v.table.SetCell(row, 0, tview.NewTableCell(check.CreatedAt.Format("2006-01-02 15:04:05")).SetExpansion(2))
+		v.table.SetCell(
+			row,
+			0,
+			tview.NewTableCell(check.CreatedAt.Format("2006-01-02 15:04:05")).SetExpansion(2),
+		)
 		v.table.SetCell(row, 1, tview.NewTableCell(check.Location).SetExpansion(2))
 		v.table.SetCell(row, 2, tview.NewTableCell(up).SetTextColor(upColor).SetExpansion(1))
-		v.table.SetCell(row, 3, tview.NewTableCell(fmt.Sprintf("%dms", check.Duration)).SetExpansion(1))
+		v.table.SetCell(
+			row,
+			3,
+			tview.NewTableCell(fmt.Sprintf("%dms", check.Duration)).SetExpansion(1),
+		)
 	}
 
 	v.table.Select(1, 0)

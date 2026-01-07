@@ -47,7 +47,7 @@ func (v *CheckinsView) setupTable() {
 		v.table.SetCell(0, col, cell)
 	}
 
-	v.table.SetSelectedFunc(func(row, col int) {
+	v.table.SetSelectedFunc(func(row, _ int) {
 		if row > 0 && row <= len(v.checkins) {
 			checkin := v.checkins[row-1]
 			v.showDetails(checkin)
@@ -114,7 +114,11 @@ func (v *CheckinsView) renderTable() {
 		v.table.SetCell(row, 2, tview.NewTableCell(ci.Slug).SetExpansion(2))
 		v.table.SetCell(row, 3, tview.NewTableCell(ci.ScheduleType).SetExpansion(1))
 		v.table.SetCell(row, 4, tview.NewTableCell(schedule).SetExpansion(2))
-		v.table.SetCell(row, 5, tview.NewTableCell(lastCheckIn).SetTextColor(lastCheckInColor).SetExpansion(2))
+		v.table.SetCell(
+			row,
+			5,
+			tview.NewTableCell(lastCheckIn).SetTextColor(lastCheckInColor).SetExpansion(2),
+		)
 	}
 
 	v.table.Select(1, 0)
@@ -220,7 +224,10 @@ func (v *CheckinDetailsView) renderDetails() {
 	text += fmt.Sprintf("\n[yellow]Created:[white] %s", ci.CreatedAt.Format("2006-01-02 15:04:05"))
 
 	if ci.LastCheckInAt != nil {
-		text += fmt.Sprintf("\n\n[yellow]Last Check-in:[green] %s", ci.LastCheckInAt.Format("2006-01-02 15:04:05"))
+		text += fmt.Sprintf(
+			"\n\n[yellow]Last Check-in:[green] %s",
+			ci.LastCheckInAt.Format("2006-01-02 15:04:05"),
+		)
 	} else {
 		text += "\n\n[yellow]Last Check-in:[red] Never"
 	}

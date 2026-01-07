@@ -47,7 +47,7 @@ func (v *FaultsView) setupTable() {
 		v.table.SetCell(0, col, cell)
 	}
 
-	v.table.SetSelectedFunc(func(row, col int) {
+	v.table.SetSelectedFunc(func(row, _ int) {
 		if row > 0 && row <= len(v.faults) {
 			fault := v.faults[row-1]
 			v.drillDown(fault)
@@ -72,10 +72,14 @@ func (v *FaultsView) Render() tview.Primitive {
 
 // Refresh reloads the data
 func (v *FaultsView) Refresh() error {
-	response, err := v.app.Client().Faults.List(v.app.Context(), v.projectID, hbapi.FaultListOptions{
-		Limit: 25,
-		Order: "recent",
-	})
+	response, err := v.app.Client().Faults.List(
+		v.app.Context(),
+		v.projectID,
+		hbapi.FaultListOptions{
+			Limit: 25,
+			Order: "recent",
+		},
+	)
 	if err != nil {
 		return fmt.Errorf("failed to list faults: %w", err)
 	}
@@ -119,8 +123,16 @@ func (v *FaultsView) renderTable() {
 		v.table.SetCell(row, 1, tview.NewTableCell(fault.Klass).SetExpansion(2))
 		v.table.SetCell(row, 2, tview.NewTableCell(message).SetExpansion(3))
 		v.table.SetCell(row, 3, tview.NewTableCell(fault.Environment).SetExpansion(1))
-		v.table.SetCell(row, 4, tview.NewTableCell(fmt.Sprintf("%d", fault.NoticesCount)).SetExpansion(1))
-		v.table.SetCell(row, 5, tview.NewTableCell(status).SetTextColor(statusColor).SetExpansion(1))
+		v.table.SetCell(
+			row,
+			4,
+			tview.NewTableCell(fmt.Sprintf("%d", fault.NoticesCount)).SetExpansion(1),
+		)
+		v.table.SetCell(
+			row,
+			5,
+			tview.NewTableCell(status).SetTextColor(statusColor).SetExpansion(1),
+		)
 		v.table.SetCell(row, 6, tview.NewTableCell(lastSeen).SetExpansion(2))
 	}
 
@@ -176,10 +188,15 @@ func (v *FaultMenuView) setupList() {
 		v.app.Push(detailsView)
 	})
 
-	v.list.AddItem("Notices", fmt.Sprintf("View notices (%d total)", v.fault.NoticesCount), 'n', func() {
-		noticesView := NewNoticesView(v.app, v.projectID, v.fault.ID)
-		v.app.Push(noticesView)
-	})
+	v.list.AddItem(
+		"Notices",
+		fmt.Sprintf("View notices (%d total)", v.fault.NoticesCount),
+		'n',
+		func() {
+			noticesView := NewNoticesView(v.app, v.projectID, v.fault.ID)
+			v.app.Push(noticesView)
+		},
+	)
 
 	v.list.AddItem("Affected Users", "View affected users", 'u', func() {
 		usersView := NewAffectedUsersView(v.app, v.projectID, v.fault.ID)
@@ -311,7 +328,11 @@ func (v *FaultDetailsView) renderDetails() {
 	}
 
 	if f.Assignee != nil {
-		text += fmt.Sprintf("\n\n[yellow]Assignee:[white] %s <%s>", f.Assignee.Name, f.Assignee.Email)
+		text += fmt.Sprintf(
+			"\n\n[yellow]Assignee:[white] %s <%s>",
+			f.Assignee.Name,
+			f.Assignee.Email,
+		)
 	}
 
 	if len(f.Tags) > 0 {
@@ -385,9 +406,14 @@ func (v *NoticesView) Render() tview.Primitive {
 
 // Refresh reloads the data
 func (v *NoticesView) Refresh() error {
-	response, err := v.app.Client().Faults.ListNotices(v.app.Context(), v.projectID, v.faultID, hbapi.FaultListNoticesOptions{
-		Limit: 25,
-	})
+	response, err := v.app.Client().Faults.ListNotices(
+		v.app.Context(),
+		v.projectID,
+		v.faultID,
+		hbapi.FaultListNoticesOptions{
+			Limit: 25,
+		},
+	)
 	if err != nil {
 		return fmt.Errorf("failed to list notices: %w", err)
 	}
@@ -417,7 +443,11 @@ func (v *NoticesView) renderTable() {
 		v.table.SetCell(row, 1, tview.NewTableCell(message).SetExpansion(3))
 		v.table.SetCell(row, 2, tview.NewTableCell(notice.EnvironmentName).SetExpansion(1))
 		v.table.SetCell(row, 3, tview.NewTableCell(notice.Environment.Hostname).SetExpansion(2))
-		v.table.SetCell(row, 4, tview.NewTableCell(notice.CreatedAt.Format("2006-01-02 15:04")).SetExpansion(2))
+		v.table.SetCell(
+			row,
+			4,
+			tview.NewTableCell(notice.CreatedAt.Format("2006-01-02 15:04")).SetExpansion(2),
+		)
 	}
 
 	v.table.Select(1, 0)
@@ -440,7 +470,7 @@ type AffectedUsersView struct {
 	projectID int
 	faultID   int
 	table     *tview.Table
-	users []hbapi.FaultAffectedUser
+	users     []hbapi.FaultAffectedUser
 }
 
 // NewAffectedUsersView creates a new affected users view
@@ -488,7 +518,12 @@ func (v *AffectedUsersView) Render() tview.Primitive {
 
 // Refresh reloads the data
 func (v *AffectedUsersView) Refresh() error {
-	users, err := v.app.Client().Faults.ListAffectedUsers(v.app.Context(), v.projectID, v.faultID, hbapi.FaultListAffectedUsersOptions{})
+	users, err := v.app.Client().Faults.ListAffectedUsers(
+		v.app.Context(),
+		v.projectID,
+		v.faultID,
+		hbapi.FaultListAffectedUsersOptions{},
+	)
 	if err != nil {
 		return fmt.Errorf("failed to list affected users: %w", err)
 	}

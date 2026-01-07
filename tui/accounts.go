@@ -1,3 +1,4 @@
+// Package tui provides a terminal user interface for browsing Honeybadger data.
 package tui
 
 import (
@@ -47,7 +48,7 @@ func (v *AccountsView) setupTable() {
 	}
 
 	// Handle selection
-	v.table.SetSelectedFunc(func(row, col int) {
+	v.table.SetSelectedFunc(func(row, _ int) {
 		if row > 0 && row <= len(v.accounts) {
 			account := v.accounts[row-1]
 			v.drillDown(account)
@@ -376,7 +377,11 @@ func (v *AccountInvitationsView) renderTable() {
 		v.table.SetCell(row, 0, tview.NewTableCell(fmt.Sprintf("%d", inv.ID)).SetExpansion(1))
 		v.table.SetCell(row, 1, tview.NewTableCell(inv.Email).SetExpansion(2))
 		v.table.SetCell(row, 2, tview.NewTableCell(inv.Role).SetExpansion(1))
-		v.table.SetCell(row, 3, tview.NewTableCell(inv.CreatedAt.Format("2006-01-02")).SetExpansion(1))
+		v.table.SetCell(
+			row,
+			3,
+			tview.NewTableCell(inv.CreatedAt.Format("2006-01-02")).SetExpansion(1),
+		)
 		v.table.SetCell(row, 4, tview.NewTableCell(accepted).SetExpansion(1))
 	}
 

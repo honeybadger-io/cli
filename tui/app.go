@@ -12,15 +12,15 @@ import (
 
 // App represents the main TUI application
 type App struct {
-	app       *tview.Application
-	client    *hbapi.Client
-	pages     *tview.Pages
-	header    *tview.TextView
-	footer    *tview.TextView
-	mainFlex  *tview.Flex
-	navStack  []View
-	ctx       context.Context
-	cancel    context.CancelFunc
+	app      *tview.Application
+	client   *hbapi.Client
+	pages    *tview.Pages
+	header   *tview.TextView
+	footer   *tview.TextView
+	mainFlex *tview.Flex
+	navStack []View
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 // View interface for all views in the TUI
@@ -191,7 +191,7 @@ func (a *App) ShowError(err error) {
 	modal := tview.NewModal().
 		SetText(fmt.Sprintf("Error: %v", err)).
 		AddButtons([]string{"OK"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		SetDoneFunc(func(_ int, _ string) {
 			a.pages.RemovePage("error")
 		})
 	a.pages.AddPage("error", modal, true, true)
@@ -220,7 +220,7 @@ Press any key to close this help.`
 	modal := tview.NewModal().
 		SetText(helpText).
 		AddButtons([]string{"Close"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		SetDoneFunc(func(_ int, _ string) {
 			a.pages.RemovePage("help")
 		})
 	a.pages.AddPage("help", modal, true, true)

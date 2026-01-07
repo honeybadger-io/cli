@@ -48,7 +48,7 @@ func (v *DeploymentsView) setupTable() {
 		v.table.SetCell(0, col, cell)
 	}
 
-	v.table.SetSelectedFunc(func(row, col int) {
+	v.table.SetSelectedFunc(func(row, _ int) {
 		if row > 0 && row <= len(v.deployments) {
 			deployment := v.deployments[row-1]
 			v.showDetails(deployment)
@@ -73,9 +73,13 @@ func (v *DeploymentsView) Render() tview.Primitive {
 
 // Refresh reloads the data
 func (v *DeploymentsView) Refresh() error {
-	deployments, err := v.app.Client().Deployments.List(v.app.Context(), v.projectID, hbapi.DeploymentListOptions{
-		Limit: 25,
-	})
+	deployments, err := v.app.Client().Deployments.List(
+		v.app.Context(),
+		v.projectID,
+		hbapi.DeploymentListOptions{
+			Limit: 25,
+		},
+	)
 	if err != nil {
 		return fmt.Errorf("failed to list deployments: %w", err)
 	}
@@ -106,7 +110,11 @@ func (v *DeploymentsView) renderTable() {
 		v.table.SetCell(row, 2, tview.NewTableCell(revision).SetExpansion(1))
 		v.table.SetCell(row, 3, tview.NewTableCell(d.LocalUsername).SetExpansion(1))
 		v.table.SetCell(row, 4, tview.NewTableCell(repo).SetExpansion(2))
-		v.table.SetCell(row, 5, tview.NewTableCell(d.CreatedAt.Format("2006-01-02 15:04")).SetExpansion(2))
+		v.table.SetCell(
+			row,
+			5,
+			tview.NewTableCell(d.CreatedAt.Format("2006-01-02 15:04")).SetExpansion(2),
+		)
 	}
 
 	v.table.Select(1, 0)

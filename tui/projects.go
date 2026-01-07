@@ -47,7 +47,7 @@ func (v *ProjectsView) setupTable() {
 		v.table.SetCell(0, col, cell)
 	}
 
-	v.table.SetSelectedFunc(func(row, col int) {
+	v.table.SetSelectedFunc(func(row, _ int) {
 		if row > 0 && row <= len(v.projects) {
 			v.drillDown(v.projects[row-1])
 		}
@@ -100,7 +100,8 @@ func (v *ProjectsView) renderTable() {
 		}
 
 		// Color unresolved faults red if > 0
-		unresolvedCell := tview.NewTableCell(fmt.Sprintf("%d", project.UnresolvedFaultCount)).SetExpansion(1)
+		unresolvedCell := tview.NewTableCell(fmt.Sprintf("%d", project.UnresolvedFaultCount)).
+			SetExpansion(1)
 		if project.UnresolvedFaultCount > 0 {
 			unresolvedCell.SetTextColor(tcell.ColorRed)
 		}
@@ -108,7 +109,11 @@ func (v *ProjectsView) renderTable() {
 		v.table.SetCell(row, 0, tview.NewTableCell(fmt.Sprintf("%d", project.ID)).SetExpansion(1))
 		v.table.SetCell(row, 1, tview.NewTableCell(project.Name).SetExpansion(2))
 		v.table.SetCell(row, 2, tview.NewTableCell(active).SetExpansion(1))
-		v.table.SetCell(row, 3, tview.NewTableCell(fmt.Sprintf("%d", project.FaultCount)).SetExpansion(1))
+		v.table.SetCell(
+			row,
+			3,
+			tview.NewTableCell(fmt.Sprintf("%d", project.FaultCount)).SetExpansion(1),
+		)
 		v.table.SetCell(row, 4, unresolvedCell)
 	}
 
@@ -156,10 +161,15 @@ func (v *ProjectMenuView) setupList() {
 		SetBorder(true).
 		SetBorderColor(tcell.ColorDarkCyan)
 
-	v.list.AddItem("Faults", fmt.Sprintf("View faults (%d unresolved)", v.project.UnresolvedFaultCount), 'f', func() {
-		faultsView := NewFaultsView(v.app, v.project.ID)
-		v.app.Push(faultsView)
-	})
+	v.list.AddItem(
+		"Faults",
+		fmt.Sprintf("View faults (%d unresolved)", v.project.UnresolvedFaultCount),
+		'f',
+		func() {
+			faultsView := NewFaultsView(v.app, v.project.ID)
+			v.app.Push(faultsView)
+		},
+	)
 
 	v.list.AddItem("Deployments", "View recent deployments", 'd', func() {
 		deploymentsView := NewDeploymentsView(v.app, v.project.ID)
