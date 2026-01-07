@@ -24,9 +24,9 @@ func TestCheckinsListCommand(t *testing.T) {
 			projectIDValue: 123,
 			authToken:      "test-token",
 			serverStatus:   http.StatusOK,
-			serverBody: `[
-				{"id": 1, "name": "Daily Backup", "slug": "daily-backup", "schedule_type": "simple", "report_period": "1 day"}
-			]`,
+			serverBody: `{"results": [
+				{"id": "1", "name": "Daily Backup", "slug": "daily-backup", "schedule_type": "simple", "report_period": "1 day"}
+			]}`,
 			expectedError: false,
 		},
 		{
@@ -91,7 +91,7 @@ func TestCheckinsGetCommand(t *testing.T) {
 	tests := []struct {
 		name           string
 		projectIDValue int
-		checkinIDValue int
+		checkinIDValue string
 		authToken      string
 		serverStatus   int
 		serverBody     string
@@ -101,11 +101,11 @@ func TestCheckinsGetCommand(t *testing.T) {
 		{
 			name:           "successful get",
 			projectIDValue: 123,
-			checkinIDValue: 1,
+			checkinIDValue: "1",
 			authToken:      "test-token",
 			serverStatus:   http.StatusOK,
 			serverBody: `{
-				"id": 1,
+				"id": "1",
 				"name": "Daily Backup",
 				"slug": "daily-backup",
 				"schedule_type": "simple",
@@ -116,7 +116,7 @@ func TestCheckinsGetCommand(t *testing.T) {
 		{
 			name:           "missing project ID",
 			projectIDValue: 0,
-			checkinIDValue: 1,
+			checkinIDValue: "1",
 			authToken:      "test-token",
 			expectedError:  true,
 			errorContains:  "project ID is required",
@@ -124,7 +124,7 @@ func TestCheckinsGetCommand(t *testing.T) {
 		{
 			name:           "missing checkin ID",
 			projectIDValue: 123,
-			checkinIDValue: 0,
+			checkinIDValue: "",
 			authToken:      "test-token",
 			expectedError:  true,
 			errorContains:  "check-in ID is required",
@@ -134,7 +134,7 @@ func TestCheckinsGetCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var serverURL string
-			if tt.authToken != "" && tt.projectIDValue != 0 && tt.checkinIDValue != 0 {
+			if tt.authToken != "" && tt.projectIDValue != 0 && tt.checkinIDValue != "" {
 				server := httptest.NewServer(
 					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						assert.Equal(t, "GET", r.Method)
@@ -175,9 +175,9 @@ func TestCheckinsGetCommand(t *testing.T) {
 }
 
 func TestCheckinsOutputFormat(t *testing.T) {
-	mockResponse := `[
-		{"id": 1, "name": "Daily Backup", "slug": "daily-backup", "schedule_type": "simple", "report_period": "1 day"}
-	]`
+	mockResponse := `{"results": [
+		{"id": "1", "name": "Daily Backup", "slug": "daily-backup", "schedule_type": "simple", "report_period": "1 day"}
+	]}`
 
 	server := httptest.NewServer(
 		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

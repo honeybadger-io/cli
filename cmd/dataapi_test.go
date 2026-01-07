@@ -113,7 +113,7 @@ func TestDeploymentsListCommand(t *testing.T) {
 			projectIDValue: 123,
 			authToken:      "test-token",
 			serverStatus:   http.StatusOK,
-			serverBody:     `[]`,
+			serverBody:     `{"results": []}`,
 			expectedError:  false,
 		},
 		{

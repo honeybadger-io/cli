@@ -234,9 +234,9 @@ func TestAccountsUsersListCommand(t *testing.T) {
 			accountIDValue: "abc123",
 			authToken:      "test-token",
 			serverStatus:   http.StatusOK,
-			serverBody: `[
+			serverBody: `{"results": [
 				{"id": 1, "name": "User 1", "email": "user1@example.com", "role": "Owner"}
-			]`,
+			]}`,
 			expectedError: false,
 		},
 		{

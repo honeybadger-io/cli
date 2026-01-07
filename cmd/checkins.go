@@ -14,7 +14,7 @@ import (
 
 var (
 	checkinsProjectID    int
-	checkinID            int
+	checkinID            string
 	checkinsOutputFormat string
 	checkinCLIInputJSON  string
 )
@@ -79,7 +79,7 @@ var checkinsListCmd = &cobra.Command{
 					lastCheckIn = ci.LastCheckInAt.Format("2006-01-02 15:04")
 				}
 
-				_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\n",
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
 					ci.ID,
 					ci.Name,
 					ci.Slug,
@@ -103,7 +103,7 @@ var checkinsGetCmd = &cobra.Command{
 		if checkinsProjectID == 0 {
 			return fmt.Errorf("project ID is required. Set it using --project-id flag")
 		}
-		if checkinID == 0 {
+		if checkinID == "" {
 			return fmt.Errorf("check-in ID is required. Set it using --id flag")
 		}
 
@@ -135,7 +135,7 @@ var checkinsGetCmd = &cobra.Command{
 			fmt.Println(string(jsonBytes))
 		default:
 			fmt.Printf("Check-in Details:\n")
-			fmt.Printf("  ID: %d\n", checkIn.ID)
+			fmt.Printf("  ID: %s\n", checkIn.ID)
 			fmt.Printf("  Name: %s\n", checkIn.Name)
 			fmt.Printf("  Slug: %s\n", checkIn.Slug)
 			fmt.Printf("  Schedule Type: %s\n", checkIn.ScheduleType)
@@ -242,7 +242,7 @@ Example JSON payload for cron schedule:
 			fmt.Println(string(jsonBytes))
 		default:
 			fmt.Printf("Check-in created successfully!\n")
-			fmt.Printf("  ID: %d\n", checkIn.ID)
+			fmt.Printf("  ID: %s\n", checkIn.ID)
 			fmt.Printf("  Name: %s\n", checkIn.Name)
 			fmt.Printf("  Slug: %s\n", checkIn.Slug)
 		}
@@ -270,7 +270,7 @@ Example JSON payload:
 		if checkinsProjectID == 0 {
 			return fmt.Errorf("project ID is required. Set it using --project-id flag")
 		}
-		if checkinID == 0 {
+		if checkinID == "" {
 			return fmt.Errorf("check-in ID is required. Set it using --id flag")
 		}
 		if checkinCLIInputJSON == "" {
@@ -317,7 +317,7 @@ Example JSON payload:
 			fmt.Println(string(jsonBytes))
 		default:
 			fmt.Printf("Check-in updated successfully!\n")
-			fmt.Printf("  ID: %d\n", checkIn.ID)
+			fmt.Printf("  ID: %s\n", checkIn.ID)
 			fmt.Printf("  Name: %s\n", checkIn.Name)
 			fmt.Printf("  Slug: %s\n", checkIn.Slug)
 		}
@@ -335,7 +335,7 @@ var checkinsDeleteCmd = &cobra.Command{
 		if checkinsProjectID == 0 {
 			return fmt.Errorf("project ID is required. Set it using --project-id flag")
 		}
-		if checkinID == 0 {
+		if checkinID == "" {
 			return fmt.Errorf("check-in ID is required. Set it using --id flag")
 		}
 
@@ -379,7 +379,7 @@ func init() {
 		StringVarP(&checkinsOutputFormat, "output", "o", "table", "Output format (table or json)")
 
 	// Flags for get command
-	checkinsGetCmd.Flags().IntVar(&checkinID, "id", 0, "Check-in ID")
+	checkinsGetCmd.Flags().StringVar(&checkinID, "id", "", "Check-in ID")
 	checkinsGetCmd.Flags().
 		StringVarP(&checkinsOutputFormat, "output", "o", "text", "Output format (text or json)")
 	_ = checkinsGetCmd.MarkFlagRequired("id")
@@ -392,7 +392,7 @@ func init() {
 	_ = checkinsCreateCmd.MarkFlagRequired("cli-input-json")
 
 	// Flags for update command
-	checkinsUpdateCmd.Flags().IntVar(&checkinID, "id", 0, "Check-in ID")
+	checkinsUpdateCmd.Flags().StringVar(&checkinID, "id", "", "Check-in ID")
 	checkinsUpdateCmd.Flags().
 		StringVar(&checkinCLIInputJSON, "cli-input-json", "", "JSON payload (string or file://path)")
 	checkinsUpdateCmd.Flags().
@@ -401,6 +401,6 @@ func init() {
 	_ = checkinsUpdateCmd.MarkFlagRequired("cli-input-json")
 
 	// Flags for delete command
-	checkinsDeleteCmd.Flags().IntVar(&checkinID, "id", 0, "Check-in ID")
+	checkinsDeleteCmd.Flags().StringVar(&checkinID, "id", "", "Check-in ID")
 	_ = checkinsDeleteCmd.MarkFlagRequired("id")
 }

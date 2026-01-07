@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	teamsAccountID    int
+	teamsAccountID    string
 	teamID            int
 	teamsOutputFormat string
 	teamName          string
@@ -37,7 +37,7 @@ var teamsListCmd = &cobra.Command{
 	Short: "List teams for an account",
 	Long:  `List all teams for a specific account.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if teamsAccountID == 0 {
+		if teamsAccountID == "" {
 			return fmt.Errorf("account ID is required. Set it using --account-id flag")
 		}
 
@@ -137,7 +137,7 @@ var teamsCreateCmd = &cobra.Command{
 	Short: "Create a new team",
 	Long:  `Create a new team for an account.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if teamsAccountID == 0 {
+		if teamsAccountID == "" {
 			return fmt.Errorf("account ID is required. Set it using --account-id flag")
 		}
 		if teamName == "" {
@@ -755,7 +755,7 @@ func init() {
 	teamsInvitationsCmd.AddCommand(teamsInvitationsDeleteCmd)
 
 	// Flags for list command
-	teamsListCmd.Flags().IntVar(&teamsAccountID, "account-id", 0, "Account ID")
+	teamsListCmd.Flags().StringVar(&teamsAccountID, "account-id", "", "Account ID")
 	teamsListCmd.Flags().
 		StringVarP(&teamsOutputFormat, "output", "o", "table", "Output format (table or json)")
 	_ = teamsListCmd.MarkFlagRequired("account-id")
@@ -767,7 +767,7 @@ func init() {
 	_ = teamsGetCmd.MarkFlagRequired("id")
 
 	// Flags for create command
-	teamsCreateCmd.Flags().IntVar(&teamsAccountID, "account-id", 0, "Account ID")
+	teamsCreateCmd.Flags().StringVar(&teamsAccountID, "account-id", "", "Account ID")
 	teamsCreateCmd.Flags().StringVar(&teamName, "name", "", "Team name")
 	teamsCreateCmd.Flags().
 		StringVarP(&teamsOutputFormat, "output", "o", "text", "Output format (text or json)")

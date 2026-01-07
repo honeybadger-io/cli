@@ -12,7 +12,7 @@ import (
 func TestTeamsListCommand(t *testing.T) {
 	tests := []struct {
 		name           string
-		accountIDValue int
+		accountIDValue string
 		authToken      string
 		serverStatus   int
 		serverBody     string
@@ -21,24 +21,24 @@ func TestTeamsListCommand(t *testing.T) {
 	}{
 		{
 			name:           "successful list",
-			accountIDValue: 123,
+			accountIDValue: "123",
 			authToken:      "test-token",
 			serverStatus:   http.StatusOK,
-			serverBody: `[
+			serverBody: `{"results": [
 				{"id": 1, "name": "Team 1", "account_id": 123, "created_at": "2024-01-01T00:00:00Z"}
-			]`,
+			]}`,
 			expectedError: false,
 		},
 		{
 			name:           "missing account ID",
-			accountIDValue: 0,
+			accountIDValue: "",
 			authToken:      "test-token",
 			expectedError:  true,
 			errorContains:  "account ID is required",
 		},
 		{
 			name:           "missing auth token",
-			accountIDValue: 123,
+			accountIDValue: "123",
 			authToken:      "",
 			expectedError:  true,
 			errorContains:  "auth token is required",
@@ -48,7 +48,7 @@ func TestTeamsListCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var serverURL string
-			if tt.authToken != "" && tt.accountIDValue != 0 {
+			if tt.authToken != "" && tt.accountIDValue != "" {
 				server := httptest.NewServer(
 					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						assert.Equal(t, "GET", r.Method)
@@ -171,7 +171,7 @@ func TestTeamsGetCommand(t *testing.T) {
 func TestTeamsCreateCommand(t *testing.T) {
 	tests := []struct {
 		name           string
-		accountIDValue int
+		accountIDValue string
 		teamNameValue  string
 		authToken      string
 		serverStatus   int
@@ -181,7 +181,7 @@ func TestTeamsCreateCommand(t *testing.T) {
 	}{
 		{
 			name:           "successful create",
-			accountIDValue: 123,
+			accountIDValue: "123",
 			teamNameValue:  "New Team",
 			authToken:      "test-token",
 			serverStatus:   http.StatusCreated,
@@ -195,7 +195,7 @@ func TestTeamsCreateCommand(t *testing.T) {
 		},
 		{
 			name:           "missing account ID",
-			accountIDValue: 0,
+			accountIDValue: "",
 			teamNameValue:  "New Team",
 			authToken:      "test-token",
 			expectedError:  true,
@@ -203,7 +203,7 @@ func TestTeamsCreateCommand(t *testing.T) {
 		},
 		{
 			name:           "missing team name",
-			accountIDValue: 123,
+			accountIDValue: "123",
 			teamNameValue:  "",
 			authToken:      "test-token",
 			expectedError:  true,
@@ -214,7 +214,7 @@ func TestTeamsCreateCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var serverURL string
-			if tt.authToken != "" && tt.accountIDValue != 0 && tt.teamNameValue != "" {
+			if tt.authToken != "" && tt.accountIDValue != "" && tt.teamNameValue != "" {
 				server := httptest.NewServer(
 					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						assert.Equal(t, "POST", r.Method)
@@ -269,9 +269,9 @@ func TestTeamsMembersListCommand(t *testing.T) {
 			teamIDValue:  1,
 			authToken:    "test-token",
 			serverStatus: http.StatusOK,
-			serverBody: `[
+			serverBody: `{"results": [
 				{"id": 1, "name": "Member 1", "email": "member1@example.com", "admin": true}
-			]`,
+			]}`,
 			expectedError: false,
 		},
 		{
@@ -326,9 +326,9 @@ func TestTeamsMembersListCommand(t *testing.T) {
 }
 
 func TestTeamsOutputFormat(t *testing.T) {
-	mockResponse := `[
+	mockResponse := `{"results": [
 		{"id": 1, "name": "Team 1", "account_id": 123, "created_at": "2024-01-01T00:00:00Z"}
-	]`
+	]}`
 
 	server := httptest.NewServer(
 		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -353,7 +353,7 @@ func TestTeamsOutputFormat(t *testing.T) {
 			viper.Set("endpoint", server.URL)
 			viper.Set("auth_token", "test-token")
 
-			teamsAccountID = 123
+			teamsAccountID = "123"
 			teamsOutputFormat = tt.format
 
 			err := teamsListCmd.RunE(teamsListCmd, []string{})

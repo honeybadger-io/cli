@@ -104,7 +104,7 @@ func (v *CheckinsView) renderTable() {
 			lastCheckInColor = tcell.ColorGreen
 		}
 
-		v.table.SetCell(row, 0, tview.NewTableCell(fmt.Sprintf("%d", ci.ID)).SetExpansion(1))
+		v.table.SetCell(row, 0, tview.NewTableCell(ci.ID).SetExpansion(1))
 		v.table.SetCell(row, 1, tview.NewTableCell(ci.Name).SetExpansion(2))
 		v.table.SetCell(row, 2, tview.NewTableCell(ci.Slug).SetExpansion(2))
 		v.table.SetCell(row, 3, tview.NewTableCell(ci.ScheduleType).SetExpansion(1))
@@ -184,7 +184,7 @@ func (v *CheckinDetailsView) Refresh() error {
 func (v *CheckinDetailsView) renderDetails() {
 	ci := v.checkin
 
-	text := fmt.Sprintf(`[yellow]ID:[white] %d
+	text := fmt.Sprintf(`[yellow]ID:[white] %s
 
 [yellow]Name:[white] %s
 

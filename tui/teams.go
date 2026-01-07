@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/gdamore/tcell/v2"
 	hbapi "github.com/honeybadger-io/api-go"
@@ -73,12 +72,7 @@ func (v *TeamsView) Render() tview.Primitive {
 
 // Refresh reloads the data
 func (v *TeamsView) Refresh() error {
-	accountIDInt, err := strconv.Atoi(v.accountID)
-	if err != nil {
-		return fmt.Errorf("invalid account ID: %w", err)
-	}
-
-	teams, err := v.app.Client().Teams.List(v.app.Context(), accountIDInt)
+	teams, err := v.app.Client().Teams.List(v.app.Context(), v.accountID)
 	if err != nil {
 		return fmt.Errorf("failed to list teams: %w", err)
 	}
