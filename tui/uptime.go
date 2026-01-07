@@ -85,9 +85,7 @@ func (v *UptimeSitesView) Refresh() error {
 }
 
 func (v *UptimeSitesView) renderTable() {
-	for row := v.table.GetRowCount() - 1; row > 0; row-- {
-		v.table.RemoveRow(row)
-	}
+	clearTableRows(v.table)
 
 	for i, site := range v.sites {
 		row := i + 1
@@ -102,10 +100,7 @@ func (v *UptimeSitesView) renderTable() {
 			stateColor = tcell.ColorRed
 		}
 
-		url := site.URL
-		if len(url) > 40 {
-			url = url[:37] + "..."
-		}
+		url := truncateString(site.URL, 40)
 
 		v.table.SetCell(row, 0, tview.NewTableCell(site.ID).SetExpansion(1))
 		v.table.SetCell(row, 1, tview.NewTableCell(site.Name).SetExpansion(2))
@@ -122,40 +117,19 @@ func (v *UptimeSitesView) renderTable() {
 
 // HandleInput handles keyboard input
 func (v *UptimeSitesView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		row, col := v.table.GetSelection()
-		if row < v.table.GetRowCount()-1 {
-			v.table.Select(row+1, col)
-		}
-		return nil
-	case 'k':
-		row, col := v.table.GetSelection()
-		if row > 1 {
-			v.table.Select(row-1, col)
-		}
-		return nil
-	case 'l':
-		row, _ := v.table.GetSelection()
-		if row > 0 && row <= len(v.sites) {
-			site := v.sites[row-1]
-			v.drillDown(site)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	if handleTableNavigation(v.table, event) {
 		return nil
 	}
-
-	if event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyRight {
+	if handleBackNavigation(v.app, event) {
+		return nil
+	}
+	if isSelectKey(event) {
 		row, _ := v.table.GetSelection()
 		if row > 0 && row <= len(v.sites) {
-			site := v.sites[row-1]
-			v.drillDown(site)
+			v.drillDown(v.sites[row-1])
 		}
 		return nil
 	}
-
 	return event
 }
 
@@ -219,21 +193,10 @@ func (v *SiteMenuView) Refresh() error {
 
 // HandleInput handles keyboard input
 func (v *SiteMenuView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		currentItem := v.list.GetCurrentItem()
-		if currentItem < v.list.GetItemCount()-1 {
-			v.list.SetCurrentItem(currentItem + 1)
-		}
+	if handleListNavigation(v.list, event) {
 		return nil
-	case 'k':
-		currentItem := v.list.GetCurrentItem()
-		if currentItem > 0 {
-			v.list.SetCurrentItem(currentItem - 1)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	}
+	if handleBackNavigation(v.app, event) {
 		return nil
 	}
 	return event
@@ -335,9 +298,7 @@ func (v *SiteDetailsView) renderDetails() {
 
 // HandleInput handles keyboard input
 func (v *SiteDetailsView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'h':
-		v.app.Pop()
+	if handleBackNavigation(v.app, event) {
 		return nil
 	}
 	return event
@@ -412,9 +373,7 @@ func (v *OutagesView) Refresh() error {
 }
 
 func (v *OutagesView) renderTable() {
-	for row := v.table.GetRowCount() - 1; row > 0; row-- {
-		v.table.RemoveRow(row)
-	}
+	clearTableRows(v.table)
 
 	for i, outage := range v.outages {
 		row := i + 1
@@ -424,10 +383,7 @@ func (v *OutagesView) renderTable() {
 			upAt = outage.UpAt.Format("2006-01-02 15:04")
 		}
 
-		reason := outage.Reason
-		if len(reason) > 40 {
-			reason = reason[:37] + "..."
-		}
+		reason := truncateString(outage.Reason, 40)
 
 		v.table.SetCell(row, 0, tview.NewTableCell(outage.DownAt.Format("2006-01-02 15:04")).SetExpansion(2))
 		v.table.SetCell(row, 1, tview.NewTableCell(upAt).SetExpansion(2))
@@ -442,21 +398,10 @@ func (v *OutagesView) renderTable() {
 
 // HandleInput handles keyboard input
 func (v *OutagesView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		row, col := v.table.GetSelection()
-		if row < v.table.GetRowCount()-1 {
-			v.table.Select(row+1, col)
-		}
+	if handleTableNavigation(v.table, event) {
 		return nil
-	case 'k':
-		row, col := v.table.GetSelection()
-		if row > 1 {
-			v.table.Select(row-1, col)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	}
+	if handleBackNavigation(v.app, event) {
 		return nil
 	}
 	return event
@@ -531,9 +476,7 @@ func (v *UptimeChecksView) Refresh() error {
 }
 
 func (v *UptimeChecksView) renderTable() {
-	for row := v.table.GetRowCount() - 1; row > 0; row-- {
-		v.table.RemoveRow(row)
-	}
+	clearTableRows(v.table)
 
 	for i, check := range v.checks {
 		row := i + 1
@@ -558,21 +501,10 @@ func (v *UptimeChecksView) renderTable() {
 
 // HandleInput handles keyboard input
 func (v *UptimeChecksView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		row, col := v.table.GetSelection()
-		if row < v.table.GetRowCount()-1 {
-			v.table.Select(row+1, col)
-		}
+	if handleTableNavigation(v.table, event) {
 		return nil
-	case 'k':
-		row, col := v.table.GetSelection()
-		if row > 1 {
-			v.table.Select(row-1, col)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	}
+	if handleBackNavigation(v.app, event) {
 		return nil
 	}
 	return event

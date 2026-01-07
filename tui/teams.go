@@ -91,9 +91,7 @@ func (v *TeamsView) Refresh() error {
 }
 
 func (v *TeamsView) renderTable() {
-	for row := v.table.GetRowCount() - 1; row > 0; row-- {
-		v.table.RemoveRow(row)
-	}
+	clearTableRows(v.table)
 
 	for i, team := range v.teams {
 		row := i + 1
@@ -109,40 +107,19 @@ func (v *TeamsView) renderTable() {
 
 // HandleInput handles keyboard input
 func (v *TeamsView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		row, col := v.table.GetSelection()
-		if row < v.table.GetRowCount()-1 {
-			v.table.Select(row+1, col)
-		}
-		return nil
-	case 'k':
-		row, col := v.table.GetSelection()
-		if row > 1 {
-			v.table.Select(row-1, col)
-		}
-		return nil
-	case 'l':
-		row, _ := v.table.GetSelection()
-		if row > 0 && row <= len(v.teams) {
-			team := v.teams[row-1]
-			v.drillDown(team)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	if handleTableNavigation(v.table, event) {
 		return nil
 	}
-
-	if event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyRight {
+	if handleBackNavigation(v.app, event) {
+		return nil
+	}
+	if isSelectKey(event) {
 		row, _ := v.table.GetSelection()
 		if row > 0 && row <= len(v.teams) {
-			team := v.teams[row-1]
-			v.drillDown(team)
+			v.drillDown(v.teams[row-1])
 		}
 		return nil
 	}
-
 	return event
 }
 
@@ -199,21 +176,10 @@ func (v *TeamMenuView) Refresh() error {
 
 // HandleInput handles keyboard input
 func (v *TeamMenuView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		currentItem := v.list.GetCurrentItem()
-		if currentItem < v.list.GetItemCount()-1 {
-			v.list.SetCurrentItem(currentItem + 1)
-		}
+	if handleListNavigation(v.list, event) {
 		return nil
-	case 'k':
-		currentItem := v.list.GetCurrentItem()
-		if currentItem > 0 {
-			v.list.SetCurrentItem(currentItem - 1)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	}
+	if handleBackNavigation(v.app, event) {
 		return nil
 	}
 	return event
@@ -284,9 +250,7 @@ func (v *TeamMembersView) Refresh() error {
 }
 
 func (v *TeamMembersView) renderTable() {
-	for row := v.table.GetRowCount() - 1; row > 0; row-- {
-		v.table.RemoveRow(row)
-	}
+	clearTableRows(v.table)
 
 	for i, member := range v.members {
 		row := i + 1
@@ -309,21 +273,10 @@ func (v *TeamMembersView) renderTable() {
 
 // HandleInput handles keyboard input
 func (v *TeamMembersView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		row, col := v.table.GetSelection()
-		if row < v.table.GetRowCount()-1 {
-			v.table.Select(row+1, col)
-		}
+	if handleTableNavigation(v.table, event) {
 		return nil
-	case 'k':
-		row, col := v.table.GetSelection()
-		if row > 1 {
-			v.table.Select(row-1, col)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	}
+	if handleBackNavigation(v.app, event) {
 		return nil
 	}
 	return event
@@ -394,9 +347,7 @@ func (v *TeamInvitationsView) Refresh() error {
 }
 
 func (v *TeamInvitationsView) renderTable() {
-	for row := v.table.GetRowCount() - 1; row > 0; row-- {
-		v.table.RemoveRow(row)
-	}
+	clearTableRows(v.table)
 
 	for i, inv := range v.invitations {
 		row := i + 1
@@ -425,21 +376,10 @@ func (v *TeamInvitationsView) renderTable() {
 
 // HandleInput handles keyboard input
 func (v *TeamInvitationsView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		row, col := v.table.GetSelection()
-		if row < v.table.GetRowCount()-1 {
-			v.table.Select(row+1, col)
-		}
+	if handleTableNavigation(v.table, event) {
 		return nil
-	case 'k':
-		row, col := v.table.GetSelection()
-		if row > 1 {
-			v.table.Select(row-1, col)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	}
+	if handleBackNavigation(v.app, event) {
 		return nil
 	}
 	return event

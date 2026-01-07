@@ -88,22 +88,13 @@ func (v *DeploymentsView) Refresh() error {
 }
 
 func (v *DeploymentsView) renderTable() {
-	for row := v.table.GetRowCount() - 1; row > 0; row-- {
-		v.table.RemoveRow(row)
-	}
+	clearTableRows(v.table)
 
 	for i, d := range v.deployments {
 		row := i + 1
 
-		revision := d.Revision
-		if len(revision) > 12 {
-			revision = revision[:12]
-		}
-
-		repo := d.Repository
-		if len(repo) > 30 {
-			repo = repo[:27] + "..."
-		}
+		revision := truncateString(d.Revision, 12)
+		repo := truncateString(d.Repository, 30)
 
 		v.table.SetCell(row, 0, tview.NewTableCell(fmt.Sprintf("%d", d.ID)).SetExpansion(1))
 		v.table.SetCell(row, 1, tview.NewTableCell(d.Environment).SetExpansion(1))
@@ -120,40 +111,19 @@ func (v *DeploymentsView) renderTable() {
 
 // HandleInput handles keyboard input
 func (v *DeploymentsView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		row, col := v.table.GetSelection()
-		if row < v.table.GetRowCount()-1 {
-			v.table.Select(row+1, col)
-		}
-		return nil
-	case 'k':
-		row, col := v.table.GetSelection()
-		if row > 1 {
-			v.table.Select(row-1, col)
-		}
-		return nil
-	case 'l':
-		row, _ := v.table.GetSelection()
-		if row > 0 && row <= len(v.deployments) {
-			deployment := v.deployments[row-1]
-			v.showDetails(deployment)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	if handleTableNavigation(v.table, event) {
 		return nil
 	}
-
-	if event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyRight {
+	if handleBackNavigation(v.app, event) {
+		return nil
+	}
+	if isSelectKey(event) {
 		row, _ := v.table.GetSelection()
 		if row > 0 && row <= len(v.deployments) {
-			deployment := v.deployments[row-1]
-			v.showDetails(deployment)
+			v.showDetails(v.deployments[row-1])
 		}
 		return nil
 	}
-
 	return event
 }
 
@@ -233,9 +203,7 @@ func (v *DeploymentDetailsView) renderDetails() {
 
 // HandleInput handles keyboard input
 func (v *DeploymentDetailsView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'h':
-		v.app.Pop()
+	if handleBackNavigation(v.app, event) {
 		return nil
 	}
 	return event

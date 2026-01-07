@@ -85,9 +85,7 @@ func (v *CheckinsView) Refresh() error {
 }
 
 func (v *CheckinsView) renderTable() {
-	for row := v.table.GetRowCount() - 1; row > 0; row-- {
-		v.table.RemoveRow(row)
-	}
+	clearTableRows(v.table)
 
 	for i, ci := range v.checkins {
 		row := i + 1
@@ -121,40 +119,19 @@ func (v *CheckinsView) renderTable() {
 
 // HandleInput handles keyboard input
 func (v *CheckinsView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		row, col := v.table.GetSelection()
-		if row < v.table.GetRowCount()-1 {
-			v.table.Select(row+1, col)
-		}
-		return nil
-	case 'k':
-		row, col := v.table.GetSelection()
-		if row > 1 {
-			v.table.Select(row-1, col)
-		}
-		return nil
-	case 'l':
-		row, _ := v.table.GetSelection()
-		if row > 0 && row <= len(v.checkins) {
-			checkin := v.checkins[row-1]
-			v.showDetails(checkin)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	if handleTableNavigation(v.table, event) {
 		return nil
 	}
-
-	if event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyRight {
+	if handleBackNavigation(v.app, event) {
+		return nil
+	}
+	if isSelectKey(event) {
 		row, _ := v.table.GetSelection()
 		if row > 0 && row <= len(v.checkins) {
-			checkin := v.checkins[row-1]
-			v.showDetails(checkin)
+			v.showDetails(v.checkins[row-1])
 		}
 		return nil
 	}
-
 	return event
 }
 
@@ -250,9 +227,7 @@ func (v *CheckinDetailsView) renderDetails() {
 
 // HandleInput handles keyboard input
 func (v *CheckinDetailsView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'h':
-		v.app.Pop()
+	if handleBackNavigation(v.app, event) {
 		return nil
 	}
 	return event

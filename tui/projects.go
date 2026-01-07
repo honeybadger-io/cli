@@ -49,8 +49,7 @@ func (v *ProjectsView) setupTable() {
 
 	v.table.SetSelectedFunc(func(row, col int) {
 		if row > 0 && row <= len(v.projects) {
-			project := v.projects[row-1]
-			v.drillDown(project)
+			v.drillDown(v.projects[row-1])
 		}
 	})
 }
@@ -85,9 +84,7 @@ func (v *ProjectsView) Refresh() error {
 }
 
 func (v *ProjectsView) renderTable() {
-	for row := v.table.GetRowCount() - 1; row > 0; row-- {
-		v.table.RemoveRow(row)
-	}
+	clearTableRows(v.table)
 
 	for i, project := range v.projects {
 		row := i + 1
@@ -117,40 +114,19 @@ func (v *ProjectsView) renderTable() {
 
 // HandleInput handles keyboard input
 func (v *ProjectsView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		row, col := v.table.GetSelection()
-		if row < v.table.GetRowCount()-1 {
-			v.table.Select(row+1, col)
-		}
-		return nil
-	case 'k':
-		row, col := v.table.GetSelection()
-		if row > 1 {
-			v.table.Select(row-1, col)
-		}
-		return nil
-	case 'l':
-		row, _ := v.table.GetSelection()
-		if row > 0 && row <= len(v.projects) {
-			project := v.projects[row-1]
-			v.drillDown(project)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	if handleTableNavigation(v.table, event) {
 		return nil
 	}
-
-	if event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyRight {
+	if handleBackNavigation(v.app, event) {
+		return nil
+	}
+	if isSelectKey(event) {
 		row, _ := v.table.GetSelection()
 		if row > 0 && row <= len(v.projects) {
-			project := v.projects[row-1]
-			v.drillDown(project)
+			v.drillDown(v.projects[row-1])
 		}
 		return nil
 	}
-
 	return event
 }
 
@@ -222,21 +198,10 @@ func (v *ProjectMenuView) Refresh() error {
 
 // HandleInput handles keyboard input
 func (v *ProjectMenuView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		currentItem := v.list.GetCurrentItem()
-		if currentItem < v.list.GetItemCount()-1 {
-			v.list.SetCurrentItem(currentItem + 1)
-		}
+	if handleListNavigation(v.list, event) {
 		return nil
-	case 'k':
-		currentItem := v.list.GetCurrentItem()
-		if currentItem > 0 {
-			v.list.SetCurrentItem(currentItem - 1)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	}
+	if handleBackNavigation(v.app, event) {
 		return nil
 	}
 	return event
@@ -307,9 +272,7 @@ func (v *IntegrationsView) Refresh() error {
 }
 
 func (v *IntegrationsView) renderTable() {
-	for row := v.table.GetRowCount() - 1; row > 0; row-- {
-		v.table.RemoveRow(row)
-	}
+	clearTableRows(v.table)
 
 	for i, integration := range v.integrations {
 		row := i + 1
@@ -337,21 +300,10 @@ func (v *IntegrationsView) renderTable() {
 
 // HandleInput handles keyboard input
 func (v *IntegrationsView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		row, col := v.table.GetSelection()
-		if row < v.table.GetRowCount()-1 {
-			v.table.Select(row+1, col)
-		}
+	if handleTableNavigation(v.table, event) {
 		return nil
-	case 'k':
-		row, col := v.table.GetSelection()
-		if row > 1 {
-			v.table.Select(row-1, col)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	}
+	if handleBackNavigation(v.app, event) {
 		return nil
 	}
 	return event

@@ -20,6 +20,7 @@ type App struct {
 	mainFlex  *tview.Flex
 	navStack  []View
 	ctx       context.Context
+	cancel    context.CancelFunc
 }
 
 // View interface for all views in the TUI
@@ -32,12 +33,14 @@ type View interface {
 
 // NewApp creates a new TUI application
 func NewApp(client *hbapi.Client) *App {
+	ctx, cancel := context.WithCancel(context.Background())
 	a := &App{
 		app:      tview.NewApplication(),
 		client:   client,
 		pages:    tview.NewPages(),
 		navStack: make([]View, 0),
-		ctx:      context.Background(),
+		ctx:      ctx,
+		cancel:   cancel,
 	}
 
 	a.setupLayout()
@@ -121,14 +124,34 @@ func (a *App) Push(view View) {
 	a.pages.SwitchToPage(pageName)
 	a.updateHeader()
 
-	// Refresh the view to load data
+	// Refresh the view to load data in a goroutine with cancellation support
 	go func() {
-		if err := view.Refresh(); err != nil {
-			a.app.QueueUpdateDraw(func() {
-				a.ShowError(err)
-			})
+		// Check if context is cancelled before starting
+		select {
+		case <-a.ctx.Done():
+			return
+		default:
 		}
-		a.app.Draw()
+
+		if err := view.Refresh(); err != nil {
+			// Check if context is cancelled before showing error
+			select {
+			case <-a.ctx.Done():
+				return
+			default:
+				a.app.QueueUpdateDraw(func() {
+					a.ShowError(err)
+				})
+			}
+		}
+
+		// Check if context is cancelled before drawing
+		select {
+		case <-a.ctx.Done():
+			return
+		default:
+			a.app.Draw()
+		}
 	}()
 }
 
@@ -203,6 +226,9 @@ Press any key to close this help.`
 
 // Run starts the TUI application
 func (a *App) Run() error {
+	// Ensure context is cancelled when the app stops
+	defer a.cancel()
+
 	// Start with accounts view
 	accountsView := NewAccountsView(a)
 	a.Push(accountsView)

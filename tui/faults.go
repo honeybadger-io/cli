@@ -88,17 +88,12 @@ func (v *FaultsView) Refresh() error {
 }
 
 func (v *FaultsView) renderTable() {
-	for row := v.table.GetRowCount() - 1; row > 0; row-- {
-		v.table.RemoveRow(row)
-	}
+	clearTableRows(v.table)
 
 	for i, fault := range v.faults {
 		row := i + 1
 
-		message := fault.Message
-		if len(message) > 40 {
-			message = message[:37] + "..."
-		}
+		message := truncateString(fault.Message, 40)
 
 		status := "Active"
 		statusColor := tcell.ColorRed
@@ -131,40 +126,19 @@ func (v *FaultsView) renderTable() {
 
 // HandleInput handles keyboard input
 func (v *FaultsView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		row, col := v.table.GetSelection()
-		if row < v.table.GetRowCount()-1 {
-			v.table.Select(row+1, col)
-		}
-		return nil
-	case 'k':
-		row, col := v.table.GetSelection()
-		if row > 1 {
-			v.table.Select(row-1, col)
-		}
-		return nil
-	case 'l':
-		row, _ := v.table.GetSelection()
-		if row > 0 && row <= len(v.faults) {
-			fault := v.faults[row-1]
-			v.drillDown(fault)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	if handleTableNavigation(v.table, event) {
 		return nil
 	}
-
-	if event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyRight {
+	if handleBackNavigation(v.app, event) {
+		return nil
+	}
+	if isSelectKey(event) {
 		row, _ := v.table.GetSelection()
 		if row > 0 && row <= len(v.faults) {
-			fault := v.faults[row-1]
-			v.drillDown(fault)
+			v.drillDown(v.faults[row-1])
 		}
 		return nil
 	}
-
 	return event
 }
 
@@ -189,10 +163,7 @@ func NewFaultMenuView(app *App, projectID int, fault hbapi.Fault) *FaultMenuView
 }
 
 func (v *FaultMenuView) setupList() {
-	title := v.fault.Klass
-	if len(title) > 50 {
-		title = title[:47] + "..."
-	}
+	title := truncateString(v.fault.Klass, 50)
 	v.list.SetTitle(fmt.Sprintf(" %s ", title)).
 		SetBorder(true).
 		SetBorderColor(tcell.ColorDarkCyan)
@@ -217,11 +188,7 @@ func (v *FaultMenuView) setupList() {
 
 // Name returns the view name
 func (v *FaultMenuView) Name() string {
-	name := v.fault.Klass
-	if len(name) > 30 {
-		name = name[:27] + "..."
-	}
-	return name
+	return truncateString(v.fault.Klass, 30)
 }
 
 // Render returns the view's primitive
@@ -236,21 +203,10 @@ func (v *FaultMenuView) Refresh() error {
 
 // HandleInput handles keyboard input
 func (v *FaultMenuView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		currentItem := v.list.GetCurrentItem()
-		if currentItem < v.list.GetItemCount()-1 {
-			v.list.SetCurrentItem(currentItem + 1)
-		}
+	if handleListNavigation(v.list, event) {
 		return nil
-	case 'k':
-		currentItem := v.list.GetCurrentItem()
-		if currentItem > 0 {
-			v.list.SetCurrentItem(currentItem - 1)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	}
+	if handleBackNavigation(v.app, event) {
 		return nil
 	}
 	return event
@@ -366,9 +322,7 @@ func (v *FaultDetailsView) renderDetails() {
 
 // HandleInput handles keyboard input
 func (v *FaultDetailsView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'h':
-		v.app.Pop()
+	if handleBackNavigation(v.app, event) {
 		return nil
 	}
 	return event
@@ -443,22 +397,13 @@ func (v *NoticesView) Refresh() error {
 }
 
 func (v *NoticesView) renderTable() {
-	for row := v.table.GetRowCount() - 1; row > 0; row-- {
-		v.table.RemoveRow(row)
-	}
+	clearTableRows(v.table)
 
 	for i, notice := range v.notices {
 		row := i + 1
 
-		message := notice.Message
-		if len(message) > 50 {
-			message = message[:47] + "..."
-		}
-
-		id := notice.ID
-		if len(id) > 12 {
-			id = id[:12] + "..."
-		}
+		message := truncateString(notice.Message, 50)
+		id := truncateString(notice.ID, 15)
 
 		v.table.SetCell(row, 0, tview.NewTableCell(id).SetExpansion(1))
 		v.table.SetCell(row, 1, tview.NewTableCell(message).SetExpansion(3))
@@ -474,21 +419,10 @@ func (v *NoticesView) renderTable() {
 
 // HandleInput handles keyboard input
 func (v *NoticesView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		row, col := v.table.GetSelection()
-		if row < v.table.GetRowCount()-1 {
-			v.table.Select(row+1, col)
-		}
+	if handleTableNavigation(v.table, event) {
 		return nil
-	case 'k':
-		row, col := v.table.GetSelection()
-		if row > 1 {
-			v.table.Select(row-1, col)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	}
+	if handleBackNavigation(v.app, event) {
 		return nil
 	}
 	return event
@@ -561,9 +495,7 @@ func (v *AffectedUsersView) Refresh() error {
 }
 
 func (v *AffectedUsersView) renderTable() {
-	for row := v.table.GetRowCount() - 1; row > 0; row-- {
-		v.table.RemoveRow(row)
-	}
+	clearTableRows(v.table)
 
 	for i, user := range v.users {
 		row := i + 1
@@ -578,21 +510,10 @@ func (v *AffectedUsersView) renderTable() {
 
 // HandleInput handles keyboard input
 func (v *AffectedUsersView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		row, col := v.table.GetSelection()
-		if row < v.table.GetRowCount()-1 {
-			v.table.Select(row+1, col)
-		}
+	if handleTableNavigation(v.table, event) {
 		return nil
-	case 'k':
-		row, col := v.table.GetSelection()
-		if row > 1 {
-			v.table.Select(row-1, col)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	}
+	if handleBackNavigation(v.app, event) {
 		return nil
 	}
 	return event

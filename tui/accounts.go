@@ -86,10 +86,7 @@ func (v *AccountsView) Refresh() error {
 }
 
 func (v *AccountsView) renderTable() {
-	// Clear existing rows (keep header)
-	for row := v.table.GetRowCount() - 1; row > 0; row-- {
-		v.table.RemoveRow(row)
-	}
+	clearTableRows(v.table)
 
 	// Add data rows
 	for i, account := range v.accounts {
@@ -114,33 +111,14 @@ func (v *AccountsView) renderTable() {
 
 // HandleInput handles keyboard input
 func (v *AccountsView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		row, col := v.table.GetSelection()
-		if row < v.table.GetRowCount()-1 {
-			v.table.Select(row+1, col)
-		}
-		return nil
-	case 'k':
-		row, col := v.table.GetSelection()
-		if row > 1 {
-			v.table.Select(row-1, col)
-		}
-		return nil
-	case 'l':
-		row, _ := v.table.GetSelection()
-		if row > 0 && row <= len(v.accounts) {
-			account := v.accounts[row-1]
-			v.drillDown(account)
-		}
+	if handleTableNavigation(v.table, event) {
 		return nil
 	}
 
-	if event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyRight {
+	if isSelectKey(event) {
 		row, _ := v.table.GetSelection()
 		if row > 0 && row <= len(v.accounts) {
-			account := v.accounts[row-1]
-			v.drillDown(account)
+			v.drillDown(v.accounts[row-1])
 		}
 		return nil
 	}
@@ -211,21 +189,10 @@ func (v *AccountMenuView) Refresh() error {
 
 // HandleInput handles keyboard input
 func (v *AccountMenuView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		currentItem := v.list.GetCurrentItem()
-		if currentItem < v.list.GetItemCount()-1 {
-			v.list.SetCurrentItem(currentItem + 1)
-		}
+	if handleListNavigation(v.list, event) {
 		return nil
-	case 'k':
-		currentItem := v.list.GetCurrentItem()
-		if currentItem > 0 {
-			v.list.SetCurrentItem(currentItem - 1)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	}
+	if handleBackNavigation(v.app, event) {
 		return nil
 	}
 	return event
@@ -296,9 +263,7 @@ func (v *AccountUsersView) Refresh() error {
 }
 
 func (v *AccountUsersView) renderTable() {
-	for row := v.table.GetRowCount() - 1; row > 0; row-- {
-		v.table.RemoveRow(row)
-	}
+	clearTableRows(v.table)
 
 	for i, user := range v.users {
 		row := i + 1
@@ -315,21 +280,10 @@ func (v *AccountUsersView) renderTable() {
 
 // HandleInput handles keyboard input
 func (v *AccountUsersView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		row, col := v.table.GetSelection()
-		if row < v.table.GetRowCount()-1 {
-			v.table.Select(row+1, col)
-		}
+	if handleTableNavigation(v.table, event) {
 		return nil
-	case 'k':
-		row, col := v.table.GetSelection()
-		if row > 1 {
-			v.table.Select(row-1, col)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	}
+	if handleBackNavigation(v.app, event) {
 		return nil
 	}
 	return event
@@ -400,9 +354,7 @@ func (v *AccountInvitationsView) Refresh() error {
 }
 
 func (v *AccountInvitationsView) renderTable() {
-	for row := v.table.GetRowCount() - 1; row > 0; row-- {
-		v.table.RemoveRow(row)
-	}
+	clearTableRows(v.table)
 
 	for i, inv := range v.invitations {
 		row := i + 1
@@ -425,21 +377,10 @@ func (v *AccountInvitationsView) renderTable() {
 
 // HandleInput handles keyboard input
 func (v *AccountInvitationsView) HandleInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case 'j':
-		row, col := v.table.GetSelection()
-		if row < v.table.GetRowCount()-1 {
-			v.table.Select(row+1, col)
-		}
+	if handleTableNavigation(v.table, event) {
 		return nil
-	case 'k':
-		row, col := v.table.GetSelection()
-		if row > 1 {
-			v.table.Select(row-1, col)
-		}
-		return nil
-	case 'h':
-		v.app.Pop()
+	}
+	if handleBackNavigation(v.app, event) {
 		return nil
 	}
 	return event
