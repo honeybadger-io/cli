@@ -88,3 +88,12 @@ func isSelectKey(event *tcell.EventKey) bool {
 		event.Key() == tcell.KeyRight ||
 		event.Rune() == 'l'
 }
+
+// showEmptyState adds a "No results" message to an empty table
+func showEmptyState(table *tview.Table, message string) {
+	cell := tview.NewTableCell(message).
+		SetTextColor(tcell.ColorGray).
+		SetSelectable(false).
+		SetExpansion(1)
+	table.SetCell(1, 0, cell)
+}

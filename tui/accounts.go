@@ -88,6 +88,11 @@ func (v *AccountsView) Refresh() error {
 func (v *AccountsView) renderTable() {
 	clearTableRows(v.table)
 
+	if len(v.accounts) == 0 {
+		showEmptyState(v.table, "No accounts found")
+		return
+	}
+
 	// Add data rows
 	for i, account := range v.accounts {
 		row := i + 1
@@ -103,10 +108,7 @@ func (v *AccountsView) renderTable() {
 		v.table.SetCell(row, 3, tview.NewTableCell(active).SetExpansion(1))
 	}
 
-	// Select first data row if available
-	if len(v.accounts) > 0 {
-		v.table.Select(1, 0)
-	}
+	v.table.Select(1, 0)
 }
 
 // HandleInput handles keyboard input
@@ -265,6 +267,11 @@ func (v *AccountUsersView) Refresh() error {
 func (v *AccountUsersView) renderTable() {
 	clearTableRows(v.table)
 
+	if len(v.users) == 0 {
+		showEmptyState(v.table, "No users found")
+		return
+	}
+
 	for i, user := range v.users {
 		row := i + 1
 		v.table.SetCell(row, 0, tview.NewTableCell(fmt.Sprintf("%d", user.ID)).SetExpansion(1))
@@ -273,9 +280,7 @@ func (v *AccountUsersView) renderTable() {
 		v.table.SetCell(row, 3, tview.NewTableCell(user.Role).SetExpansion(1))
 	}
 
-	if len(v.users) > 0 {
-		v.table.Select(1, 0)
-	}
+	v.table.Select(1, 0)
 }
 
 // HandleInput handles keyboard input
@@ -356,6 +361,11 @@ func (v *AccountInvitationsView) Refresh() error {
 func (v *AccountInvitationsView) renderTable() {
 	clearTableRows(v.table)
 
+	if len(v.invitations) == 0 {
+		showEmptyState(v.table, "No invitations found")
+		return
+	}
+
 	for i, inv := range v.invitations {
 		row := i + 1
 		accepted := "No"
@@ -370,9 +380,7 @@ func (v *AccountInvitationsView) renderTable() {
 		v.table.SetCell(row, 4, tview.NewTableCell(accepted).SetExpansion(1))
 	}
 
-	if len(v.invitations) > 0 {
-		v.table.Select(1, 0)
-	}
+	v.table.Select(1, 0)
 }
 
 // HandleInput handles keyboard input

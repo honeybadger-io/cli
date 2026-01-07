@@ -94,9 +94,7 @@ func (v *TeamsView) renderTable() {
 		v.table.SetCell(row, 2, tview.NewTableCell(team.CreatedAt.Format("2006-01-02 15:04")).SetExpansion(2))
 	}
 
-	if len(v.teams) > 0 {
-		v.table.Select(1, 0)
-	}
+	v.table.Select(1, 0)
 }
 
 // HandleInput handles keyboard input
@@ -246,6 +244,11 @@ func (v *TeamMembersView) Refresh() error {
 func (v *TeamMembersView) renderTable() {
 	clearTableRows(v.table)
 
+	if len(v.members) == 0 {
+		showEmptyState(v.table, "No team members found")
+		return
+	}
+
 	for i, member := range v.members {
 		row := i + 1
 
@@ -260,9 +263,7 @@ func (v *TeamMembersView) renderTable() {
 		v.table.SetCell(row, 3, tview.NewTableCell(admin).SetExpansion(1))
 	}
 
-	if len(v.members) > 0 {
-		v.table.Select(1, 0)
-	}
+	v.table.Select(1, 0)
 }
 
 // HandleInput handles keyboard input
@@ -343,6 +344,11 @@ func (v *TeamInvitationsView) Refresh() error {
 func (v *TeamInvitationsView) renderTable() {
 	clearTableRows(v.table)
 
+	if len(v.invitations) == 0 {
+		showEmptyState(v.table, "No invitations found")
+		return
+	}
+
 	for i, inv := range v.invitations {
 		row := i + 1
 
@@ -363,9 +369,7 @@ func (v *TeamInvitationsView) renderTable() {
 		v.table.SetCell(row, 4, tview.NewTableCell(accepted).SetExpansion(1))
 	}
 
-	if len(v.invitations) > 0 {
-		v.table.Select(1, 0)
-	}
+	v.table.Select(1, 0)
 }
 
 // HandleInput handles keyboard input

@@ -87,6 +87,11 @@ func (v *CheckinsView) Refresh() error {
 func (v *CheckinsView) renderTable() {
 	clearTableRows(v.table)
 
+	if len(v.checkins) == 0 {
+		showEmptyState(v.table, "No check-ins found")
+		return
+	}
+
 	for i, ci := range v.checkins {
 		row := i + 1
 
@@ -112,9 +117,7 @@ func (v *CheckinsView) renderTable() {
 		v.table.SetCell(row, 5, tview.NewTableCell(lastCheckIn).SetTextColor(lastCheckInColor).SetExpansion(2))
 	}
 
-	if len(v.checkins) > 0 {
-		v.table.Select(1, 0)
-	}
+	v.table.Select(1, 0)
 }
 
 // HandleInput handles keyboard input

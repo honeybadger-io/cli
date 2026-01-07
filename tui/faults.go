@@ -90,6 +90,11 @@ func (v *FaultsView) Refresh() error {
 func (v *FaultsView) renderTable() {
 	clearTableRows(v.table)
 
+	if len(v.faults) == 0 {
+		showEmptyState(v.table, "No faults found")
+		return
+	}
+
 	for i, fault := range v.faults {
 		row := i + 1
 
@@ -119,9 +124,7 @@ func (v *FaultsView) renderTable() {
 		v.table.SetCell(row, 6, tview.NewTableCell(lastSeen).SetExpansion(2))
 	}
 
-	if len(v.faults) > 0 {
-		v.table.Select(1, 0)
-	}
+	v.table.Select(1, 0)
 }
 
 // HandleInput handles keyboard input
@@ -399,6 +402,11 @@ func (v *NoticesView) Refresh() error {
 func (v *NoticesView) renderTable() {
 	clearTableRows(v.table)
 
+	if len(v.notices) == 0 {
+		showEmptyState(v.table, "No notices found")
+		return
+	}
+
 	for i, notice := range v.notices {
 		row := i + 1
 
@@ -412,9 +420,7 @@ func (v *NoticesView) renderTable() {
 		v.table.SetCell(row, 4, tview.NewTableCell(notice.CreatedAt.Format("2006-01-02 15:04")).SetExpansion(2))
 	}
 
-	if len(v.notices) > 0 {
-		v.table.Select(1, 0)
-	}
+	v.table.Select(1, 0)
 }
 
 // HandleInput handles keyboard input
@@ -497,15 +503,18 @@ func (v *AffectedUsersView) Refresh() error {
 func (v *AffectedUsersView) renderTable() {
 	clearTableRows(v.table)
 
+	if len(v.users) == 0 {
+		showEmptyState(v.table, "No affected users found")
+		return
+	}
+
 	for i, user := range v.users {
 		row := i + 1
 		v.table.SetCell(row, 0, tview.NewTableCell(user.User).SetExpansion(3))
 		v.table.SetCell(row, 1, tview.NewTableCell(fmt.Sprintf("%d", user.Count)).SetExpansion(1))
 	}
 
-	if len(v.users) > 0 {
-		v.table.Select(1, 0)
-	}
+	v.table.Select(1, 0)
 }
 
 // HandleInput handles keyboard input

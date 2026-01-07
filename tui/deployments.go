@@ -90,6 +90,11 @@ func (v *DeploymentsView) Refresh() error {
 func (v *DeploymentsView) renderTable() {
 	clearTableRows(v.table)
 
+	if len(v.deployments) == 0 {
+		showEmptyState(v.table, "No deployments found")
+		return
+	}
+
 	for i, d := range v.deployments {
 		row := i + 1
 
@@ -104,9 +109,7 @@ func (v *DeploymentsView) renderTable() {
 		v.table.SetCell(row, 5, tview.NewTableCell(d.CreatedAt.Format("2006-01-02 15:04")).SetExpansion(2))
 	}
 
-	if len(v.deployments) > 0 {
-		v.table.Select(1, 0)
-	}
+	v.table.Select(1, 0)
 }
 
 // HandleInput handles keyboard input

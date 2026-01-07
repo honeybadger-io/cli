@@ -87,6 +87,11 @@ func (v *UptimeSitesView) Refresh() error {
 func (v *UptimeSitesView) renderTable() {
 	clearTableRows(v.table)
 
+	if len(v.sites) == 0 {
+		showEmptyState(v.table, "No uptime sites found")
+		return
+	}
+
 	for i, site := range v.sites {
 		row := i + 1
 
@@ -110,9 +115,7 @@ func (v *UptimeSitesView) renderTable() {
 		v.table.SetCell(row, 5, tview.NewTableCell(fmt.Sprintf("%dm", site.Frequency)).SetExpansion(1))
 	}
 
-	if len(v.sites) > 0 {
-		v.table.Select(1, 0)
-	}
+	v.table.Select(1, 0)
 }
 
 // HandleInput handles keyboard input
@@ -375,6 +378,11 @@ func (v *OutagesView) Refresh() error {
 func (v *OutagesView) renderTable() {
 	clearTableRows(v.table)
 
+	if len(v.outages) == 0 {
+		showEmptyState(v.table, "No outages found")
+		return
+	}
+
 	for i, outage := range v.outages {
 		row := i + 1
 
@@ -391,9 +399,7 @@ func (v *OutagesView) renderTable() {
 		v.table.SetCell(row, 3, tview.NewTableCell(reason).SetExpansion(3))
 	}
 
-	if len(v.outages) > 0 {
-		v.table.Select(1, 0)
-	}
+	v.table.Select(1, 0)
 }
 
 // HandleInput handles keyboard input
@@ -478,6 +484,11 @@ func (v *UptimeChecksView) Refresh() error {
 func (v *UptimeChecksView) renderTable() {
 	clearTableRows(v.table)
 
+	if len(v.checks) == 0 {
+		showEmptyState(v.table, "No uptime checks found")
+		return
+	}
+
 	for i, check := range v.checks {
 		row := i + 1
 
@@ -494,9 +505,7 @@ func (v *UptimeChecksView) renderTable() {
 		v.table.SetCell(row, 3, tview.NewTableCell(fmt.Sprintf("%dms", check.Duration)).SetExpansion(1))
 	}
 
-	if len(v.checks) > 0 {
-		v.table.Select(1, 0)
-	}
+	v.table.Select(1, 0)
 }
 
 // HandleInput handles keyboard input

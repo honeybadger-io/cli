@@ -86,6 +86,11 @@ func (v *ProjectsView) Refresh() error {
 func (v *ProjectsView) renderTable() {
 	clearTableRows(v.table)
 
+	if len(v.projects) == 0 {
+		showEmptyState(v.table, "No projects found")
+		return
+	}
+
 	for i, project := range v.projects {
 		row := i + 1
 
@@ -107,9 +112,7 @@ func (v *ProjectsView) renderTable() {
 		v.table.SetCell(row, 4, unresolvedCell)
 	}
 
-	if len(v.projects) > 0 {
-		v.table.Select(1, 0)
-	}
+	v.table.Select(1, 0)
 }
 
 // HandleInput handles keyboard input
@@ -274,6 +277,11 @@ func (v *IntegrationsView) Refresh() error {
 func (v *IntegrationsView) renderTable() {
 	clearTableRows(v.table)
 
+	if len(v.integrations) == 0 {
+		showEmptyState(v.table, "No integrations found")
+		return
+	}
+
 	for i, integration := range v.integrations {
 		row := i + 1
 
@@ -287,15 +295,17 @@ func (v *IntegrationsView) renderTable() {
 			events = fmt.Sprintf("%v", integration.Events)
 		}
 
-		v.table.SetCell(row, 0, tview.NewTableCell(fmt.Sprintf("%d", integration.ID)).SetExpansion(1))
+		v.table.SetCell(
+			row,
+			0,
+			tview.NewTableCell(fmt.Sprintf("%d", integration.ID)).SetExpansion(1),
+		)
 		v.table.SetCell(row, 1, tview.NewTableCell(integration.Type).SetExpansion(2))
 		v.table.SetCell(row, 2, tview.NewTableCell(active).SetExpansion(1))
 		v.table.SetCell(row, 3, tview.NewTableCell(events).SetExpansion(3))
 	}
 
-	if len(v.integrations) > 0 {
-		v.table.Select(1, 0)
-	}
+	v.table.Select(1, 0)
 }
 
 // HandleInput handles keyboard input
