@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	statuspagesAccountID    int
-	statuspageID            int
+	statuspagesAccountID    string
+	statuspageID            string
 	statuspagesOutputFormat string
 	statuspageCLIInputJSON  string
 )
@@ -33,7 +33,7 @@ var statuspagesListCmd = &cobra.Command{
 	Short: "List status pages for an account",
 	Long:  `List all status pages configured for a specific account.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if statuspagesAccountID == 0 {
+		if statuspagesAccountID == "" {
 			return fmt.Errorf("account ID is required. Set it using --account-id flag")
 		}
 
@@ -67,7 +67,7 @@ var statuspagesListCmd = &cobra.Command{
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 			_, _ = fmt.Fprintln(w, "ID\tNAME\tURL\tSITES\tCHECK-INS")
 			for _, sp := range statusPages {
-				_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%d\t%d\n",
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d\n",
 					sp.ID,
 					sp.Name,
 					sp.URL,
@@ -87,10 +87,10 @@ var statuspagesGetCmd = &cobra.Command{
 	Short: "Get a status page by ID",
 	Long:  `Get detailed information about a specific status page.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if statuspagesAccountID == 0 {
+		if statuspagesAccountID == "" {
 			return fmt.Errorf("account ID is required. Set it using --account-id flag")
 		}
-		if statuspageID == 0 {
+		if statuspageID == "" {
 			return fmt.Errorf("status page ID is required. Set it using --id flag")
 		}
 
@@ -122,10 +122,10 @@ var statuspagesGetCmd = &cobra.Command{
 			fmt.Println(string(jsonBytes))
 		default:
 			fmt.Printf("Status Page Details:\n")
-			fmt.Printf("  ID: %d\n", statusPage.ID)
+			fmt.Printf("  ID: %s\n", statusPage.ID)
 			fmt.Printf("  Name: %s\n", statusPage.Name)
 			fmt.Printf("  URL: %s\n", statusPage.URL)
-			fmt.Printf("  Account ID: %d\n", statusPage.AccountID)
+			fmt.Printf("  Account ID: %s\n", statusPage.AccountID)
 			if statusPage.Domain != nil {
 				fmt.Printf("  Domain: %s\n", *statusPage.Domain)
 			}
@@ -167,7 +167,7 @@ Example JSON payload:
   }
 }`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if statuspagesAccountID == 0 {
+		if statuspagesAccountID == "" {
 			return fmt.Errorf("account ID is required. Set it using --account-id flag")
 		}
 		if statuspageCLIInputJSON == "" {
@@ -214,7 +214,7 @@ Example JSON payload:
 			fmt.Println(string(jsonBytes))
 		default:
 			fmt.Printf("Status page created successfully!\n")
-			fmt.Printf("  ID: %d\n", statusPage.ID)
+			fmt.Printf("  ID: %s\n", statusPage.ID)
 			fmt.Printf("  Name: %s\n", statusPage.Name)
 			fmt.Printf("  URL: %s\n", statusPage.URL)
 		}
@@ -239,10 +239,10 @@ Example JSON payload:
   }
 }`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if statuspagesAccountID == 0 {
+		if statuspagesAccountID == "" {
 			return fmt.Errorf("account ID is required. Set it using --account-id flag")
 		}
-		if statuspageID == 0 {
+		if statuspageID == "" {
 			return fmt.Errorf("status page ID is required. Set it using --id flag")
 		}
 		if statuspageCLIInputJSON == "" {
@@ -291,10 +291,10 @@ var statuspagesDeleteCmd = &cobra.Command{
 	Short: "Delete a status page",
 	Long:  `Delete a status page by ID. This action cannot be undone.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if statuspagesAccountID == 0 {
+		if statuspagesAccountID == "" {
 			return fmt.Errorf("account ID is required. Set it using --account-id flag")
 		}
-		if statuspageID == 0 {
+		if statuspageID == "" {
 			return fmt.Errorf("status page ID is required. Set it using --id flag")
 		}
 
@@ -331,14 +331,15 @@ func init() {
 	statuspagesCmd.AddCommand(statuspagesDeleteCmd)
 
 	// Common flags
-	statuspagesCmd.PersistentFlags().IntVar(&statuspagesAccountID, "account-id", 0, "Account ID")
+	statuspagesCmd.PersistentFlags().
+		StringVar(&statuspagesAccountID, "account-id", "", "Account ID")
 
 	// Flags for list command
 	statuspagesListCmd.Flags().
 		StringVarP(&statuspagesOutputFormat, "output", "o", "table", "Output format (table or json)")
 
 	// Flags for get command
-	statuspagesGetCmd.Flags().IntVar(&statuspageID, "id", 0, "Status page ID")
+	statuspagesGetCmd.Flags().StringVar(&statuspageID, "id", "", "Status page ID")
 	statuspagesGetCmd.Flags().
 		StringVarP(&statuspagesOutputFormat, "output", "o", "text", "Output format (text or json)")
 	_ = statuspagesGetCmd.MarkFlagRequired("id")
@@ -351,13 +352,13 @@ func init() {
 	_ = statuspagesCreateCmd.MarkFlagRequired("cli-input-json")
 
 	// Flags for update command
-	statuspagesUpdateCmd.Flags().IntVar(&statuspageID, "id", 0, "Status page ID")
+	statuspagesUpdateCmd.Flags().StringVar(&statuspageID, "id", "", "Status page ID")
 	statuspagesUpdateCmd.Flags().
 		StringVar(&statuspageCLIInputJSON, "cli-input-json", "", "JSON payload (string or file://path)")
 	_ = statuspagesUpdateCmd.MarkFlagRequired("id")
 	_ = statuspagesUpdateCmd.MarkFlagRequired("cli-input-json")
 
 	// Flags for delete command
-	statuspagesDeleteCmd.Flags().IntVar(&statuspageID, "id", 0, "Status page ID")
+	statuspagesDeleteCmd.Flags().StringVar(&statuspageID, "id", "", "Status page ID")
 	_ = statuspagesDeleteCmd.MarkFlagRequired("id")
 }

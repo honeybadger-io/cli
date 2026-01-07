@@ -172,6 +172,11 @@ func (v *AccountMenuView) setupList() {
 		v.app.Push(invitationsView)
 	})
 
+	v.list.AddItem("Status Pages", "View status pages for this account", 's', func() {
+		statuspagesView := NewStatuspagesView(v.app, v.account.ID)
+		v.app.Push(statuspagesView)
+	})
+
 	v.list.SetSelectedBackgroundColor(tcell.ColorDarkCyan)
 }
 
