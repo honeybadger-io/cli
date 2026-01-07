@@ -147,17 +147,6 @@ func (a *App) Push(view View) {
 				})
 			}
 		}
-
-		// Check if context is cancelled or view is stale before drawing
-		select {
-		case <-a.ctx.Done():
-			return
-		default:
-			if !a.isCurrentView(view) {
-				return
-			}
-			a.app.Draw()
-		}
 	}()
 }
 
