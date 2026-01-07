@@ -59,7 +59,7 @@ func (a *App) setupLayout() {
 	a.footer = tview.NewTextView().
 		SetDynamicColors(true).
 		SetTextAlign(tview.AlignCenter).
-		SetText("[yellow]↑↓/jk[white] Navigate  [yellow]Enter/→[white] Select  [yellow]Esc/←[white] Back  [yellow]r[white] Refresh  [yellow]q[white] Quit  [yellow]?[white] Help")
+		SetText("[yellow]↑↓/jk[white] Navigate  [yellow]Enter/→/l[white] Select  [yellow]Esc/←/h[white] Back  [yellow]r[white] Refresh  [yellow]q[white] Quit  [yellow]?[white] Help")
 	a.footer.SetBorder(false).
 		SetBackgroundColor(tcell.ColorDarkBlue)
 
@@ -134,25 +134,39 @@ func (a *App) Push(view View) {
 		}
 
 		if err := view.Refresh(); err != nil {
-			// Check if context is cancelled before showing error
+			// Check if context is cancelled or view is stale before showing error
 			select {
 			case <-a.ctx.Done():
 				return
 			default:
+				if !a.isCurrentView(view) {
+					return
+				}
 				a.app.QueueUpdateDraw(func() {
 					a.ShowError(err)
 				})
 			}
 		}
 
-		// Check if context is cancelled before drawing
+		// Check if context is cancelled or view is stale before drawing
 		select {
 		case <-a.ctx.Done():
 			return
 		default:
+			if !a.isCurrentView(view) {
+				return
+			}
 			a.app.Draw()
 		}
 	}()
+}
+
+// isCurrentView checks if the given view is still the current (topmost) view
+func (a *App) isCurrentView(view View) bool {
+	if len(a.navStack) == 0 {
+		return false
+	}
+	return a.navStack[len(a.navStack)-1] == view
 }
 
 // Pop removes the current view from the navigation stack
@@ -207,7 +221,6 @@ func (a *App) ShowHelp() {
 
 [green]Actions:[white]
   r          Refresh current view
-  /          Search (in list views)
   ?          Show this help
 
 [green]Views:[white]
