@@ -10,6 +10,7 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 - Added support for running commands and reporting their status
 - Made API endpoint configurable
+- Added [agent command](./README.md#agent-command)
 
 ## [0.1.0] - 2024-12-09
 

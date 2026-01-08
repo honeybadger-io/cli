@@ -10,6 +10,42 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestConvertEndpointForDataAPI(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "US API endpoint converts to app",
+			input:    "https://api.honeybadger.io",
+			expected: "https://app.honeybadger.io",
+		},
+		{
+			name:     "EU API endpoint converts to app",
+			input:    "https://eu-api.honeybadger.io",
+			expected: "https://eu-app.honeybadger.io",
+		},
+		{
+			name:     "custom endpoint passes through unchanged",
+			input:    "https://custom.honeybadger.io",
+			expected: "https://custom.honeybadger.io",
+		},
+		{
+			name:     "localhost endpoint passes through unchanged",
+			input:    "http://localhost:3000",
+			expected: "http://localhost:3000",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertEndpointForDataAPI(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 func TestConfigurationLoading(t *testing.T) {
 	// Save original environment variables
 	originalAPIKey := os.Getenv("HONEYBADGER_API_KEY")
@@ -33,7 +69,7 @@ api_key: config-api-key
 endpoint: https://config.honeybadger.io
 `
 	configPath := filepath.Join(tmpDir, "honeybadger.yml")
-	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
+	if err := os.WriteFile(configPath, []byte(configContent), 0o600); err != nil {
 		t.Fatalf("Failed to write config file: %v", err)
 	}
 
