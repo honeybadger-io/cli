@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,15 +15,23 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	maxOutputSize = 8 * 1024 // 8KB max for stdout/stderr sent to API
+	httpTimeout   = 30 * time.Second
+	truncatedMsg  = "\n[output truncated]"
+)
+
 var (
-	checkInID string
-	slug      string
+	checkInID   string
+	slug        string
+	runExitCode int       // stores exit code from wrapped command
+	exitFunc    = os.Exit // injectable for testing
 )
 
 type checkInPayload struct {
 	CheckIn struct {
 		Status   string `json:"status"`
-		Duration int    `json:"duration,omitempty"`
+		Duration int64  `json:"duration,omitempty"`
 		Stdout   string `json:"stdout,omitempty"`
 		Stderr   string `json:"stderr,omitempty"`
 		ExitCode int    `json:"exit_code"`
@@ -41,17 +50,21 @@ Example:
   hb run --id check-123 -- /usr/local/bin/backup.sh
   hb run --slug daily-backup -- pg_dump -U postgres mydb > backup.sql`,
 	Args: cobra.MinimumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey := viper.GetString("api_key")
-		if apiKey == "" {
-			return fmt.Errorf("API key is required. Set it using --api-key flag or HONEYBADGER_API_KEY environment variable")
-		}
-
+	RunE: func(_ *cobra.Command, args []string) error {
 		if checkInID == "" && slug == "" {
 			return fmt.Errorf("either check-in ID (--id) or slug (--slug) is required")
 		}
 		if checkInID != "" && slug != "" {
 			return fmt.Errorf("cannot specify both check-in ID and slug")
+		}
+
+		// API key is only required when using slug
+		apiKey := viper.GetString("api_key")
+		if slug != "" && apiKey == "" {
+			return fmt.Errorf(
+				"API key is required when using --slug. " +
+					"Set it using --api-key flag or HONEYBADGER_API_KEY environment variable",
+			)
 		}
 
 		// Prepare command execution
@@ -62,30 +75,37 @@ Example:
 		}
 
 		execCmd := exec.Command(command, cmdArgs...) // nolint:gosec
+
+		// Use MultiWriter to stream output in real-time while capturing it
 		var stdout, stderr bytes.Buffer
-		execCmd.Stdout = &stdout
-		execCmd.Stderr = &stderr
+		execCmd.Stdout = io.MultiWriter(os.Stdout, &stdout)
+		execCmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
 
 		// Execute command and measure duration
 		startTime := time.Now()
-		err := execCmd.Run()
-		duration := int(time.Since(startTime).Seconds())
+		execErr := execCmd.Run()
+		durationMs := time.Since(startTime).Milliseconds()
+
+		// Determine exit code
+		runExitCode = 0
+		if execErr != nil {
+			if exitErr, ok := execErr.(*exec.ExitError); ok {
+				runExitCode = exitErr.ExitCode()
+			} else {
+				// For non-exit errors (like command not found), use -1
+				runExitCode = -1
+			}
+		}
 
 		// Prepare payload
 		payload := checkInPayload{}
-		payload.CheckIn.Duration = duration
-		payload.CheckIn.Stdout = stdout.String()
-		payload.CheckIn.Stderr = stderr.String()
-		payload.CheckIn.ExitCode = 0 // Default to 0 for success
+		payload.CheckIn.Duration = durationMs
+		payload.CheckIn.Stdout = truncateOutput(stdout.String())
+		payload.CheckIn.Stderr = truncateOutput(stderr.String())
+		payload.CheckIn.ExitCode = runExitCode
 
-		if err != nil {
+		if execErr != nil {
 			payload.CheckIn.Status = "error"
-			if exitErr, ok := err.(*exec.ExitError); ok {
-				payload.CheckIn.ExitCode = exitErr.ExitCode()
-			} else {
-				// For non-exit errors (like command not found), use -1
-				payload.CheckIn.ExitCode = -1
-			}
 		} else {
 			payload.CheckIn.Status = "success"
 		}
@@ -103,7 +123,11 @@ Example:
 			url = fmt.Sprintf("%s/v1/check_in/%s/%s", apiEndpoint, apiKey, slug)
 		}
 
-		req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
+		// Create request with timeout
+		ctx, cancel := context.WithTimeout(context.Background(), httpTimeout)
+		defer cancel()
+
+		req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonPayload))
 		if err != nil {
 			return fmt.Errorf("error creating request: %w", err)
 		}
@@ -113,7 +137,7 @@ Example:
 		// Send request
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
-			return fmt.Errorf("failed to send request: %w", err)
+			return fmt.Errorf("failed to send check-in to Honeybadger: %w", err)
 		}
 		defer resp.Body.Close() // nolint:errcheck
 
@@ -123,17 +147,27 @@ Example:
 			return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, body)
 		}
 
-		// Print command output to user's terminal
-		if stdout.Len() > 0 {
-			os.Stdout.Write(stdout.Bytes()) // nolint:errcheck,gosec
-		}
-		if stderr.Len() > 0 {
-			os.Stderr.Write(stderr.Bytes()) // nolint:errcheck,gosec
-		}
+		fmt.Fprintf(
+			os.Stderr,
+			"Check-in reported to Honeybadger (duration: %dms, status: %s)\n",
+			durationMs,
+			payload.CheckIn.Status,
+		)
 
-		fmt.Printf("\nCheck-in successfully reported to Honeybadger (duration: %ds)\n", duration)
+		// Exit with the same code as the wrapped command
+		if runExitCode != 0 {
+			exitFunc(runExitCode)
+		}
 		return nil
 	},
+}
+
+// truncateOutput truncates output to maxOutputSize if necessary
+func truncateOutput(s string) string {
+	if len(s) <= maxOutputSize {
+		return s
+	}
+	return s[:maxOutputSize-len(truncatedMsg)] + truncatedMsg
 }
 
 func init() {

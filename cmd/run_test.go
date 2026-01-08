@@ -15,13 +15,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testCheckInPayload mirrors checkInPayload but with int64 Duration for test assertions
+type testCheckInPayload struct {
+	CheckIn struct {
+		Status   string `json:"status"`
+		Duration int64  `json:"duration,omitempty"`
+		Stdout   string `json:"stdout,omitempty"`
+		Stderr   string `json:"stderr,omitempty"`
+		ExitCode int    `json:"exit_code"`
+	} `json:"check_in"`
+}
+
 func TestRunCommand(t *testing.T) {
 	// Save original values
 	originalClient := http.DefaultClient
 	originalEnvAPIKey := os.Getenv("HONEYBADGER_API_KEY")
+	originalExitFunc := exitFunc
 	defer func() {
 		// Restore original values after test
 		http.DefaultClient = originalClient
+		exitFunc = originalExitFunc
 		if err := os.Setenv("HONEYBADGER_API_KEY", originalEnvAPIKey); err != nil {
 			t.Errorf("error restoring environment variable: %v", err)
 		}
@@ -53,7 +66,7 @@ exit 0
 
 	tmpDir := t.TempDir()
 	scriptPath := filepath.Join(tmpDir, "test"+scriptExt)
-	err := os.WriteFile(scriptPath, []byte(scriptContent), 0700) // nolint:gosec
+	err := os.WriteFile(scriptPath, []byte(scriptContent), 0o700) // nolint:gosec
 	require.NoError(t, err)
 
 	// Create a failing script
@@ -70,51 +83,54 @@ echo "Hello from failing script!"
 exit 42
 `
 	}
-	err = os.WriteFile(failingScriptPath, []byte(failingScriptContent), 0700) // nolint:gosec
+	err = os.WriteFile(failingScriptPath, []byte(failingScriptContent), 0o700) // nolint:gosec
 	require.NoError(t, err)
 
 	tests := []struct {
-		name           string
-		args           []string
-		apiKey         string
-		expectedPath   string
-		expectedStatus int
-		expectedError  bool
-		validateBody   func(*testing.T, checkInPayload)
+		name             string
+		args             []string
+		apiKey           string
+		expectedPath     string
+		expectedStatus   int
+		expectedError    bool
+		expectedExitCode int
+		validateBody     func(*testing.T, testCheckInPayload)
 	}{
 		{
-			name:           "successful command execution with ID",
-			args:           []string{"--id", "check-123", scriptPath},
-			apiKey:         "test-api-key",
-			expectedPath:   "/v1/check_in/check-123",
-			expectedStatus: http.StatusOK,
-			expectedError:  false,
-			validateBody: func(t *testing.T, payload checkInPayload) {
+			name:             "successful command execution with ID",
+			args:             []string{"--id", "check-123", scriptPath},
+			apiKey:           "", // API key not required when using --id
+			expectedPath:     "/v1/check_in/check-123",
+			expectedStatus:   http.StatusOK,
+			expectedError:    false,
+			expectedExitCode: 0,
+			validateBody: func(t *testing.T, payload testCheckInPayload) {
 				assert.Equal(t, "success", payload.CheckIn.Status)
 				assert.Contains(t, payload.CheckIn.Stdout, "Hello, stdout!")
 				assert.Contains(t, payload.CheckIn.Stderr, "Error message!")
-				assert.GreaterOrEqual(t, payload.CheckIn.Duration, 0)
+				assert.GreaterOrEqual(t, payload.CheckIn.Duration, int64(0))
 				assert.Equal(t, 0, payload.CheckIn.ExitCode)
 			},
 		},
 		{
-			name:           "successful command execution with slug",
-			args:           []string{"--slug", "daily-backup", scriptPath},
-			apiKey:         "test-api-key",
-			expectedPath:   "/v1/check_in/test-api-key/daily-backup",
-			expectedStatus: http.StatusOK,
-			expectedError:  false,
-			validateBody: func(t *testing.T, payload checkInPayload) {
+			name:             "successful command execution with slug",
+			args:             []string{"--slug", "daily-backup", scriptPath},
+			apiKey:           "test-api-key",
+			expectedPath:     "/v1/check_in/test-api-key/daily-backup",
+			expectedStatus:   http.StatusOK,
+			expectedError:    false,
+			expectedExitCode: 0,
+			validateBody: func(t *testing.T, payload testCheckInPayload) {
 				assert.Equal(t, "success", payload.CheckIn.Status)
 				assert.Contains(t, payload.CheckIn.Stdout, "Hello, stdout!")
 				assert.Contains(t, payload.CheckIn.Stderr, "Error message!")
-				assert.GreaterOrEqual(t, payload.CheckIn.Duration, 0)
+				assert.GreaterOrEqual(t, payload.CheckIn.Duration, int64(0))
 				assert.Equal(t, 0, payload.CheckIn.ExitCode)
 			},
 		},
 		{
-			name:          "missing api key",
-			args:          []string{"--id", "check-123", "echo", "test"},
+			name:          "missing api key with slug",
+			args:          []string{"--slug", "daily-backup", "echo", "test"},
 			apiKey:        "",
 			expectedError: true,
 		},
@@ -131,32 +147,34 @@ exit 42
 			expectedError: true,
 		},
 		{
-			name:           "failing command with exit code",
-			args:           []string{"--id", "check-123", failingScriptPath},
-			apiKey:         "test-api-key",
-			expectedPath:   "/v1/check_in/check-123",
-			expectedStatus: http.StatusOK,
-			expectedError:  false,
-			validateBody: func(t *testing.T, payload checkInPayload) {
+			name:             "failing command with exit code",
+			args:             []string{"--id", "check-123", failingScriptPath},
+			apiKey:           "",
+			expectedPath:     "/v1/check_in/check-123",
+			expectedStatus:   http.StatusOK,
+			expectedError:    false,
+			expectedExitCode: 42,
+			validateBody: func(t *testing.T, payload testCheckInPayload) {
 				assert.Equal(t, "error", payload.CheckIn.Status)
 				assert.Contains(t, payload.CheckIn.Stdout, "Hello from failing script!")
 				assert.Empty(t, payload.CheckIn.Stderr)
-				assert.GreaterOrEqual(t, payload.CheckIn.Duration, 0)
+				assert.GreaterOrEqual(t, payload.CheckIn.Duration, int64(0))
 				assert.Equal(t, 42, payload.CheckIn.ExitCode)
 			},
 		},
 		{
-			name:           "non-existent command",
-			args:           []string{"--id", "check-123", "nonexistent-command"},
-			apiKey:         "test-api-key",
-			expectedPath:   "/v1/check_in/check-123",
-			expectedStatus: http.StatusOK,
-			expectedError:  false,
-			validateBody: func(t *testing.T, payload checkInPayload) {
+			name:             "non-existent command",
+			args:             []string{"--id", "check-123", "nonexistent-command"},
+			apiKey:           "",
+			expectedPath:     "/v1/check_in/check-123",
+			expectedStatus:   http.StatusOK,
+			expectedError:    false,
+			expectedExitCode: -1,
+			validateBody: func(t *testing.T, payload testCheckInPayload) {
 				assert.Equal(t, "error", payload.CheckIn.Status)
 				assert.Empty(t, payload.CheckIn.Stdout)
 				assert.Empty(t, payload.CheckIn.Stderr)
-				assert.GreaterOrEqual(t, payload.CheckIn.Duration, 0)
+				assert.GreaterOrEqual(t, payload.CheckIn.Duration, int64(0))
 				assert.Equal(t, -1, payload.CheckIn.ExitCode)
 			},
 		},
@@ -164,28 +182,36 @@ exit 42
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Track exit code
+			var capturedExitCode int
+			exitFunc = func(code int) {
+				capturedExitCode = code
+			}
+
 			// Create a test server
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				// Verify request
-				assert.Equal(t, "POST", r.Method)
-				assert.Equal(t, tt.expectedPath, r.URL.Path)
-				assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+			server := httptest.NewServer(
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					// Verify request
+					assert.Equal(t, "POST", r.Method)
+					assert.Equal(t, tt.expectedPath, r.URL.Path)
+					assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 
-				if tt.apiKey == "invalid-key" {
-					w.WriteHeader(http.StatusUnauthorized)
-					return
-				}
+					if tt.apiKey == "invalid-key" {
+						w.WriteHeader(http.StatusUnauthorized)
+						return
+					}
 
-				// Verify payload
-				if tt.validateBody != nil {
-					var payload checkInPayload
-					err := json.NewDecoder(r.Body).Decode(&payload)
-					assert.NoError(t, err)
-					tt.validateBody(t, payload)
-				}
+					// Verify payload
+					if tt.validateBody != nil {
+						var payload testCheckInPayload
+						err := json.NewDecoder(r.Body).Decode(&payload)
+						assert.NoError(t, err)
+						tt.validateBody(t, payload)
+					}
 
-				w.WriteHeader(tt.expectedStatus)
-			}))
+					w.WriteHeader(tt.expectedStatus)
+				}),
+			)
 			defer server.Close()
 
 			// Override the default HTTP client
@@ -215,6 +241,8 @@ exit 42
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
+				// Verify exit code propagation
+				assert.Equal(t, tt.expectedExitCode, capturedExitCode)
 			}
 		})
 	}
@@ -224,7 +252,7 @@ func TestCheckInPayloadConstruction(t *testing.T) {
 	// Create and populate payload
 	payload := checkInPayload{}
 	payload.CheckIn.Status = "success"
-	payload.CheckIn.Duration = 42
+	payload.CheckIn.Duration = 42000 // milliseconds
 	payload.CheckIn.Stdout = "standard output"
 	payload.CheckIn.Stderr = "error output"
 	payload.CheckIn.ExitCode = 0
@@ -240,8 +268,31 @@ func TestCheckInPayloadConstruction(t *testing.T) {
 
 	// Verify fields
 	assert.Equal(t, "success", decoded.CheckIn.Status)
-	assert.Equal(t, 42, decoded.CheckIn.Duration)
+	assert.Equal(t, int64(42000), decoded.CheckIn.Duration)
 	assert.Equal(t, "standard output", decoded.CheckIn.Stdout)
 	assert.Equal(t, "error output", decoded.CheckIn.Stderr)
 	assert.Equal(t, 0, decoded.CheckIn.ExitCode)
+}
+
+func TestTruncateOutput(t *testing.T) {
+	// Short string should not be truncated
+	short := "hello world"
+	assert.Equal(t, short, truncateOutput(short))
+
+	// String at exactly maxOutputSize should not be truncated
+	exactSize := make([]byte, maxOutputSize)
+	for i := range exactSize {
+		exactSize[i] = 'a'
+	}
+	assert.Equal(t, string(exactSize), truncateOutput(string(exactSize)))
+
+	// String over maxOutputSize should be truncated
+	overSize := make([]byte, maxOutputSize+1000)
+	for i := range overSize {
+		overSize[i] = 'b'
+	}
+	result := truncateOutput(string(overSize))
+	assert.Equal(t, maxOutputSize, len(result))
+	assert.True(t, len(result) <= maxOutputSize)
+	assert.Contains(t, result, "[output truncated]")
 }
