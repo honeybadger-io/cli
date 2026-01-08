@@ -241,11 +241,7 @@ func NewIntegrationsView(app *App, projectID int) *IntegrationsView {
 }
 
 func (v *IntegrationsView) setupTable() {
-	v.table.SetBorders(false).
-		SetSelectable(true, false).
-		SetSelectedStyle(tcell.StyleDefault.
-			Background(tcell.ColorDarkCyan).
-			Foreground(tcell.ColorWhite))
+	setupReadOnlyTable(v.table)
 
 	v.table.SetTitle(" Integrations ").
 		SetBorder(true).

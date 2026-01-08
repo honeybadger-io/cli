@@ -375,11 +375,7 @@ func NewNoticesView(app *App, projectID, faultID int) *NoticesView {
 }
 
 func (v *NoticesView) setupTable() {
-	v.table.SetBorders(false).
-		SetSelectable(true, false).
-		SetSelectedStyle(tcell.StyleDefault.
-			Background(tcell.ColorDarkCyan).
-			Foreground(tcell.ColorWhite))
+	setupReadOnlyTable(v.table)
 
 	v.table.SetTitle(" Notices ").
 		SetBorder(true).
@@ -488,11 +484,7 @@ func NewAffectedUsersView(app *App, projectID, faultID int) *AffectedUsersView {
 }
 
 func (v *AffectedUsersView) setupTable() {
-	v.table.SetBorders(false).
-		SetSelectable(true, false).
-		SetSelectedStyle(tcell.StyleDefault.
-			Background(tcell.ColorDarkCyan).
-			Foreground(tcell.ColorWhite))
+	setupReadOnlyTable(v.table)
 
 	v.table.SetTitle(" Affected Users ").
 		SetBorder(true).

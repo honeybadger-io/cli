@@ -341,11 +341,7 @@ func NewOutagesView(app *App, projectID int, siteID string) *OutagesView {
 }
 
 func (v *OutagesView) setupTable() {
-	v.table.SetBorders(false).
-		SetSelectable(true, false).
-		SetSelectedStyle(tcell.StyleDefault.
-			Background(tcell.ColorDarkCyan).
-			Foreground(tcell.ColorWhite))
+	setupReadOnlyTable(v.table)
 
 	v.table.SetTitle(" Outages ").
 		SetBorder(true).
@@ -461,11 +457,7 @@ func NewUptimeChecksView(app *App, projectID int, siteID string) *UptimeChecksVi
 }
 
 func (v *UptimeChecksView) setupTable() {
-	v.table.SetBorders(false).
-		SetSelectable(true, false).
-		SetSelectedStyle(tcell.StyleDefault.
-			Background(tcell.ColorDarkCyan).
-			Foreground(tcell.ColorWhite))
+	setupReadOnlyTable(v.table)
 
 	v.table.SetTitle(" Uptime Checks ").
 		SetBorder(true).

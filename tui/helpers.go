@@ -97,3 +97,13 @@ func showEmptyState(table *tview.Table, message string) {
 		SetExpansion(1)
 	table.SetCell(1, 0, cell)
 }
+
+// setupReadOnlyTable configures a table without drill-down capability.
+// Uses a dimmer highlight to indicate rows are view-only.
+func setupReadOnlyTable(table *tview.Table) {
+	table.SetBorders(false).
+		SetSelectable(true, false).
+		SetSelectedStyle(tcell.StyleDefault.
+			Background(tcell.Color236).
+			Foreground(tcell.ColorWhite))
+}

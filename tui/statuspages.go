@@ -28,11 +28,7 @@ func NewStatuspagesView(app *App, accountID string) *StatuspagesView {
 }
 
 func (v *StatuspagesView) setupTable() {
-	v.table.SetBorders(false).
-		SetSelectable(true, false).
-		SetSelectedStyle(tcell.StyleDefault.
-			Background(tcell.ColorDarkCyan).
-			Foreground(tcell.ColorWhite))
+	setupReadOnlyTable(v.table)
 
 	v.table.SetTitle(" Status Pages ").
 		SetBorder(true).

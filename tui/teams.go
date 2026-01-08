@@ -207,11 +207,7 @@ func NewTeamMembersView(app *App, teamID int) *TeamMembersView {
 }
 
 func (v *TeamMembersView) setupTable() {
-	v.table.SetBorders(false).
-		SetSelectable(true, false).
-		SetSelectedStyle(tcell.StyleDefault.
-			Background(tcell.ColorDarkCyan).
-			Foreground(tcell.ColorWhite))
+	setupReadOnlyTable(v.table)
 
 	v.table.SetTitle(" Team Members ").
 		SetBorder(true).
@@ -308,11 +304,7 @@ func NewTeamInvitationsView(app *App, teamID int) *TeamInvitationsView {
 }
 
 func (v *TeamInvitationsView) setupTable() {
-	v.table.SetBorders(false).
-		SetSelectable(true, false).
-		SetSelectedStyle(tcell.StyleDefault.
-			Background(tcell.ColorDarkCyan).
-			Foreground(tcell.ColorWhite))
+	setupReadOnlyTable(v.table)
 
 	v.table.SetTitle(" Team Invitations ").
 		SetBorder(true).

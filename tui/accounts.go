@@ -227,11 +227,7 @@ func NewAccountUsersView(app *App, accountID string) *AccountUsersView {
 }
 
 func (v *AccountUsersView) setupTable() {
-	v.table.SetBorders(false).
-		SetSelectable(true, false).
-		SetSelectedStyle(tcell.StyleDefault.
-			Background(tcell.ColorDarkCyan).
-			Foreground(tcell.ColorWhite))
+	setupReadOnlyTable(v.table)
 
 	v.table.SetTitle(" Users ").
 		SetBorder(true).
@@ -322,11 +318,7 @@ func NewAccountInvitationsView(app *App, accountID string) *AccountInvitationsVi
 }
 
 func (v *AccountInvitationsView) setupTable() {
-	v.table.SetBorders(false).
-		SetSelectable(true, false).
-		SetSelectedStyle(tcell.StyleDefault.
-			Background(tcell.ColorDarkCyan).
-			Foreground(tcell.ColorWhite))
+	setupReadOnlyTable(v.table)
 
 	v.table.SetTitle(" Invitations ").
 		SetBorder(true).
