@@ -6,7 +6,7 @@ toolchain go1.24.7
 
 require (
 	github.com/gdamore/tcell/v2 v2.13.5
-	github.com/honeybadger-io/api-go v0.1.1-0.20260107233322-df63e6dd5c98
+	github.com/honeybadger-io/api-go v0.1.1-0.20260108174510-d7fcd5c14e0d
 	github.com/rivo/tview v0.42.0
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/spf13/cobra v1.9.1

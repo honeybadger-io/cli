@@ -38,7 +38,7 @@ func (v *CheckinsView) setupTable() {
 		SetBorder(true).
 		SetBorderColor(tcell.ColorDarkCyan)
 
-	headers := []string{"ID", "NAME", "SLUG", "TYPE", "SCHEDULE", "LAST CHECK-IN"}
+	headers := []string{"ID", "NAME", "STATE", "TYPE", "SCHEDULE", "LAST CHECK-IN"}
 	for col, header := range headers {
 		cell := tview.NewTableCell(header).
 			SetTextColor(tcell.ColorYellow).
@@ -104,14 +104,14 @@ func (v *CheckinsView) renderTable() {
 
 		lastCheckIn := "Never"
 		lastCheckInColor := tcell.ColorYellow
-		if ci.LastCheckInAt != nil {
-			lastCheckIn = ci.LastCheckInAt.Format("2006-01-02 15:04")
+		if ci.ReportedAt != nil {
+			lastCheckIn = ci.ReportedAt.Format("2006-01-02 15:04")
 			lastCheckInColor = tcell.ColorGreen
 		}
 
 		v.table.SetCell(row, 0, tview.NewTableCell(ci.ID).SetExpansion(1))
 		v.table.SetCell(row, 1, tview.NewTableCell(ci.Name).SetExpansion(2))
-		v.table.SetCell(row, 2, tview.NewTableCell(ci.Slug).SetExpansion(2))
+		v.table.SetCell(row, 2, tview.NewTableCell(ci.State).SetExpansion(2))
 		v.table.SetCell(row, 3, tview.NewTableCell(ci.ScheduleType).SetExpansion(1))
 		v.table.SetCell(row, 4, tview.NewTableCell(schedule).SetExpansion(2))
 		v.table.SetCell(
@@ -196,12 +196,12 @@ func (v *CheckinDetailsView) renderDetails() {
 
 [yellow]Name:[white] %s
 
-[yellow]Slug:[white] %s
+[yellow]State:[white] %s
 
 [yellow]Schedule Type:[white] %s`,
 		ci.ID,
 		ci.Name,
-		ci.Slug,
+		ci.State,
 		ci.ScheduleType,
 	)
 
@@ -221,13 +221,10 @@ func (v *CheckinDetailsView) renderDetails() {
 		text += fmt.Sprintf("\n[yellow]Cron Timezone:[white] %s", *ci.CronTimezone)
 	}
 
-	text += fmt.Sprintf("\n\n[yellow]Project ID:[white] %d", ci.ProjectID)
-	text += fmt.Sprintf("\n[yellow]Created:[white] %s", ci.CreatedAt.Format("2006-01-02 15:04:05"))
-
-	if ci.LastCheckInAt != nil {
+	if ci.ReportedAt != nil {
 		text += fmt.Sprintf(
 			"\n\n[yellow]Last Check-in:[green] %s",
-			ci.LastCheckInAt.Format("2006-01-02 15:04:05"),
+			ci.ReportedAt.Format("2006-01-02 15:04:05"),
 		)
 	} else {
 		text += "\n\n[yellow]Last Check-in:[red] Never"

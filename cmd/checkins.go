@@ -65,7 +65,7 @@ var checkinsListCmd = &cobra.Command{
 			fmt.Println(string(jsonBytes))
 		default:
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			_, _ = fmt.Fprintln(w, "ID\tNAME\tSLUG\tTYPE\tSCHEDULE\tLAST CHECK-IN")
+			_, _ = fmt.Fprintln(w, "ID\tNAME\tSTATE\tTYPE\tSCHEDULE\tLAST CHECK-IN")
 			for _, ci := range checkIns {
 				schedule := ""
 				if ci.ScheduleType == "simple" && ci.ReportPeriod != nil {
@@ -75,14 +75,14 @@ var checkinsListCmd = &cobra.Command{
 				}
 
 				lastCheckIn := "Never"
-				if ci.LastCheckInAt != nil {
-					lastCheckIn = ci.LastCheckInAt.Format("2006-01-02 15:04")
+				if ci.ReportedAt != nil {
+					lastCheckIn = ci.ReportedAt.Format("2006-01-02 15:04")
 				}
 
 				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
 					ci.ID,
 					ci.Name,
-					ci.Slug,
+					ci.State,
 					ci.ScheduleType,
 					schedule,
 					lastCheckIn)
@@ -137,7 +137,7 @@ var checkinsGetCmd = &cobra.Command{
 			fmt.Printf("Check-in Details:\n")
 			fmt.Printf("  ID: %s\n", checkIn.ID)
 			fmt.Printf("  Name: %s\n", checkIn.Name)
-			fmt.Printf("  Slug: %s\n", checkIn.Slug)
+			fmt.Printf("  State: %s\n", checkIn.State)
 			fmt.Printf("  Schedule Type: %s\n", checkIn.ScheduleType)
 			if checkIn.ReportPeriod != nil {
 				fmt.Printf("  Report Period: %s\n", *checkIn.ReportPeriod)
@@ -151,12 +151,10 @@ var checkinsGetCmd = &cobra.Command{
 			if checkIn.CronTimezone != nil {
 				fmt.Printf("  Cron Timezone: %s\n", *checkIn.CronTimezone)
 			}
-			fmt.Printf("  Project ID: %d\n", checkIn.ProjectID)
-			fmt.Printf("  Created: %s\n", checkIn.CreatedAt.Format("2006-01-02 15:04:05"))
-			if checkIn.LastCheckInAt != nil {
+			if checkIn.ReportedAt != nil {
 				fmt.Printf(
 					"  Last Check-in: %s\n",
-					checkIn.LastCheckInAt.Format("2006-01-02 15:04:05"),
+					checkIn.ReportedAt.Format("2006-01-02 15:04:05"),
 				)
 			}
 		}
