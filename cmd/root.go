@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
@@ -119,13 +120,31 @@ func initConfig() {
 
 // convertEndpointForDataAPI converts api.honeybadger.io to app.honeybadger.io for Data API calls
 func convertEndpointForDataAPI(endpoint string) string {
-	switch endpoint {
+	trimmed := strings.TrimSpace(endpoint)
+	if trimmed == "" {
+		return endpoint
+	}
+
+	parsed, err := url.Parse(trimmed)
+	if err == nil && parsed.Scheme != "" && parsed.Host != "" {
+		switch parsed.Host {
+		case "api.honeybadger.io":
+			parsed.Host = "app.honeybadger.io"
+		case "eu-api.honeybadger.io":
+			parsed.Host = "eu-app.honeybadger.io"
+		}
+		return parsed.String()
+	}
+
+	normalized := strings.TrimRight(trimmed, "/")
+	switch normalized {
 	case "https://api.honeybadger.io":
 		return "https://app.honeybadger.io"
 	case "https://eu-api.honeybadger.io":
 		return "https://eu-app.honeybadger.io"
+	default:
+		return trimmed
 	}
-	return endpoint
 }
 
 // readJSONInput reads JSON from either a direct string or a file path prefixed with 'file://'
