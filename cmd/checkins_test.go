@@ -24,9 +24,10 @@ func TestCheckinsListCommand(t *testing.T) {
 			projectIDValue: 123,
 			authToken:      "test-token",
 			serverStatus:   http.StatusOK,
-			serverBody: `{"results": [
-				{"id": "1", "name": "Daily Backup", "slug": "daily-backup", "schedule_type": "simple", "report_period": "1 day"}
-			]}`,
+			serverBody: `{
+				"results": [{"id": "abc123", "name": "Daily Backup", "slug": "daily-backup", "schedule_type": "simple", "report_period": "1 day"}],
+				"links": {"self": "/v2/projects/123/check_ins"}
+			}`,
 			expectedError: false,
 		},
 		{
@@ -101,11 +102,11 @@ func TestCheckinsGetCommand(t *testing.T) {
 		{
 			name:           "successful get",
 			projectIDValue: 123,
-			checkinIDValue: "1",
+			checkinIDValue: "abc123",
 			authToken:      "test-token",
 			serverStatus:   http.StatusOK,
 			serverBody: `{
-				"id": "1",
+				"id": "abc123",
 				"name": "Daily Backup",
 				"slug": "daily-backup",
 				"schedule_type": "simple",
@@ -116,7 +117,7 @@ func TestCheckinsGetCommand(t *testing.T) {
 		{
 			name:           "missing project ID",
 			projectIDValue: 0,
-			checkinIDValue: "1",
+			checkinIDValue: "abc123",
 			authToken:      "test-token",
 			expectedError:  true,
 			errorContains:  "project ID is required",
@@ -175,9 +176,10 @@ func TestCheckinsGetCommand(t *testing.T) {
 }
 
 func TestCheckinsOutputFormat(t *testing.T) {
-	mockResponse := `{"results": [
-		{"id": "1", "name": "Daily Backup", "slug": "daily-backup", "schedule_type": "simple", "report_period": "1 day"}
-	]}`
+	mockResponse := `{
+		"results": [{"id": "abc123", "name": "Daily Backup", "slug": "daily-backup", "schedule_type": "simple", "report_period": "1 day"}],
+		"links": {"self": "/v2/projects/123/check_ins"}
+	}`
 
 	server := httptest.NewServer(
 		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

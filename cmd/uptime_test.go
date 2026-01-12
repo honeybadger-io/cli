@@ -24,9 +24,10 @@ func TestUptimeSitesListCommand(t *testing.T) {
 			projectIDValue: 123,
 			authToken:      "test-token",
 			serverStatus:   http.StatusOK,
-			serverBody: `{"results": [
-				{"id": "site1", "name": "Site 1", "url": "https://example.com", "state": "up", "active": true, "frequency": 5}
-			]}`,
+			serverBody: `{
+				"results": [{"id": "site1", "name": "Site 1", "url": "https://example.com", "state": "up", "active": true, "frequency": 5}],
+				"links": {"self": "/v2/projects/123/sites"}
+			}`,
 			expectedError: false,
 		},
 		{
@@ -177,9 +178,10 @@ func TestUptimeSitesGetCommand(t *testing.T) {
 }
 
 func TestUptimeOutputFormat(t *testing.T) {
-	mockResponse := `{"results": [
-		{"id": "site1", "name": "Site 1", "url": "https://example.com", "state": "up", "active": true, "frequency": 5}
-	]}`
+	mockResponse := `{
+		"results": [{"id": "site1", "name": "Site 1", "url": "https://example.com", "state": "up", "active": true, "frequency": 5}],
+		"links": {"self": "/v2/projects/123/sites"}
+	}`
 
 	server := httptest.NewServer(
 		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

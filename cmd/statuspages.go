@@ -137,10 +137,16 @@ var statuspagesGetCmd = &cobra.Command{
 				)
 			}
 			if len(statusPage.Sites) > 0 {
-				fmt.Printf("  Sites: %v\n", statusPage.Sites)
+				fmt.Printf("  Sites:\n")
+				for _, site := range statusPage.Sites {
+					fmt.Printf("    - %s (%s)\n", site.DisplayName, site.State)
+				}
 			}
 			if len(statusPage.CheckIns) > 0 {
-				fmt.Printf("  Check-ins: %v\n", statusPage.CheckIns)
+				fmt.Printf("  Check-ins:\n")
+				for _, ci := range statusPage.CheckIns {
+					fmt.Printf("    - %s (%s)\n", ci.DisplayName, ci.State)
+				}
 			}
 		}
 

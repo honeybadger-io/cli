@@ -27,7 +27,7 @@ func TestCommentsListCommand(t *testing.T) {
 			faultIDValue:   456,
 			authToken:      "test-token",
 			serverStatus:   http.StatusOK,
-			serverBody:     `[]`,
+			serverBody:     `{"results": [], "links": {"self": "/v2/projects/123/faults/456/comments"}}`,
 			expectedError:  false,
 		},
 		{
@@ -113,7 +113,7 @@ func TestDeploymentsListCommand(t *testing.T) {
 			projectIDValue: 123,
 			authToken:      "test-token",
 			serverStatus:   http.StatusOK,
-			serverBody:     `{"results": []}`,
+			serverBody:     `{"results": [], "links": {"self": "/v2/projects/123/deploys"}}`,
 			expectedError:  false,
 		},
 		{
@@ -188,7 +188,7 @@ func TestEnvironmentsListCommand(t *testing.T) {
 			projectIDValue: 123,
 			authToken:      "test-token",
 			serverStatus:   http.StatusOK,
-			serverBody:     `[]`,
+			serverBody:     `{"results": [], "links": {"self": "/v2/projects/123/environments"}}`,
 			expectedError:  false,
 		},
 		{
@@ -260,7 +260,7 @@ func TestStatuspagesListCommand(t *testing.T) {
 	}{
 		{
 			name:           "successful list",
-			accountIDValue: "abc123",
+			accountIDValue: "123",
 			authToken:      "test-token",
 			serverStatus:   http.StatusOK,
 			serverBody:     `{"results": []}`,
@@ -275,7 +275,7 @@ func TestStatuspagesListCommand(t *testing.T) {
 		},
 		{
 			name:           "missing auth token",
-			accountIDValue: "abc123",
+			accountIDValue: "123",
 			authToken:      "",
 			expectedError:  true,
 			errorContains:  "auth token is required",

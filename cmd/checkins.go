@@ -21,7 +21,7 @@ var (
 
 // checkinsCmd represents the checkins command
 var checkinsCmd = &cobra.Command{
-	Use:     "checkins",
+	Use:     "check-ins",
 	Short:   "Manage Honeybadger check-ins",
 	GroupID: GroupDataAPI,
 	Long:    `View and manage check-ins (cron job monitoring) for your Honeybadger projects.`,
@@ -137,6 +137,7 @@ var checkinsGetCmd = &cobra.Command{
 			fmt.Printf("Check-in Details:\n")
 			fmt.Printf("  ID: %s\n", checkIn.ID)
 			fmt.Printf("  Name: %s\n", checkIn.Name)
+			fmt.Printf("  Slug: %s\n", checkIn.Slug)
 			fmt.Printf("  State: %s\n", checkIn.State)
 			fmt.Printf("  Schedule Type: %s\n", checkIn.ScheduleType)
 			if checkIn.ReportPeriod != nil {

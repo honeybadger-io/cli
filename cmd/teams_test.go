@@ -24,9 +24,10 @@ func TestTeamsListCommand(t *testing.T) {
 			accountIDValue: "123",
 			authToken:      "test-token",
 			serverStatus:   http.StatusOK,
-			serverBody: `{"results": [
-				{"id": 1, "name": "Team 1", "account_id": 123, "created_at": "2024-01-01T00:00:00Z"}
-			]}`,
+			serverBody: `{
+				"results": [{"id": 1, "name": "Team 1", "account_id": 123, "created_at": "2024-01-01T00:00:00Z"}],
+				"links": {"self": "/v2/accounts/123/teams"}
+			}`,
 			expectedError: false,
 		},
 		{
@@ -269,9 +270,10 @@ func TestTeamsMembersListCommand(t *testing.T) {
 			teamIDValue:  1,
 			authToken:    "test-token",
 			serverStatus: http.StatusOK,
-			serverBody: `{"results": [
-				{"id": 1, "name": "Member 1", "email": "member1@example.com", "admin": true}
-			]}`,
+			serverBody: `{
+				"results": [{"id": 1, "name": "Member 1", "email": "member1@example.com", "admin": true}],
+				"links": {"self": "/v2/teams/1/team_members"}
+			}`,
 			expectedError: false,
 		},
 		{
@@ -326,9 +328,10 @@ func TestTeamsMembersListCommand(t *testing.T) {
 }
 
 func TestTeamsOutputFormat(t *testing.T) {
-	mockResponse := `{"results": [
-		{"id": 1, "name": "Team 1", "account_id": 123, "created_at": "2024-01-01T00:00:00Z"}
-	]}`
+	mockResponse := `{
+		"results": [{"id": 1, "name": "Team 1", "account_id": 123, "created_at": "2024-01-01T00:00:00Z"}],
+		"links": {"self": "/v2/accounts/123/teams"}
+	}`
 
 	server := httptest.NewServer(
 		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
