@@ -27,7 +27,7 @@ func TestCommentsListCommand(t *testing.T) {
 			faultIDValue:   456,
 			authToken:      "test-token",
 			serverStatus:   http.StatusOK,
-			serverBody:     `[]`,
+			serverBody:     `{"results": [], "links": {"self": "/v2/projects/123/faults/456/comments"}}`,
 			expectedError:  false,
 		},
 		{
@@ -113,7 +113,7 @@ func TestDeploymentsListCommand(t *testing.T) {
 			projectIDValue: 123,
 			authToken:      "test-token",
 			serverStatus:   http.StatusOK,
-			serverBody:     `[]`,
+			serverBody:     `{"results": [], "links": {"self": "/v2/projects/123/deploys"}}`,
 			expectedError:  false,
 		},
 		{
@@ -188,7 +188,7 @@ func TestEnvironmentsListCommand(t *testing.T) {
 			projectIDValue: 123,
 			authToken:      "test-token",
 			serverStatus:   http.StatusOK,
-			serverBody:     `[]`,
+			serverBody:     `{"results": [], "links": {"self": "/v2/projects/123/environments"}}`,
 			expectedError:  false,
 		},
 		{
@@ -251,7 +251,7 @@ func TestEnvironmentsListCommand(t *testing.T) {
 func TestStatuspagesListCommand(t *testing.T) {
 	tests := []struct {
 		name           string
-		accountIDValue int
+		accountIDValue string
 		authToken      string
 		serverStatus   int
 		serverBody     string
@@ -260,7 +260,7 @@ func TestStatuspagesListCommand(t *testing.T) {
 	}{
 		{
 			name:           "successful list",
-			accountIDValue: 123,
+			accountIDValue: "123",
 			authToken:      "test-token",
 			serverStatus:   http.StatusOK,
 			serverBody:     `{"results": []}`,
@@ -268,14 +268,14 @@ func TestStatuspagesListCommand(t *testing.T) {
 		},
 		{
 			name:           "missing account ID",
-			accountIDValue: 0,
+			accountIDValue: "",
 			authToken:      "test-token",
 			expectedError:  true,
 			errorContains:  "account ID is required",
 		},
 		{
 			name:           "missing auth token",
-			accountIDValue: 123,
+			accountIDValue: "123",
 			authToken:      "",
 			expectedError:  true,
 			errorContains:  "auth token is required",
@@ -285,7 +285,7 @@ func TestStatuspagesListCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var serverURL string
-			if tt.authToken != "" && tt.accountIDValue != 0 {
+			if tt.authToken != "" && tt.accountIDValue != "" {
 				server := httptest.NewServer(
 					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 						w.Header().Set("Content-Type", "application/json")

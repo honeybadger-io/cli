@@ -234,9 +234,10 @@ func TestAccountsUsersListCommand(t *testing.T) {
 			accountIDValue: "abc123",
 			authToken:      "test-token",
 			serverStatus:   http.StatusOK,
-			serverBody: `[
-				{"id": 1, "name": "User 1", "email": "user1@example.com", "role": "Owner"}
-			]`,
+			serverBody: `{
+				"results": [{"id": 1, "name": "User 1", "email": "user1@example.com", "role": "Owner"}],
+				"links": {"self": "/v2/accounts/abc123/account_users"}
+			}`,
 			expectedError: false,
 		},
 		{

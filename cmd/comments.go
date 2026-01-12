@@ -72,8 +72,8 @@ var commentsListCmd = &cobra.Command{
 			_, _ = fmt.Fprintln(w, "ID\tAUTHOR\tEVENT\tCREATED\tBODY")
 			for _, c := range comments {
 				author := "System"
-				if c.Author != nil {
-					author = c.Author.Name
+				if c.Author != "" {
+					author = c.Author
 				}
 
 				body := c.Body
@@ -143,11 +143,10 @@ var commentsGetCmd = &cobra.Command{
 			fmt.Printf("  Fault ID: %d\n", comment.FaultID)
 			fmt.Printf("  Event: %s\n", comment.Event)
 			fmt.Printf("  Source: %s\n", comment.Source)
-			if comment.Author != nil {
-				fmt.Printf("  Author: %s <%s>\n", comment.Author.Name, comment.Author.Email)
+			if comment.Author != "" {
+				fmt.Printf("  Author: %s\n", comment.Author)
 			}
 			fmt.Printf("  Created: %s\n", comment.CreatedAt.Format("2006-01-02 15:04:05"))
-			fmt.Printf("  Notices Count: %d\n", comment.NoticesCount)
 			fmt.Printf("  Body:\n    %s\n", comment.Body)
 		}
 
