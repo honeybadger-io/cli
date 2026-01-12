@@ -72,13 +72,16 @@ func init() {
 	rootCmd.PersistentFlags().
 		StringVar(&endpoint, "endpoint", defaultEndpoint, "Honeybadger endpoint")
 
-	if err := viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key")); err != nil {
+	err := viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key"))
+	if err != nil {
 		fmt.Printf("error binding api-key flag: %v\n", err)
 	}
-	if err := viper.BindPFlag("auth_token", rootCmd.PersistentFlags().Lookup("auth-token")); err != nil {
+	err = viper.BindPFlag("auth_token", rootCmd.PersistentFlags().Lookup("auth-token"))
+	if err != nil {
 		fmt.Printf("error binding auth-token flag: %v\n", err)
 	}
-	if err := viper.BindPFlag("endpoint", rootCmd.PersistentFlags().Lookup("endpoint")); err != nil {
+	err = viper.BindPFlag("endpoint", rootCmd.PersistentFlags().Lookup("endpoint"))
+	if err != nil {
 		fmt.Printf("error binding endpoint flag: %v\n", err)
 	}
 }
