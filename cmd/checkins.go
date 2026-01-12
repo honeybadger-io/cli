@@ -302,9 +302,13 @@ Example JSON payload:
 		}
 
 		ctx := context.Background()
-		checkIn, err := client.CheckIns.Update(ctx, checkinsProjectID, checkinID, payload.CheckIn)
-		if err != nil {
+		if err := client.CheckIns.Update(ctx, checkinsProjectID, checkinID, payload.CheckIn); err != nil {
 			return fmt.Errorf("failed to update check-in: %w", err)
+		}
+
+		checkIn, err := client.CheckIns.Get(ctx, checkinsProjectID, checkinID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch updated check-in: %w", err)
 		}
 
 		switch checkinsOutputFormat {
