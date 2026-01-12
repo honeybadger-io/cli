@@ -110,9 +110,10 @@ func sendMetric(payload interface{}) error {
 		return fmt.Errorf("error marshaling metrics: %w", err)
 	}
 
+	apiEndpoint := viper.GetString("endpoint")
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/v1/events", endpoint),
+		fmt.Sprintf("%s/v1/events", apiEndpoint),
 		strings.NewReader(string(jsonData)+"\n"),
 	)
 	if err != nil {

@@ -74,6 +74,7 @@ func TestMetricsCollection(t *testing.T) {
 
 		// Set invalid endpoint
 		endpoint = "http://invalid-endpoint"
+		viper.Set("endpoint", endpoint)
 
 		hostname, err := os.Hostname()
 		require.NoError(t, err)
@@ -111,6 +112,7 @@ func TestMetricsCollection(t *testing.T) {
 		// Configure viper
 		viper.Set("api_key", "test-api-key")
 		endpoint = server.URL
+		viper.Set("endpoint", endpoint)
 
 		// Set up a short interval for testing
 		interval = 1 // 1 second
