@@ -48,291 +48,55 @@ Global flags that apply to all commands:
 
 ## Usage
 
-### Deploy Command
+Use `hb <command> --help` to see detailed usage information for any command.
 
-Report a deployment to Honeybadger. **Requires**: `--api-key` or `HONEYBADGER_API_KEY` (project API key)
+### Reporting API Commands
 
-```bash
-hb deploy --environment production --repository github.com/org/repo --revision abc123 --user johndoe
-```
+These commands use `--api-key` or `HONEYBADGER_API_KEY` (project API key):
 
-**Required:**
+| Command | Description |
+|---------|-------------|
+| `hb deploy` | Report a deployment to Honeybadger |
+| `hb agent` | Start a metrics reporting agent that sends system metrics to Insights |
 
- * `-e, --environment` - Environment being deployed to (e.g., `production`)
+### Data API Commands
 
-**Optional:**
+These commands use `--auth-token` or `HONEYBADGER_AUTH_TOKEN` (personal auth token):
 
- * `-r, --repository` - Repository being deployed (e.g., `github.com/org/repo`)
- * `-v, --revision` - Revision or commit SHA being deployed
- * `-u, --user` - Local username of the person deploying
+| Command | Description |
+|---------|-------------|
+| `hb accounts` | Manage Honeybadger accounts and team members |
+| `hb check-ins` | Manage check-ins for cron job and scheduled task monitoring |
+| `hb comments` | Manage comments on faults |
+| `hb deployments` | View and manage deployment history |
+| `hb environments` | Manage project environments |
+| `hb faults` | View and manage faults (errors) in your projects |
+| `hb insights` | Execute BadgerQL queries against your Insights data |
+| `hb projects` | Manage Honeybadger projects |
+| `hb statuspages` | Manage public status pages |
+| `hb teams` | Manage teams and team memberships |
+| `hb uptime` | Manage uptime monitoring checks |
 
-### Agent Command
-
-Start a metrics reporting agent that collects and sends system metrics to Honeybadger Insights. **Requires**: `--api-key` or `HONEYBADGER_API_KEY` (project API key)
-
-```bash
-hb agent
-```
-
-The agent collects and reports the following metrics:
- * CPU usage and load averages
- * Memory usage (total, used, free, available)
- * Disk usage for all mounted filesystems
-
-**Optional:**
-
- * `--interval` - Reporting interval in seconds (default: `60`)
-
-### Projects Command
-
-Manage Honeybadger projects. **Requires**: `--auth-token` or `HONEYBADGER_AUTH_TOKEN` (personal auth token)
+### Examples
 
 ```bash
+# Report a deployment
+hb deploy --environment production --revision abc123
+
+# Start the metrics agent
+hb agent --interval 60
+
 # List all projects
 hb projects list
 
-# List projects by account ID
-hb projects list --account-id 12345
-
-# Get project details
-hb projects get --id 12345
-
-# Create a new project (using inline JSON)
-hb projects create --account-id 12345 --cli-input-json '{"project": {"name": "My Project"}}'
-
-# Create a new project (using a JSON file)
-hb projects create --account-id 12345 --cli-input-json file://project.json
-
-# Update a project (using inline JSON)
-hb projects update --id 12345 --cli-input-json '{"project": {"name": "Updated Name", "resolve_errors_on_deploy": true}}'
-
-# Update a project (using a JSON file)
-hb projects update --id 12345 --cli-input-json file://updates.json
-
-# Delete a project
-hb projects delete --id 12345
-
-# Get occurrence counts for all projects
-hb projects occurrences --period day --environment production
-
-# Get occurrence counts for a specific project
-hb projects occurrences --id 12345 --period hour
-
-# Get integrations for a project
-hb projects integrations --id 12345
-
-# Get report data for a project
-hb projects reports --id 12345 --type notices_per_day --start 2024-01-01T00:00:00Z --stop 2024-01-31T23:59:59Z
-```
-
-#### list
-
-**Optional:**
-
- * `--account-id` - Filter projects by account ID
- * `-o, --output` - Output format: `table` or `json` (default: `table`)
-
-#### get
-
-**Required:**
-
- * `--id` - Project ID
-
-**Optional:**
-
- * `-o, --output` - Output format: `text` or `json` (default: `text`)
-
-#### create
-
-**Required:**
-
- * `--account-id` - Account ID to create the project in
- * `--cli-input-json` - JSON payload (inline string or `file://path`)
-
-**Optional:**
-
- * `-o, --output` - Output format: `text` or `json` (default: `text`)
-
-JSON payload format:
-```json
-{
-  "project": {
-    "name": "My Project",
-    "resolve_errors_on_deploy": true,
-    "disable_public_links": false,
-    "language": "ruby",
-    "user_url": "https://myapp.com/users/[user_id]",
-    "source_url": "https://github.com/myorg/myrepo/blob/main/[filename]#L[line]",
-    "purge_days": 90,
-    "user_search_field": "user_id"
-  }
-}
-```
-
-#### update
-
-**Required:**
-
- * `--id` - Project ID
- * `--cli-input-json` - JSON payload (inline string or `file://path`)
-
-JSON payload format (all fields optional):
-```json
-{
-  "project": {
-    "name": "Updated Name",
-    "resolve_errors_on_deploy": false,
-    "purge_days": 120
-  }
-}
-```
-
-#### delete
-
-**Required:**
-
- * `--id` - Project ID
-
-#### occurrences
-
-**Optional:**
-
- * `--id` - Project ID (if omitted, shows data for all projects)
- * `--period` - Time period: `hour`, `day`, `week`, or `month` (default: `day`)
- * `--environment` - Filter by environment name
- * `-o, --output` - Output format: `table` or `json` (default: `table`)
-
-#### integrations
-
-**Required:**
-
- * `--id` - Project ID
-
-**Optional:**
-
- * `-o, --output` - Output format: `table` or `json` (default: `table`)
-
-#### reports
-
-**Required:**
-
- * `--id` - Project ID
- * `--type` - Report type: `notices_by_class`, `notices_by_location`, `notices_by_user`, or `notices_per_day`
-
-**Optional:**
-
- * `--start` - Start time in RFC3339 format (e.g., `2024-01-01T00:00:00Z`)
- * `--stop` - Stop time in RFC3339 format (e.g., `2024-01-31T23:59:59Z`)
- * `--environment` - Filter by environment name
- * `-o, --output` - Output format: `table` or `json` (default: `table`)
-
-See https://docs.honeybadger.io/api/projects/ for more information.
-
-### Faults Command
-
-View and manage faults (errors) in your Honeybadger projects. **Requires**: `--auth-token` or `HONEYBADGER_AUTH_TOKEN` (personal auth token)
-
-```bash
-# List faults for a project
-hb faults list --project-id 12345
-
-# List with filtering
-hb faults list --project-id 12345 --query "class:RuntimeError" --order recent --limit 10
-
-# Get fault details
-hb faults get --project-id 12345 --id 67890
-
-# List notices for a fault
-hb faults notices --project-id 12345 --id 67890
-
-# Get fault counts
-hb faults counts --project-id 12345
-
-# List users affected by a fault
-hb faults affected-users --project-id 12345 --id 67890
-```
-
-**Note:** All faults commands require `--project-id` (Project ID)
-
-#### list
-
-**Optional:**
-
- * `-q, --query` - Search query string
- * `--order` - Sort order: `recent` or `frequent`
- * `--limit` - Maximum number of results (max: 25)
- * `-o, --output` - Output format: `table` or `json` (default: `table`)
-
-#### get
-
-**Required:**
-
- * `--id` - Fault ID
-
-**Optional:**
-
- * `-o, --output` - Output format: `text` or `json` (default: `text`)
-
-#### notices
-
-**Required:**
-
- * `--id` - Fault ID
-
-**Optional:**
-
- * `--limit` - Maximum number of results (max: 25)
- * `-o, --output` - Output format: `table` or `json` (default: `table`)
-
-#### counts
-
-**Optional:**
-
- * `-o, --output` - Output format: `text` or `json` (default: `text`)
-
-#### affected-users
-
-**Required:**
-
- * `--id` - Fault ID
-
-**Optional:**
-
- * `-q, --query` - Search query to filter users
- * `-o, --output` - Output format: `table` or `json` (default: `table`)
-
-See https://docs.honeybadger.io/api/faults/ for more information.
-
-### Insights Command
-
-Execute BadgerQL queries against your Honeybadger Insights data. **Requires**: `--auth-token` or `HONEYBADGER_AUTH_TOKEN` (personal auth token)
-
-```bash
-# Basic query for timestamps and previews
+# Query Insights data
 hb insights query --project-id 12345 --query "fields @ts, @preview | sort @ts"
 
-# Query with timezone
-hb insights query --project-id 12345 --query "fields @ts, @preview | sort @ts" --timezone "America/New_York"
-
-# Query at a specific timestamp
-hb insights query --project-id 12345 --query "fields @ts, @preview | sort @ts" --ts "PT1H"
-
-# Output as JSON
-hb insights query --project-id 12345 --query "fields @ts, @preview | sort @ts" --output json
+# List faults for a project
+hb faults list --project-id 12345
 ```
 
-**Required:**
-
- * `--project-id` - Project ID
- * `-q, --query` - BadgerQL query to execute
-
-**Optional:**
-
- * `--ts` - Timestamp range for the query (e.g., `PT1H`)
- * `--timezone` - Timezone for the query (e.g., `America/New_York`)
- * `-o, --output` - Output format: `table` or `json` (default: `table`)
-
-See https://docs.honeybadger.io/api/insights/#query-insights-data for more information.
+See the [Honeybadger CLI documentation](https://docs.honeybadger.io/resources/cli/) for more information.
 
 ## Development
 
