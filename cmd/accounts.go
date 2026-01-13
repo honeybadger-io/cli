@@ -267,7 +267,12 @@ var accountsUsersUpdateCmd = &cobra.Command{
 			WithAuthToken(authToken)
 
 		ctx := context.Background()
-		if err := client.Accounts.UpdateUser(ctx, accountID, accountUserID, accountUserRole); err != nil {
+		if err := client.Accounts.UpdateUser(
+			ctx,
+			accountID,
+			accountUserID,
+			accountUserRole,
+		); err != nil {
 			return fmt.Errorf("failed to update user: %w", err)
 		}
 

@@ -358,7 +358,12 @@ var teamsMembersUpdateCmd = &cobra.Command{
 			WithAuthToken(authToken)
 
 		ctx := context.Background()
-		if err := client.Teams.UpdateMember(ctx, teamID, teamMemberID, teamMemberAdmin); err != nil {
+		if err := client.Teams.UpdateMember(
+			ctx,
+			teamID,
+			teamMemberID,
+			teamMemberAdmin,
+		); err != nil {
 			return fmt.Errorf("failed to update team member: %w", err)
 		}
 
