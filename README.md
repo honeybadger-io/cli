@@ -7,8 +7,10 @@ A command-line interface for interacting with Honeybadger's Reporting API and Da
 ## Installation
 
 ```bash
-go install github.com/honeybadger-io/cli@latest
+go install github.com/honeybadger-io/cli/cmd/hb@latest
 ```
+
+Note: The install path includes `/cmd/hb` so Go installs the `hb` binary name.
 
 ## Configuration
 
@@ -382,7 +384,7 @@ GOWORK=off go mod tidy
 GOWORK=off go get github.com/some/package@v1.2.3
 
 # Test the build as if no workspace exists (simulates CI/end-user builds)
-GOWORK=off go build ./...
+GOWORK=off go build ./cmd/hb
 GOWORK=off go test ./...
 ```
 
