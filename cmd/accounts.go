@@ -267,9 +267,18 @@ var accountsUsersUpdateCmd = &cobra.Command{
 			WithAuthToken(authToken)
 
 		ctx := context.Background()
-		user, err := client.Accounts.UpdateUser(ctx, accountID, accountUserID, accountUserRole)
-		if err != nil {
+		if err := client.Accounts.UpdateUser(
+			ctx,
+			accountID,
+			accountUserID,
+			accountUserRole,
+		); err != nil {
 			return fmt.Errorf("failed to update user: %w", err)
+		}
+
+		user, err := client.Accounts.GetUser(ctx, accountID, accountUserID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch updated user: %w", err)
 		}
 
 		switch accountsOutputFormat {
@@ -576,14 +585,18 @@ Example JSON payload:
 		}
 
 		ctx := context.Background()
-		invitation, err := client.Accounts.UpdateInvitation(
+		if err := client.Accounts.UpdateInvitation(
 			ctx,
 			accountID,
 			accountInvitationID,
 			payload.Invitation,
-		)
-		if err != nil {
+		); err != nil {
 			return fmt.Errorf("failed to update invitation: %w", err)
+		}
+
+		invitation, err := client.Accounts.GetInvitation(ctx, accountID, accountInvitationID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch updated invitation: %w", err)
 		}
 
 		switch accountsOutputFormat {

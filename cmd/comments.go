@@ -239,15 +239,19 @@ var commentsUpdateCmd = &cobra.Command{
 			WithAuthToken(authToken)
 
 		ctx := context.Background()
-		comment, err := client.Comments.Update(
+		if err := client.Comments.Update(
 			ctx,
 			commentsProjectID,
 			commentsFaultID,
 			commentID,
 			commentBody,
-		)
-		if err != nil {
+		); err != nil {
 			return fmt.Errorf("failed to update comment: %w", err)
+		}
+
+		comment, err := client.Comments.Get(ctx, commentsProjectID, commentsFaultID, commentID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch updated comment: %w", err)
 		}
 
 		switch commentsOutputFormat {

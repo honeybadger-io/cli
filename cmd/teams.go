@@ -207,9 +207,13 @@ var teamsUpdateCmd = &cobra.Command{
 			WithAuthToken(authToken)
 
 		ctx := context.Background()
-		team, err := client.Teams.Update(ctx, teamID, teamName)
-		if err != nil {
+		if err := client.Teams.Update(ctx, teamID, teamName); err != nil {
 			return fmt.Errorf("failed to update team: %w", err)
+		}
+
+		team, err := client.Teams.Get(ctx, teamID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch updated team: %w", err)
 		}
 
 		switch teamsOutputFormat {
@@ -354,9 +358,29 @@ var teamsMembersUpdateCmd = &cobra.Command{
 			WithAuthToken(authToken)
 
 		ctx := context.Background()
-		member, err := client.Teams.UpdateMember(ctx, teamID, teamMemberID, teamMemberAdmin)
-		if err != nil {
+		if err := client.Teams.UpdateMember(
+			ctx,
+			teamID,
+			teamMemberID,
+			teamMemberAdmin,
+		); err != nil {
 			return fmt.Errorf("failed to update team member: %w", err)
+		}
+
+		members, err := client.Teams.ListMembers(ctx, teamID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch updated team member: %w", err)
+		}
+
+		var member *hbapi.TeamMember
+		for i := range members {
+			if members[i].ID == teamMemberID {
+				member = &members[i]
+				break
+			}
+		}
+		if member == nil {
+			return fmt.Errorf("updated team member not found: %d", teamMemberID)
 		}
 
 		switch teamsOutputFormat {
@@ -665,14 +689,18 @@ Example JSON payload:
 		}
 
 		ctx := context.Background()
-		invitation, err := client.Teams.UpdateInvitation(
+		if err := client.Teams.UpdateInvitation(
 			ctx,
 			teamID,
 			teamInvitationID,
 			payload.TeamInvitation,
-		)
-		if err != nil {
+		); err != nil {
 			return fmt.Errorf("failed to update team invitation: %w", err)
+		}
+
+		invitation, err := client.Teams.GetInvitation(ctx, teamID, teamInvitationID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch updated team invitation: %w", err)
 		}
 
 		switch teamsOutputFormat {

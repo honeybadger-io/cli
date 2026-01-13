@@ -110,9 +110,10 @@ func sendMetric(payload interface{}) error {
 		return fmt.Errorf("error marshaling metrics: %w", err)
 	}
 
+	apiEndpoint := viper.GetString("endpoint")
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/v1/events", endpoint),
+		fmt.Sprintf("%s/v1/events", apiEndpoint),
 		strings.NewReader(string(jsonData)+"\n"),
 	)
 	if err != nil {
@@ -146,8 +147,12 @@ func reportMetrics(hostname string) error {
 
 	// Collect and send CPU metrics
 	cpuPercent, err := cpu.Percent(time.Second, false)
+	var usedPercent float64
 	if err != nil {
-		return fmt.Errorf("error getting CPU metrics: %w", err)
+		// cpu.Percent may fail on macOS with CGO_ENABLED=0; use -1 to indicate unavailable
+		usedPercent = -1
+	} else if len(cpuPercent) > 0 {
+		usedPercent = math.Round(cpuPercent[0]*100) / 100
 	}
 
 	loadAvg, err := load.Avg()
@@ -164,7 +169,7 @@ func reportMetrics(hostname string) error {
 		Ts:          timestamp,
 		Event:       "report.system.cpu",
 		Host:        hostname,
-		UsedPercent: math.Round(cpuPercent[0]*100) / 100,
+		UsedPercent: usedPercent,
 		LoadAvg1:    loadAvg.Load1,
 		LoadAvg5:    loadAvg.Load5,
 		LoadAvg15:   loadAvg.Load15,

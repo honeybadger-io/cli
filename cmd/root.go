@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
@@ -72,13 +73,16 @@ func init() {
 	rootCmd.PersistentFlags().
 		StringVar(&endpoint, "endpoint", defaultEndpoint, "Honeybadger endpoint")
 
-	if err := viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key")); err != nil {
+	err := viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key"))
+	if err != nil {
 		fmt.Printf("error binding api-key flag: %v\n", err)
 	}
-	if err := viper.BindPFlag("auth_token", rootCmd.PersistentFlags().Lookup("auth-token")); err != nil {
+	err = viper.BindPFlag("auth_token", rootCmd.PersistentFlags().Lookup("auth-token"))
+	if err != nil {
 		fmt.Printf("error binding auth-token flag: %v\n", err)
 	}
-	if err := viper.BindPFlag("endpoint", rootCmd.PersistentFlags().Lookup("endpoint")); err != nil {
+	err = viper.BindPFlag("endpoint", rootCmd.PersistentFlags().Lookup("endpoint"))
+	if err != nil {
 		fmt.Printf("error binding endpoint flag: %v\n", err)
 	}
 }
@@ -116,13 +120,31 @@ func initConfig() {
 
 // convertEndpointForDataAPI converts api.honeybadger.io to app.honeybadger.io for Data API calls
 func convertEndpointForDataAPI(endpoint string) string {
-	switch endpoint {
+	trimmed := strings.TrimSpace(endpoint)
+	if trimmed == "" {
+		return endpoint
+	}
+
+	parsed, err := url.Parse(trimmed)
+	if err == nil && parsed.Scheme != "" && parsed.Host != "" {
+		switch parsed.Host {
+		case "api.honeybadger.io":
+			parsed.Host = "app.honeybadger.io"
+		case "eu-api.honeybadger.io":
+			parsed.Host = "eu-app.honeybadger.io"
+		}
+		return parsed.String()
+	}
+
+	normalized := strings.TrimRight(trimmed, "/")
+	switch normalized {
 	case "https://api.honeybadger.io":
 		return "https://app.honeybadger.io"
 	case "https://eu-api.honeybadger.io":
 		return "https://eu-app.honeybadger.io"
+	default:
+		return trimmed
 	}
-	return endpoint
 }
 
 // readJSONInput reads JSON from either a direct string or a file path prefixed with 'file://'
