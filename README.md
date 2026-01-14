@@ -78,6 +78,10 @@ hb run --id XyZZy -- /usr/local/bin/backup.sh
 hb run --slug daily-backup -- pg_dump -U postgres mydb > backup.sql
 ```
 
+Note: Shell operators such as ">" are interpreted by your shell before hb runs,
+so redirection works as usual. If you need more complex shell features, wrap
+them in a shell script and invoke that script with "hb run".
+
 **Required (one of):**
 
  * `-i, --id` - Check-in ID to report
