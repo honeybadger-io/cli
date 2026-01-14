@@ -48,7 +48,11 @@ and reports the results using either a check-in ID or slug.
 
 Example:
   hb run --id check-123 -- /usr/local/bin/backup.sh
-  hb run --slug daily-backup -- pg_dump -U postgres mydb > backup.sql`,
+  hb run --slug daily-backup -- pg_dump -U postgres mydb
+
+Note: Shell operators such as ">" are interpreted by your shell before hb runs,
+so if you need redirection or other shell features, wrap them in a shell script
+and invoke that script with "hb run".`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(_ *cobra.Command, args []string) error {
 		if checkInID == "" && slug == "" {
@@ -143,7 +147,14 @@ Example:
 
 		// Check response status
 		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return fmt.Errorf(
+					"unexpected status code: %d, and failed to read response body: %v",
+					resp.StatusCode,
+					err,
+				)
+			}
 			return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, body)
 		}
 

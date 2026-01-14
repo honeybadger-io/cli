@@ -8,7 +8,7 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Added support for running commands and reporting their status
+- Added `run` command to execute commands and report their status to Honeybadger check-ins
 - Made API endpoint configurable
 - Added [agent command](./README.md#agent-command)
 

@@ -182,6 +182,11 @@ exit 42
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Reset global variables to avoid test pollution
+			checkInID = ""
+			slug = ""
+			runExitCode = 0
+
 			// Track exit code
 			var capturedExitCode int
 			exitFunc = func(code int) {
@@ -293,6 +298,5 @@ func TestTruncateOutput(t *testing.T) {
 	}
 	result := truncateOutput(string(overSize))
 	assert.Equal(t, maxOutputSize, len(result))
-	assert.True(t, len(result) <= maxOutputSize)
 	assert.Contains(t, result, "[output truncated]")
 }
