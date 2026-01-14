@@ -66,6 +66,54 @@ hb deploy --environment production --repository github.com/org/repo --revision a
  * `-v, --revision` - Revision or commit SHA being deployed
  * `-u, --user` - Local username of the person deploying
 
+### Run Command
+
+Run a command and report its status to Honeybadger's check-in API. This wraps your command, captures its output and execution time, and reports the results. **Requires**: `--api-key` or `HONEYBADGER_API_KEY` when using `--slug`
+
+```bash
+# Using check-in ID (no API key required)
+hb run --id XyZZy -- /usr/local/bin/backup.sh
+
+# Using slug (requires API key)
+hb run --slug daily-backup -- pg_dump -U postgres mydb > backup.sql
+```
+
+Note: Shell operators such as ">" are interpreted by your shell before hb runs,
+so redirection works as usual. If you need more complex shell features, wrap
+them in a shell script and invoke that script with "hb run".
+
+**Required (one of):**
+
+ * `-i, --id` - Check-in ID to report
+ * `-s, --slug` - Check-in slug to report (requires API key)
+
+The command will:
+ * Execute your command and stream its output in real-time
+ * Capture stdout, stderr, duration, and exit code
+ * Report success or error status to Honeybadger
+ * Exit with the same exit code as your command
+
+See https://docs.honeybadger.io/api/reporting-check-ins/ for more information.
+
+### Check-in Command
+
+Report a simple check-in to Honeybadger without running a command. Use this when you want to signal that a task completed successfully from your own scripts. **Requires**: `--api-key` or `HONEYBADGER_API_KEY` when using `--slug`
+
+```bash
+# Using check-in ID (no API key required)
+hb check-in --id XyZZy
+
+# Using slug (requires API key)
+hb check-in --slug daily-backup
+```
+
+**Required (one of):**
+
+ * `-i, --id` - Check-in ID to report
+ * `-s, --slug` - Check-in slug to report (requires API key)
+
+See https://docs.honeybadger.io/api/reporting-check-ins/ for more information.
+
 ### Agent Command
 
 Start a metrics reporting agent that collects and sends system metrics to Honeybadger Insights. **Requires**: `--api-key` or `HONEYBADGER_API_KEY` (project API key)
@@ -384,6 +432,13 @@ To run tests locally:
 
 ```bash
 go test ./...
+```
+
+To build and test local binaries:
+
+```bash
+go build -o ./hb
+./hb run --id check-123 -- /usr/local/bin/backup.sh
 ```
 
 ### To contribute your code:
