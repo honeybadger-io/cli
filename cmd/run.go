@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -16,7 +17,7 @@ import (
 )
 
 const (
-	maxOutputSize = 8 * 1024 // 8KB max for stdout/stderr sent to API
+	maxOutputSize = 16 * 1024 // 16KB max combined for stdout/stderr sent to API
 	httpTimeout   = 30 * time.Second
 	truncatedMsg  = "\n[output truncated]"
 )
@@ -38,6 +39,58 @@ type checkInPayload struct {
 	} `json:"check_in"`
 }
 
+type sharedLimiter struct {
+	mu        sync.Mutex
+	remaining int
+}
+
+type limitedBuffer struct {
+	limiter   *sharedLimiter
+	buffer    bytes.Buffer
+	truncated bool
+}
+
+func (b *limitedBuffer) Write(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	b.limiter.mu.Lock()
+	defer b.limiter.mu.Unlock()
+	if b.limiter.remaining <= 0 {
+		b.truncated = true
+		return len(p), nil
+	}
+
+	toWrite := len(p)
+	if toWrite > b.limiter.remaining {
+		reserve := 0
+		if !b.truncated {
+			reserve = len(truncatedMsg)
+		}
+		allowed := b.limiter.remaining - reserve
+		if allowed < 0 {
+			allowed = 0
+		}
+		if allowed > 0 {
+			_, _ = b.buffer.Write(p[:allowed])
+		}
+		if reserve > 0 && b.limiter.remaining >= reserve {
+			_, _ = b.buffer.WriteString(truncatedMsg)
+		}
+		b.truncated = true
+		b.limiter.remaining = 0
+		return len(p), nil
+	}
+
+	_, _ = b.buffer.Write(p)
+	b.limiter.remaining -= toWrite
+	return len(p), nil
+}
+
+func (b *limitedBuffer) String() string {
+	return b.buffer.String()
+}
+
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:   "run [command]",
@@ -51,8 +104,8 @@ Example:
   hb run --slug daily-backup -- pg_dump -U postgres mydb
 
 Note: Shell operators such as ">" are interpreted by your shell before hb runs,
-so if you need redirection or other shell features, wrap them in a shell script
-and invoke that script with "hb run".`,
+so redirection works as usual. If you need more complex shell features, wrap
+them in a shell script and invoke that script with "hb run".`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(_ *cobra.Command, args []string) error {
 		if checkInID == "" && slug == "" {
@@ -81,9 +134,11 @@ and invoke that script with "hb run".`,
 		execCmd := exec.Command(command, cmdArgs...) // nolint:gosec
 
 		// Use MultiWriter to stream output in real-time while capturing it
-		var stdout, stderr bytes.Buffer
-		execCmd.Stdout = io.MultiWriter(os.Stdout, &stdout)
-		execCmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
+		limiter := &sharedLimiter{remaining: maxOutputSize}
+		stdout := &limitedBuffer{limiter: limiter}
+		stderr := &limitedBuffer{limiter: limiter}
+		execCmd.Stdout = io.MultiWriter(os.Stdout, stdout)
+		execCmd.Stderr = io.MultiWriter(os.Stderr, stderr)
 
 		// Execute command and measure duration
 		startTime := time.Now()
@@ -104,8 +159,8 @@ and invoke that script with "hb run".`,
 		// Prepare payload
 		payload := checkInPayload{}
 		payload.CheckIn.Duration = durationMs
-		payload.CheckIn.Stdout = truncateOutput(stdout.String())
-		payload.CheckIn.Stderr = truncateOutput(stderr.String())
+		payload.CheckIn.Stdout = stdout.String()
+		payload.CheckIn.Stderr = stderr.String()
 		payload.CheckIn.ExitCode = runExitCode
 
 		if execErr != nil {
@@ -116,54 +171,60 @@ and invoke that script with "hb run".`,
 
 		jsonPayload, err := json.Marshal(payload)
 		if err != nil {
-			return fmt.Errorf("error marshaling payload: %w", err)
-		}
-
-		apiEndpoint := viper.GetString("endpoint")
-		var url string
-		if checkInID != "" {
-			url = fmt.Sprintf("%s/v1/check_in/%s", apiEndpoint, checkInID)
+			fmt.Fprintf(os.Stderr, "Failed to marshal check-in payload: %v\n", err)
 		} else {
-			url = fmt.Sprintf("%s/v1/check_in/%s/%s", apiEndpoint, apiKey, slug)
-		}
-
-		// Create request with timeout
-		ctx, cancel := context.WithTimeout(context.Background(), httpTimeout)
-		defer cancel()
-
-		req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonPayload))
-		if err != nil {
-			return fmt.Errorf("error creating request: %w", err)
-		}
-
-		req.Header.Set("Content-Type", "application/json")
-
-		// Send request
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return fmt.Errorf("failed to send check-in to Honeybadger: %w", err)
-		}
-		defer resp.Body.Close() // nolint:errcheck
-
-		// Check response status
-		if resp.StatusCode != http.StatusOK {
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return fmt.Errorf(
-					"unexpected status code: %d, and failed to read response body: %v",
-					resp.StatusCode,
-					err,
-				)
+			apiEndpoint := viper.GetString("endpoint")
+			var url string
+			if checkInID != "" {
+				url = fmt.Sprintf("%s/v1/check_in/%s", apiEndpoint, checkInID)
+			} else {
+				url = fmt.Sprintf("%s/v1/check_in/%s/%s", apiEndpoint, apiKey, slug)
 			}
-			return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, body)
-		}
 
-		fmt.Fprintf(
-			os.Stderr,
-			"Check-in reported to Honeybadger (duration: %dms, status: %s)\n",
-			durationMs,
-			payload.CheckIn.Status,
-		)
+			// Create request with timeout
+			ctx, cancel := context.WithTimeout(context.Background(), httpTimeout)
+			defer cancel()
+
+			req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonPayload))
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to create check-in request: %v\n", err)
+			} else {
+				req.Header.Set("Content-Type", "application/json")
+
+				// Send request
+				resp, err := http.DefaultClient.Do(req)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Failed to report check-in to Honeybadger: %v\n", err)
+				} else {
+					defer resp.Body.Close() // nolint:errcheck
+					if resp.StatusCode != http.StatusOK {
+						body, err := io.ReadAll(resp.Body)
+						if err != nil {
+							fmt.Fprintf(
+								os.Stderr,
+								"Unexpected status code: %d; failed to read response body: %v\n",
+								resp.StatusCode,
+								err,
+							)
+						} else {
+							fmt.Fprintf(
+								os.Stderr,
+								"Unexpected status code: %d, body: %s\n",
+								resp.StatusCode,
+								body,
+							)
+						}
+					} else {
+						fmt.Fprintf(
+							os.Stderr,
+							"Check-in reported to Honeybadger (duration: %dms, status: %s)\n",
+							durationMs,
+							payload.CheckIn.Status,
+						)
+					}
+				}
+			}
+		}
 
 		// Exit with the same code as the wrapped command
 		if runExitCode != 0 {
@@ -171,14 +232,6 @@ and invoke that script with "hb run".`,
 		}
 		return nil
 	},
-}
-
-// truncateOutput truncates output to maxOutputSize if necessary
-func truncateOutput(s string) string {
-	if len(s) <= maxOutputSize {
-		return s
-	}
-	return s[:maxOutputSize-len(truncatedMsg)] + truncatedMsg
 }
 
 func init() {

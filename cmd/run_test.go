@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -178,6 +179,22 @@ exit 42
 				assert.Equal(t, -1, payload.CheckIn.ExitCode)
 			},
 		},
+		{
+			name:             "reporting failure still exits with command code",
+			args:             []string{"--id", "check-123", scriptPath},
+			apiKey:           "",
+			expectedPath:     "/v1/check_in/check-123",
+			expectedStatus:   http.StatusInternalServerError,
+			expectedError:    false,
+			expectedExitCode: 0,
+			validateBody: func(t *testing.T, payload testCheckInPayload) {
+				assert.Equal(t, "success", payload.CheckIn.Status)
+				assert.Contains(t, payload.CheckIn.Stdout, "Hello, stdout!")
+				assert.Contains(t, payload.CheckIn.Stderr, "Error message!")
+				assert.GreaterOrEqual(t, payload.CheckIn.Duration, int64(0))
+				assert.Equal(t, 0, payload.CheckIn.ExitCode)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -279,24 +296,18 @@ func TestCheckInPayloadConstruction(t *testing.T) {
 	assert.Equal(t, 0, decoded.CheckIn.ExitCode)
 }
 
-func TestTruncateOutput(t *testing.T) {
-	// Short string should not be truncated
-	short := "hello world"
-	assert.Equal(t, short, truncateOutput(short))
+func TestLimitedBuffer(t *testing.T) {
+	limiter := &sharedLimiter{remaining: maxOutputSize}
+	stdout := &limitedBuffer{limiter: limiter}
+	stderr := &limitedBuffer{limiter: limiter}
 
-	// String at exactly maxOutputSize should not be truncated
-	exactSize := make([]byte, maxOutputSize)
-	for i := range exactSize {
-		exactSize[i] = 'a'
-	}
-	assert.Equal(t, string(exactSize), truncateOutput(string(exactSize)))
+	half := maxOutputSize / 2
+	_, err := stdout.Write(bytes.Repeat([]byte("a"), half))
+	assert.NoError(t, err)
 
-	// String over maxOutputSize should be truncated
-	overSize := make([]byte, maxOutputSize+1000)
-	for i := range overSize {
-		overSize[i] = 'b'
-	}
-	result := truncateOutput(string(overSize))
-	assert.Equal(t, maxOutputSize, len(result))
-	assert.Contains(t, result, "[output truncated]")
+	_, err = stderr.Write(bytes.Repeat([]byte("b"), half+100))
+	assert.NoError(t, err)
+
+	assert.Equal(t, maxOutputSize, len(stdout.String())+len(stderr.String()))
+	assert.Contains(t, stderr.String(), "[output truncated]")
 }
