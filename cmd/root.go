@@ -41,7 +41,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().
-		StringVar(&cfgFile, "config", "", "config file (default is config/honeybadger.yml)")
+		StringVar(&cfgFile, "config", "", "config file (default is ~/.honeybadger-cli.yaml)")
 	rootCmd.PersistentFlags().
 		StringVar(&apiKey, "api-key", "", "Honeybadger API key (for Reporting API)")
 	rootCmd.PersistentFlags().
@@ -52,10 +52,16 @@ func init() {
 	if err := viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key")); err != nil {
 		fmt.Printf("error binding api-key flag: %v\n", err)
 	}
-	if err := viper.BindPFlag("auth_token", rootCmd.PersistentFlags().Lookup("auth-token")); err != nil {
+	if err := viper.BindPFlag(
+		"auth_token",
+		rootCmd.PersistentFlags().Lookup("auth-token"),
+	); err != nil {
 		fmt.Printf("error binding auth-token flag: %v\n", err)
 	}
-	if err := viper.BindPFlag("endpoint", rootCmd.PersistentFlags().Lookup("endpoint")); err != nil {
+	if err := viper.BindPFlag(
+		"endpoint",
+		rootCmd.PersistentFlags().Lookup("endpoint"),
+	); err != nil {
 		fmt.Printf("error binding endpoint flag: %v\n", err)
 	}
 }
@@ -64,10 +70,13 @@ func initConfig() {
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 	} else {
-		// Search for config in config directory
-		viper.AddConfigPath("config")
-		viper.SetConfigType("yml")
-		viper.SetConfigName("honeybadger")
+		// Search for config in home directory
+		home, err := os.UserHomeDir()
+		if err == nil {
+			viper.AddConfigPath(home)
+		}
+		viper.SetConfigType("yaml")
+		viper.SetConfigName(".honeybadger-cli")
 	}
 
 	viper.AutomaticEnv()

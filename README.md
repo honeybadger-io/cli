@@ -18,7 +18,7 @@ The CLI can be configured using either command-line flags, environment variables
 
 ### Configuration File
 
-By default, the CLI looks for a configuration file at `config/honeybadger.yml` in the current directory. You can specify a different configuration file using the `--config` flag.
+By default, the CLI looks for a configuration file at `~/.honeybadger-cli.yaml` in your home directory. You can specify a different configuration file using the `--config` flag.
 
 Example configuration file:
 ```yaml
