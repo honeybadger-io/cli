@@ -66,7 +66,9 @@ func initConfig() {
 	} else {
 		// Search for config in home directory
 		home, err := os.UserHomeDir()
-		if err == nil {
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Unable to determine home directory: %v\n", err)
+		} else {
 			viper.AddConfigPath(home)
 		}
 		viper.SetConfigType("yaml")
