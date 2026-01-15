@@ -1,5 +1,5 @@
 # Honeybadger CLI Configuration
-# Copy this file to honeybadger.yml and update with your settings
+# Copy this file to ~/.honeybadger-cli.yaml and update with your settings
 
 # Your Honeybadger API key
 api_key: your-api-key-here
