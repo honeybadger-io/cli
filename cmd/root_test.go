@@ -68,7 +68,7 @@ func TestConfigurationLoading(t *testing.T) {
 api_key: config-api-key
 endpoint: https://config.honeybadger.io
 `
-	configPath := filepath.Join(tmpDir, "honeybadger.yml")
+	configPath := filepath.Join(tmpDir, ".honeybadger-cli.yaml")
 	if err := os.WriteFile(configPath, []byte(configContent), 0o600); err != nil {
 		t.Fatalf("Failed to write config file: %v", err)
 	}

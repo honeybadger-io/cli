@@ -41,7 +41,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().
-		StringVar(&cfgFile, "config", "", "config file (default is config/honeybadger.yml)")
+		StringVar(&cfgFile, "config", "", "config file (default is ~/.honeybadger-cli.yaml)")
 	rootCmd.PersistentFlags().
 		StringVar(&apiKey, "api-key", "", "Honeybadger API key (for Reporting API)")
 	rootCmd.PersistentFlags().
@@ -70,10 +70,13 @@ func initConfig() {
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 	} else {
-		// Search for config in config directory
-		viper.AddConfigPath("config")
-		viper.SetConfigType("yml")
-		viper.SetConfigName("honeybadger")
+		// Search for config in home directory
+		home, err := os.UserHomeDir()
+		if err == nil {
+			viper.AddConfigPath(home)
+		}
+		viper.SetConfigType("yaml")
+		viper.SetConfigName(".honeybadger-cli")
 	}
 
 	viper.AutomaticEnv()
