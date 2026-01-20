@@ -65,7 +65,7 @@ var checkinsListCmd = &cobra.Command{
 			fmt.Println(string(jsonBytes))
 		default:
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			_, _ = fmt.Fprintln(w, "ID\tNAME\tSLUG\tTYPE\tSCHEDULE\tLAST CHECK-IN")
+			_, _ = fmt.Fprintln(w, "ID\tNAME\tSTATE\tTYPE\tSCHEDULE\tLAST CHECK-IN")
 			for _, ci := range checkIns {
 				schedule := ""
 				if ci.ScheduleType == "simple" && ci.ReportPeriod != nil {
@@ -82,7 +82,7 @@ var checkinsListCmd = &cobra.Command{
 				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
 					ci.ID,
 					ci.Name,
-					ci.Slug,
+					ci.State,
 					ci.ScheduleType,
 					schedule,
 					lastCheckIn)
