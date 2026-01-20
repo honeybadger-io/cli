@@ -18,7 +18,7 @@ The CLI can be configured using either command-line flags, environment variables
 
 ### Configuration File
 
-By default, the CLI looks for a configuration file at `config/honeybadger.yml` in the current directory. You can specify a different configuration file using the `--config` flag.
+By default, the CLI looks for a configuration file at `~/.honeybadger-cli.yaml` in your home directory. You can specify a different configuration file using the `--config` flag.
 
 Example configuration file:
 ```yaml
@@ -58,6 +58,8 @@ These commands use `--api-key` or `HONEYBADGER_API_KEY` (project API key):
 |---------|-------------|
 | `hb deploy` | Report a deployment to Honeybadger |
 | `hb agent` | Start a metrics reporting agent that sends system metrics to Insights |
+| `hb run` | Run a command and report its status to a check-in |
+| `hb check-in` | Report a check-in without running a command |
 
 ### Data API Commands
 
@@ -85,6 +87,12 @@ hb deploy --environment production --revision abc123
 
 # Start the metrics agent
 hb agent --interval 60
+
+# Run a command and report to a check-in
+hb run --id XyZZy -- /usr/local/bin/backup.sh
+
+# Report a check-in without running a command
+hb check-in --slug daily-backup
 
 # List all projects
 hb projects list
@@ -148,6 +156,13 @@ To run tests locally:
 
 ```bash
 go test ./...
+```
+
+To build and test local binaries:
+
+```bash
+go build -o ./hb
+./hb run --id check-123 -- /usr/local/bin/backup.sh
 ```
 
 ### To contribute your code:
