@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
@@ -24,12 +25,25 @@ var (
 	Date string
 )
 
+// Command group IDs
+const (
+	GroupReportingAPI = "reporting"
+	GroupDataAPI      = "data"
+)
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "hb",
 	Short: "Honeybadger CLI tool",
-	Long: `A command line interface for interacting with Honeybadger's Reporting API.
-This tool allows you to manage deployments and other reporting features.`,
+	Long: `A command line interface for interacting with Honeybadger.
+
+This tool provides access to two APIs:
+
+  Reporting API - For sending data to Honeybadger (deployments, metrics)
+                  Authenticate with --api-key or HONEYBADGER_API_KEY
+
+  Data API      - For reading and managing your Honeybadger data
+                  Authenticate with --auth-token or HONEYBADGER_AUTH_TOKEN`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -40,6 +54,16 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize(initConfig)
 
+	// Add command groups
+	rootCmd.AddGroup(&cobra.Group{
+		ID:    GroupReportingAPI,
+		Title: "Reporting API Commands (use --api-key):",
+	})
+	rootCmd.AddGroup(&cobra.Group{
+		ID:    GroupDataAPI,
+		Title: "Data API Commands (use --auth-token):",
+	})
+
 	rootCmd.PersistentFlags().
 		StringVar(&cfgFile, "config", "", "config file (default is ~/.honeybadger-cli.yaml)")
 	rootCmd.PersistentFlags().
@@ -49,7 +73,8 @@ func init() {
 	rootCmd.PersistentFlags().
 		StringVar(&endpoint, "endpoint", defaultEndpoint, "Honeybadger endpoint")
 
-	if err := viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key")); err != nil {
+	err := viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key"))
+	if err != nil {
 		fmt.Printf("error binding api-key flag: %v\n", err)
 	}
 	if err := viper.BindPFlag(
@@ -102,13 +127,31 @@ func initConfig() {
 
 // convertEndpointForDataAPI converts api.honeybadger.io to app.honeybadger.io for Data API calls
 func convertEndpointForDataAPI(endpoint string) string {
-	switch endpoint {
+	trimmed := strings.TrimSpace(endpoint)
+	if trimmed == "" {
+		return endpoint
+	}
+
+	parsed, err := url.Parse(trimmed)
+	if err == nil && parsed.Scheme != "" && parsed.Host != "" {
+		switch parsed.Host {
+		case "api.honeybadger.io":
+			parsed.Host = "app.honeybadger.io"
+		case "eu-api.honeybadger.io":
+			parsed.Host = "eu-app.honeybadger.io"
+		}
+		return parsed.String()
+	}
+
+	normalized := strings.TrimRight(trimmed, "/")
+	switch normalized {
 	case "https://api.honeybadger.io":
 		return "https://app.honeybadger.io"
 	case "https://eu-api.honeybadger.io":
 		return "https://eu-app.honeybadger.io"
+	default:
+		return trimmed
 	}
-	return endpoint
 }
 
 // readJSONInput reads JSON from either a direct string or a file path prefixed with 'file://'
