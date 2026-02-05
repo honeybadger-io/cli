@@ -6,11 +6,23 @@ A command-line interface for interacting with Honeybadger's Reporting API and Da
 
 ## Installation
 
+### Homebrew
+
+```bash
+brew install honeybadger-io/tap/honeybadger
+```
+
+### Go
+
 ```bash
 go install github.com/honeybadger-io/cli/cmd/hb@latest
 ```
 
 Note: The install path includes `/cmd/hb` so Go installs the `hb` binary name.
+
+### Download from GitHub
+
+Pre-built binaries for Linux, macOS, and Windows are available on the [GitHub releases page](https://github.com/honeybadger-io/cli/releases).
 
 ## Configuration
 
