@@ -6,6 +6,14 @@ A command-line interface for interacting with Honeybadger's Reporting API and Da
 
 ## Installation
 
+### Homebrew
+
+```bash
+brew install honeybadger-io/tap/honeybadger
+```
+
+### Go
+
 ```bash
 go install github.com/honeybadger-io/cli/cmd/hb@latest
 ```
