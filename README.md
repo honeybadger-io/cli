@@ -20,6 +20,10 @@ go install github.com/honeybadger-io/cli/cmd/hb@latest
 
 Note: The install path includes `/cmd/hb` so Go installs the `hb` binary name.
 
+### Download from GitHub
+
+Pre-built binaries for Linux, macOS, and Windows are available on the [GitHub releases page](https://github.com/honeybadger-io/cli/releases).
+
 ## Configuration
 
 The CLI can be configured using either command-line flags, environment variables, or a configuration file.
