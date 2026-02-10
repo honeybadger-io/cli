@@ -253,7 +253,11 @@ func TestCommentsViperProjectIDFallback(t *testing.T) {
 		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"results": [], "links": {"self": "/v2/projects/123/faults/456/comments"}}`))
+			_, _ = w.Write(
+				[]byte(
+					`{"results": [], "links": {"self": "/v2/projects/123/faults/456/comments"}}`,
+				),
+			)
 		}),
 	)
 	defer server.Close()
@@ -300,7 +304,9 @@ func TestEnvironmentsViperProjectIDFallback(t *testing.T) {
 		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"results": [], "links": {"self": "/v2/projects/123/environments"}}`))
+			_, _ = w.Write(
+				[]byte(`{"results": [], "links": {"self": "/v2/projects/123/environments"}}`),
+			)
 		}),
 	)
 	defer server.Close()
