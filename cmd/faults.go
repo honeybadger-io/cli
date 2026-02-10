@@ -37,7 +37,10 @@ var faultsListCmd = &cobra.Command{
 	Long:  `List all faults for a specific project with optional filtering.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if faultsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+			faultsProjectID = viper.GetInt("project_id")
+		}
+		if faultsProjectID == 0 {
+			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
 		}
 
 		authToken := viper.GetString("auth_token")
@@ -118,7 +121,10 @@ var faultsGetCmd = &cobra.Command{
 	Long:  `Get detailed information about a specific fault.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if faultsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+			faultsProjectID = viper.GetInt("project_id")
+		}
+		if faultsProjectID == 0 {
+			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
 		}
 		if faultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --id flag")
@@ -200,7 +206,10 @@ var faultsNoticesCmd = &cobra.Command{
 	Long:  `List individual error occurrences (notices) for a specific fault.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if faultsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+			faultsProjectID = viper.GetInt("project_id")
+		}
+		if faultsProjectID == 0 {
+			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
 		}
 		if faultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --id flag")
@@ -270,7 +279,10 @@ var faultsCountsCmd = &cobra.Command{
 	Long:  `Get summary counts of faults grouped by environment and status.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if faultsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+			faultsProjectID = viper.GetInt("project_id")
+		}
+		if faultsProjectID == 0 {
+			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
 		}
 
 		authToken := viper.GetString("auth_token")
@@ -329,7 +341,10 @@ var faultsAffectedUsersCmd = &cobra.Command{
 	Long:  `List all users who have been affected by a specific fault.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if faultsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+			faultsProjectID = viper.GetInt("project_id")
+		}
+		if faultsProjectID == 0 {
+			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
 		}
 		if faultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --id flag")

@@ -34,7 +34,10 @@ var environmentsListCmd = &cobra.Command{
 	Long:  `List all environments configured for a specific project.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if environmentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+			environmentsProjectID = viper.GetInt("project_id")
+		}
+		if environmentsProjectID == 0 {
+			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
 		}
 
 		authToken := viper.GetString("auth_token")
@@ -92,7 +95,10 @@ var environmentsGetCmd = &cobra.Command{
 	Long:  `Get detailed information about a specific environment.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if environmentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+			environmentsProjectID = viper.GetInt("project_id")
+		}
+		if environmentsProjectID == 0 {
+			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
 		}
 		if environmentID == 0 {
 			return fmt.Errorf("environment ID is required. Set it using --id flag")
@@ -155,7 +161,10 @@ Example JSON payload:
 }`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if environmentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+			environmentsProjectID = viper.GetInt("project_id")
+		}
+		if environmentsProjectID == 0 {
+			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
 		}
 		if environmentCLIInputJSON == "" {
 			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
@@ -230,7 +239,10 @@ Example JSON payload:
 }`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if environmentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+			environmentsProjectID = viper.GetInt("project_id")
+		}
+		if environmentsProjectID == 0 {
+			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
 		}
 		if environmentID == 0 {
 			return fmt.Errorf("environment ID is required. Set it using --id flag")
@@ -287,7 +299,10 @@ var environmentsDeleteCmd = &cobra.Command{
 	Long:  `Delete an environment by ID. This action cannot be undone.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if environmentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+			environmentsProjectID = viper.GetInt("project_id")
+		}
+		if environmentsProjectID == 0 {
+			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
 		}
 		if environmentID == 0 {
 			return fmt.Errorf("environment ID is required. Set it using --id flag")
