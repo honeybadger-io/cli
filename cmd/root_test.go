@@ -102,6 +102,25 @@ func TestResolveProjectID(t *testing.T) {
 	}
 }
 
+func TestResolveProjectIDFromEnvVar(t *testing.T) {
+	originalVal := os.Getenv("HONEYBADGER_PROJECT_ID")
+	defer func() {
+		_ = os.Setenv("HONEYBADGER_PROJECT_ID", originalVal)
+	}()
+
+	_ = os.Setenv("HONEYBADGER_PROJECT_ID", "456")
+
+	viper.Reset()
+	viper.SetEnvPrefix("HONEYBADGER")
+	viper.AutomaticEnv()
+	_ = viper.BindEnv("project_id")
+
+	projectID := 0
+	err := resolveProjectID(&projectID)
+	assert.NoError(t, err)
+	assert.Equal(t, 456, projectID)
+}
+
 func TestConfigurationLoading(t *testing.T) {
 	// Save original environment variables
 	originalAPIKey := os.Getenv("HONEYBADGER_API_KEY")

@@ -108,6 +108,11 @@ func initConfig() {
 	viper.SetEnvPrefix("HONEYBADGER")
 	viper.SetDefault("endpoint", defaultEndpoint)
 
+	// Register project_id for env var lookup (HONEYBADGER_PROJECT_ID).
+	// Unlike api_key/auth_token/endpoint, project_id has no root-level flag
+	// to bind, so we use BindEnv to make viper aware of it.
+	_ = viper.BindEnv("project_id")
+
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
 	}
