@@ -34,13 +34,8 @@ var commentsListCmd = &cobra.Command{
 	Short: "List comments for a fault",
 	Long:  `List all comments on a specific fault.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if commentsProjectID == 0 {
-			commentsProjectID = viper.GetInt("project_id")
-		}
-		if commentsProjectID == 0 {
-			return fmt.Errorf(
-				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
-			)
+		if err := resolveProjectID(&commentsProjectID); err != nil {
+			return err
 		}
 		if commentsFaultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --fault-id flag")
@@ -106,13 +101,8 @@ var commentsGetCmd = &cobra.Command{
 	Short: "Get a comment by ID",
 	Long:  `Get detailed information about a specific comment.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if commentsProjectID == 0 {
-			commentsProjectID = viper.GetInt("project_id")
-		}
-		if commentsProjectID == 0 {
-			return fmt.Errorf(
-				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
-			)
+		if err := resolveProjectID(&commentsProjectID); err != nil {
+			return err
 		}
 		if commentsFaultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --fault-id flag")
@@ -170,13 +160,8 @@ var commentsCreateCmd = &cobra.Command{
 	Short: "Create a new comment",
 	Long:  `Create a new comment on a fault.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if commentsProjectID == 0 {
-			commentsProjectID = viper.GetInt("project_id")
-		}
-		if commentsProjectID == 0 {
-			return fmt.Errorf(
-				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
-			)
+		if err := resolveProjectID(&commentsProjectID); err != nil {
+			return err
 		}
 		if commentsFaultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --fault-id flag")
@@ -227,13 +212,8 @@ var commentsUpdateCmd = &cobra.Command{
 	Short: "Update an existing comment",
 	Long:  `Update the body of an existing comment.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if commentsProjectID == 0 {
-			commentsProjectID = viper.GetInt("project_id")
-		}
-		if commentsProjectID == 0 {
-			return fmt.Errorf(
-				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
-			)
+		if err := resolveProjectID(&commentsProjectID); err != nil {
+			return err
 		}
 		if commentsFaultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --fault-id flag")
@@ -297,13 +277,8 @@ var commentsDeleteCmd = &cobra.Command{
 	Short: "Delete a comment",
 	Long:  `Delete a comment by ID. This action cannot be undone.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if commentsProjectID == 0 {
-			commentsProjectID = viper.GetInt("project_id")
-		}
-		if commentsProjectID == 0 {
-			return fmt.Errorf(
-				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
-			)
+		if err := resolveProjectID(&commentsProjectID); err != nil {
+			return err
 		}
 		if commentsFaultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --fault-id flag")

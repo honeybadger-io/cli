@@ -33,13 +33,8 @@ var checkinsListCmd = &cobra.Command{
 	Short: "List check-ins for a project",
 	Long:  `List all check-ins configured for a specific project.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if checkinsProjectID == 0 {
-			checkinsProjectID = viper.GetInt("project_id")
-		}
-		if checkinsProjectID == 0 {
-			return fmt.Errorf(
-				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
-			)
+		if err := resolveProjectID(&checkinsProjectID); err != nil {
+			return err
 		}
 
 		authToken := viper.GetString("auth_token")
@@ -105,13 +100,8 @@ var checkinsGetCmd = &cobra.Command{
 	Short: "Get a check-in by ID",
 	Long:  `Get detailed information about a specific check-in.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if checkinsProjectID == 0 {
-			checkinsProjectID = viper.GetInt("project_id")
-		}
-		if checkinsProjectID == 0 {
-			return fmt.Errorf(
-				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
-			)
+		if err := resolveProjectID(&checkinsProjectID); err != nil {
+			return err
 		}
 		if checkinID == "" {
 			return fmt.Errorf("check-in ID is required. Set it using --id flag")
@@ -204,13 +194,8 @@ Example JSON payload for cron schedule:
   }
 }`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if checkinsProjectID == 0 {
-			checkinsProjectID = viper.GetInt("project_id")
-		}
-		if checkinsProjectID == 0 {
-			return fmt.Errorf(
-				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
-			)
+		if err := resolveProjectID(&checkinsProjectID); err != nil {
+			return err
 		}
 		if checkinCLIInputJSON == "" {
 			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
@@ -281,13 +266,8 @@ Example JSON payload:
   }
 }`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if checkinsProjectID == 0 {
-			checkinsProjectID = viper.GetInt("project_id")
-		}
-		if checkinsProjectID == 0 {
-			return fmt.Errorf(
-				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
-			)
+		if err := resolveProjectID(&checkinsProjectID); err != nil {
+			return err
 		}
 		if checkinID == "" {
 			return fmt.Errorf("check-in ID is required. Set it using --id flag")
@@ -360,13 +340,8 @@ var checkinsDeleteCmd = &cobra.Command{
 	Short: "Delete a check-in",
 	Long:  `Delete a check-in by ID. This action cannot be undone.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if checkinsProjectID == 0 {
-			checkinsProjectID = viper.GetInt("project_id")
-		}
-		if checkinsProjectID == 0 {
-			return fmt.Errorf(
-				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
-			)
+		if err := resolveProjectID(&checkinsProjectID); err != nil {
+			return err
 		}
 		if checkinID == "" {
 			return fmt.Errorf("check-in ID is required. Set it using --id flag")

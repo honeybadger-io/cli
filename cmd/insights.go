@@ -45,13 +45,8 @@ Examples:
   # Query at a specific timestamp
   hb insights query --project-id 12345 --query "SELECT * FROM report.system.disk" --ts "2024-01-01T00:00:00Z"`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if insightsProjectID == 0 {
-			insightsProjectID = viper.GetInt("project_id")
-		}
-		if insightsProjectID == 0 {
-			return fmt.Errorf(
-				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
-			)
+		if err := resolveProjectID(&insightsProjectID); err != nil {
+			return err
 		}
 		if insightsQuery == "" {
 			return fmt.Errorf("query is required. Set it using --query flag")

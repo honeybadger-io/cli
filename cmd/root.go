@@ -154,6 +154,20 @@ func convertEndpointForDataAPI(endpoint string) string {
 	}
 }
 
+// resolveProjectID resolves the project ID from the flag value, falling back to viper config/env.
+// Returns an error if no project ID is found from any source.
+func resolveProjectID(projectID *int) error {
+	if *projectID == 0 {
+		*projectID = viper.GetInt("project_id")
+	}
+	if *projectID == 0 {
+		return fmt.Errorf(
+			"project ID is required. Set it using --project-id flag, HONEYBADGER_PROJECT_ID environment variable, or project_id in your config file",
+		)
+	}
+	return nil
+}
+
 // readJSONInput reads JSON from either a direct string or a file path prefixed with 'file://'
 func readJSONInput(input string) ([]byte, error) {
 	if strings.HasPrefix(input, "file://") {

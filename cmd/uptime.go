@@ -43,13 +43,8 @@ var uptimeSitesListCmd = &cobra.Command{
 	Short: "List uptime sites for a project",
 	Long:  `List all uptime monitoring sites configured for a specific project.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if uptimeProjectID == 0 {
-			uptimeProjectID = viper.GetInt("project_id")
-		}
-		if uptimeProjectID == 0 {
-			return fmt.Errorf(
-				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
-			)
+		if err := resolveProjectID(&uptimeProjectID); err != nil {
+			return err
 		}
 
 		authToken := viper.GetString("auth_token")
@@ -107,13 +102,8 @@ var uptimeSitesGetCmd = &cobra.Command{
 	Short: "Get an uptime site by ID",
 	Long:  `Get detailed information about a specific uptime site.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if uptimeProjectID == 0 {
-			uptimeProjectID = viper.GetInt("project_id")
-		}
-		if uptimeProjectID == 0 {
-			return fmt.Errorf(
-				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
-			)
+		if err := resolveProjectID(&uptimeProjectID); err != nil {
+			return err
 		}
 		if uptimeSiteID == "" {
 			return fmt.Errorf("site ID is required. Set it using --site-id flag")
@@ -192,13 +182,8 @@ Available options:
 - request_method: "GET", "POST", "PUT", "PATCH", "DELETE"
 - locations: "Virginia", "Oregon", "Frankfurt", "Singapore", "London"`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if uptimeProjectID == 0 {
-			uptimeProjectID = viper.GetInt("project_id")
-		}
-		if uptimeProjectID == 0 {
-			return fmt.Errorf(
-				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
-			)
+		if err := resolveProjectID(&uptimeProjectID); err != nil {
+			return err
 		}
 		if uptimeCLIInputJSON == "" {
 			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
@@ -270,13 +255,8 @@ Example JSON payload:
   }
 }`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if uptimeProjectID == 0 {
-			uptimeProjectID = viper.GetInt("project_id")
-		}
-		if uptimeProjectID == 0 {
-			return fmt.Errorf(
-				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
-			)
+		if err := resolveProjectID(&uptimeProjectID); err != nil {
+			return err
 		}
 		if uptimeSiteID == "" {
 			return fmt.Errorf("site ID is required. Set it using --site-id flag")
@@ -339,13 +319,8 @@ var uptimeSitesDeleteCmd = &cobra.Command{
 	Short: "Delete an uptime site",
 	Long:  `Delete an uptime monitoring site by ID. This action cannot be undone.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if uptimeProjectID == 0 {
-			uptimeProjectID = viper.GetInt("project_id")
-		}
-		if uptimeProjectID == 0 {
-			return fmt.Errorf(
-				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
-			)
+		if err := resolveProjectID(&uptimeProjectID); err != nil {
+			return err
 		}
 		if uptimeSiteID == "" {
 			return fmt.Errorf("site ID is required. Set it using --site-id flag")
@@ -381,13 +356,8 @@ var uptimeOutagesCmd = &cobra.Command{
 	Short: "List outages for a site",
 	Long:  `List outages recorded for a specific uptime monitoring site.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if uptimeProjectID == 0 {
-			uptimeProjectID = viper.GetInt("project_id")
-		}
-		if uptimeProjectID == 0 {
-			return fmt.Errorf(
-				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
-			)
+		if err := resolveProjectID(&uptimeProjectID); err != nil {
+			return err
 		}
 		if uptimeSiteID == "" {
 			return fmt.Errorf("site ID is required. Set it using --site-id flag")
@@ -458,13 +428,8 @@ var uptimeChecksCmd = &cobra.Command{
 	Short: "List uptime checks for a site",
 	Long:  `List individual uptime checks performed for a specific site.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if uptimeProjectID == 0 {
-			uptimeProjectID = viper.GetInt("project_id")
-		}
-		if uptimeProjectID == 0 {
-			return fmt.Errorf(
-				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
-			)
+		if err := resolveProjectID(&uptimeProjectID); err != nil {
+			return err
 		}
 		if uptimeSiteID == "" {
 			return fmt.Errorf("site ID is required. Set it using --site-id flag")

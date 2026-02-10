@@ -177,6 +177,31 @@ func TestUptimeSitesGetCommand(t *testing.T) {
 	}
 }
 
+func TestUptimeViperProjectIDFallback(t *testing.T) {
+	server := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{
+				"results": [{"id": "site1", "name": "Site 1", "url": "https://example.com", "state": "up", "active": true, "frequency": 5}],
+				"links": {"self": "/v2/projects/123/sites"}
+			}`))
+		}),
+	)
+	defer server.Close()
+
+	viper.Reset()
+	viper.Set("endpoint", server.URL)
+	viper.Set("auth_token", "test-token")
+	viper.Set("project_id", 123)
+
+	uptimeProjectID = 0
+	uptimeOutputFormat = "table"
+
+	err := uptimeSitesListCmd.RunE(uptimeSitesListCmd, []string{})
+	assert.NoError(t, err)
+}
+
 func TestUptimeOutputFormat(t *testing.T) {
 	mockResponse := `{
 		"results": [{"id": "site1", "name": "Site 1", "url": "https://example.com", "state": "up", "active": true, "frequency": 5}],
