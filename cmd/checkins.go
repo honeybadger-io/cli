@@ -37,7 +37,9 @@ var checkinsListCmd = &cobra.Command{
 			checkinsProjectID = viper.GetInt("project_id")
 		}
 		if checkinsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 
 		authToken := viper.GetString("auth_token")
@@ -107,7 +109,9 @@ var checkinsGetCmd = &cobra.Command{
 			checkinsProjectID = viper.GetInt("project_id")
 		}
 		if checkinsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if checkinID == "" {
 			return fmt.Errorf("check-in ID is required. Set it using --id flag")
@@ -204,7 +208,9 @@ Example JSON payload for cron schedule:
 			checkinsProjectID = viper.GetInt("project_id")
 		}
 		if checkinsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if checkinCLIInputJSON == "" {
 			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
@@ -279,7 +285,9 @@ Example JSON payload:
 			checkinsProjectID = viper.GetInt("project_id")
 		}
 		if checkinsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if checkinID == "" {
 			return fmt.Errorf("check-in ID is required. Set it using --id flag")
@@ -356,7 +364,9 @@ var checkinsDeleteCmd = &cobra.Command{
 			checkinsProjectID = viper.GetInt("project_id")
 		}
 		if checkinsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if checkinID == "" {
 			return fmt.Errorf("check-in ID is required. Set it using --id flag")

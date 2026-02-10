@@ -38,7 +38,9 @@ var commentsListCmd = &cobra.Command{
 			commentsProjectID = viper.GetInt("project_id")
 		}
 		if commentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if commentsFaultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --fault-id flag")
@@ -108,7 +110,9 @@ var commentsGetCmd = &cobra.Command{
 			commentsProjectID = viper.GetInt("project_id")
 		}
 		if commentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if commentsFaultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --fault-id flag")
@@ -170,7 +174,9 @@ var commentsCreateCmd = &cobra.Command{
 			commentsProjectID = viper.GetInt("project_id")
 		}
 		if commentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if commentsFaultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --fault-id flag")
@@ -225,7 +231,9 @@ var commentsUpdateCmd = &cobra.Command{
 			commentsProjectID = viper.GetInt("project_id")
 		}
 		if commentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if commentsFaultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --fault-id flag")
@@ -293,7 +301,9 @@ var commentsDeleteCmd = &cobra.Command{
 			commentsProjectID = viper.GetInt("project_id")
 		}
 		if commentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if commentsFaultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --fault-id flag")

@@ -41,7 +41,9 @@ var deploymentsListCmd = &cobra.Command{
 			deploymentsProjectID = viper.GetInt("project_id")
 		}
 		if deploymentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 
 		authToken := viper.GetString("auth_token")
@@ -111,7 +113,9 @@ var deploymentsGetCmd = &cobra.Command{
 			deploymentsProjectID = viper.GetInt("project_id")
 		}
 		if deploymentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if deploymentID == 0 {
 			return fmt.Errorf("deployment ID is required. Set it using --id flag")
@@ -168,7 +172,9 @@ var deploymentsDeleteCmd = &cobra.Command{
 			deploymentsProjectID = viper.GetInt("project_id")
 		}
 		if deploymentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if deploymentID == 0 {
 			return fmt.Errorf("deployment ID is required. Set it using --id flag")

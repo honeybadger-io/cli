@@ -37,7 +37,9 @@ var environmentsListCmd = &cobra.Command{
 			environmentsProjectID = viper.GetInt("project_id")
 		}
 		if environmentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 
 		authToken := viper.GetString("auth_token")
@@ -98,7 +100,9 @@ var environmentsGetCmd = &cobra.Command{
 			environmentsProjectID = viper.GetInt("project_id")
 		}
 		if environmentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if environmentID == 0 {
 			return fmt.Errorf("environment ID is required. Set it using --id flag")
@@ -164,7 +168,9 @@ Example JSON payload:
 			environmentsProjectID = viper.GetInt("project_id")
 		}
 		if environmentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if environmentCLIInputJSON == "" {
 			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
@@ -242,7 +248,9 @@ Example JSON payload:
 			environmentsProjectID = viper.GetInt("project_id")
 		}
 		if environmentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if environmentID == 0 {
 			return fmt.Errorf("environment ID is required. Set it using --id flag")
@@ -302,7 +310,9 @@ var environmentsDeleteCmd = &cobra.Command{
 			environmentsProjectID = viper.GetInt("project_id")
 		}
 		if environmentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if environmentID == 0 {
 			return fmt.Errorf("environment ID is required. Set it using --id flag")

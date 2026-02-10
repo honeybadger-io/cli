@@ -49,7 +49,9 @@ Examples:
 			insightsProjectID = viper.GetInt("project_id")
 		}
 		if insightsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if insightsQuery == "" {
 			return fmt.Errorf("query is required. Set it using --query flag")

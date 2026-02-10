@@ -47,7 +47,9 @@ var uptimeSitesListCmd = &cobra.Command{
 			uptimeProjectID = viper.GetInt("project_id")
 		}
 		if uptimeProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 
 		authToken := viper.GetString("auth_token")
@@ -109,7 +111,9 @@ var uptimeSitesGetCmd = &cobra.Command{
 			uptimeProjectID = viper.GetInt("project_id")
 		}
 		if uptimeProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if uptimeSiteID == "" {
 			return fmt.Errorf("site ID is required. Set it using --site-id flag")
@@ -192,7 +196,9 @@ Available options:
 			uptimeProjectID = viper.GetInt("project_id")
 		}
 		if uptimeProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if uptimeCLIInputJSON == "" {
 			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
@@ -268,7 +274,9 @@ Example JSON payload:
 			uptimeProjectID = viper.GetInt("project_id")
 		}
 		if uptimeProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if uptimeSiteID == "" {
 			return fmt.Errorf("site ID is required. Set it using --site-id flag")
@@ -335,7 +343,9 @@ var uptimeSitesDeleteCmd = &cobra.Command{
 			uptimeProjectID = viper.GetInt("project_id")
 		}
 		if uptimeProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if uptimeSiteID == "" {
 			return fmt.Errorf("site ID is required. Set it using --site-id flag")
@@ -375,7 +385,9 @@ var uptimeOutagesCmd = &cobra.Command{
 			uptimeProjectID = viper.GetInt("project_id")
 		}
 		if uptimeProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if uptimeSiteID == "" {
 			return fmt.Errorf("site ID is required. Set it using --site-id flag")
@@ -450,7 +462,9 @@ var uptimeChecksCmd = &cobra.Command{
 			uptimeProjectID = viper.GetInt("project_id")
 		}
 		if uptimeProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if uptimeSiteID == "" {
 			return fmt.Errorf("site ID is required. Set it using --site-id flag")

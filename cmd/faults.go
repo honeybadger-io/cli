@@ -40,7 +40,9 @@ var faultsListCmd = &cobra.Command{
 			faultsProjectID = viper.GetInt("project_id")
 		}
 		if faultsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 
 		authToken := viper.GetString("auth_token")
@@ -124,7 +126,9 @@ var faultsGetCmd = &cobra.Command{
 			faultsProjectID = viper.GetInt("project_id")
 		}
 		if faultsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if faultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --id flag")
@@ -209,7 +213,9 @@ var faultsNoticesCmd = &cobra.Command{
 			faultsProjectID = viper.GetInt("project_id")
 		}
 		if faultsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if faultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --id flag")
@@ -282,7 +288,9 @@ var faultsCountsCmd = &cobra.Command{
 			faultsProjectID = viper.GetInt("project_id")
 		}
 		if faultsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 
 		authToken := viper.GetString("auth_token")
@@ -344,7 +352,9 @@ var faultsAffectedUsersCmd = &cobra.Command{
 			faultsProjectID = viper.GetInt("project_id")
 		}
 		if faultsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable")
+			return fmt.Errorf(
+				"project ID is required. Set it using --project-id flag or HONEYBADGER_PROJECT_ID environment variable",
+			)
 		}
 		if faultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --id flag")
