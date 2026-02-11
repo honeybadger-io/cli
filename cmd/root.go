@@ -108,6 +108,11 @@ func initConfig() {
 	viper.SetEnvPrefix("HONEYBADGER")
 	viper.SetDefault("endpoint", defaultEndpoint)
 
+	// Register project_id for env var lookup (HONEYBADGER_PROJECT_ID).
+	// Unlike api_key/auth_token/endpoint, project_id has no root-level flag
+	// to bind, so we use BindEnv to make viper aware of it.
+	_ = viper.BindEnv("project_id")
+
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
 	}
@@ -152,6 +157,20 @@ func convertEndpointForDataAPI(endpoint string) string {
 	default:
 		return trimmed
 	}
+}
+
+// resolveProjectID resolves the project ID from the flag value, falling back to viper config/env.
+// Returns an error if no project ID is found from any source.
+func resolveProjectID(projectID *int) error {
+	if *projectID == 0 {
+		*projectID = viper.GetInt("project_id")
+	}
+	if *projectID == 0 {
+		return fmt.Errorf(
+			"project ID is required. Set it using --project-id flag, HONEYBADGER_PROJECT_ID environment variable, or project_id in your config file",
+		)
+	}
+	return nil
 }
 
 // readJSONInput reads JSON from either a direct string or a file path prefixed with 'file://'

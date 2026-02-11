@@ -36,6 +36,7 @@ Example configuration file:
 ```yaml
 api_key: your-project-api-key-here      # For Reporting API (deploy, agent commands)
 auth_token: your-personal-auth-token    # For Data API (projects, faults, insights commands)
+project_id: 12345                       # Optional, default project ID for Data API commands
 endpoint: https://api.honeybadger.io    # Optional, use https://eu-api.honeybadger.io for EU region
 ```
 
@@ -46,6 +47,7 @@ You can set configuration using environment variables prefixed with `HONEYBADGER
 ```bash
 export HONEYBADGER_API_KEY=your-project-api-key-here       # For Reporting API (deploy, agent)
 export HONEYBADGER_AUTH_TOKEN=your-personal-auth-token     # For Data API (projects, faults, insights)
+export HONEYBADGER_PROJECT_ID=12345                        # Optional, default project ID for Data API commands
 export HONEYBADGER_ENDPOINT=https://eu-api.honeybadger.io  # Optional, for EU region
 ```
 

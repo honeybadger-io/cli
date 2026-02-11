@@ -46,6 +46,81 @@ func TestConvertEndpointForDataAPI(t *testing.T) {
 	}
 }
 
+func TestResolveProjectID(t *testing.T) {
+	tests := []struct {
+		name          string
+		flagValue     int
+		viperValue    int
+		expectedID    int
+		expectedError bool
+	}{
+		{
+			name:       "flag value used when set",
+			flagValue:  42,
+			viperValue: 0,
+			expectedID: 42,
+		},
+		{
+			name:       "viper fallback when flag is zero",
+			flagValue:  0,
+			viperValue: 99,
+			expectedID: 99,
+		},
+		{
+			name:       "flag takes precedence over viper",
+			flagValue:  42,
+			viperValue: 99,
+			expectedID: 42,
+		},
+		{
+			name:          "error when both are zero",
+			flagValue:     0,
+			viperValue:    0,
+			expectedError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			viper.Reset()
+			if tt.viperValue != 0 {
+				viper.Set("project_id", tt.viperValue)
+			}
+
+			projectID := tt.flagValue
+			err := resolveProjectID(&projectID)
+
+			if tt.expectedError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "project ID is required")
+				assert.Contains(t, err.Error(), "config file")
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedID, projectID)
+			}
+		})
+	}
+}
+
+func TestResolveProjectIDFromEnvVar(t *testing.T) {
+	originalVal := os.Getenv("HONEYBADGER_PROJECT_ID")
+	defer func() {
+		_ = os.Setenv("HONEYBADGER_PROJECT_ID", originalVal)
+	}()
+
+	_ = os.Setenv("HONEYBADGER_PROJECT_ID", "456")
+
+	viper.Reset()
+	viper.SetEnvPrefix("HONEYBADGER")
+	viper.AutomaticEnv()
+	_ = viper.BindEnv("project_id")
+
+	projectID := 0
+	err := resolveProjectID(&projectID)
+	assert.NoError(t, err)
+	assert.Equal(t, 456, projectID)
+}
+
 func TestConfigurationLoading(t *testing.T) {
 	// Save original environment variables
 	originalAPIKey := os.Getenv("HONEYBADGER_API_KEY")

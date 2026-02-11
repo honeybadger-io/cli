@@ -247,6 +247,82 @@ func TestEnvironmentsListCommand(t *testing.T) {
 	}
 }
 
+// TestCommentsViperProjectIDFallback tests that the comments command uses viper project_id fallback
+func TestCommentsViperProjectIDFallback(t *testing.T) {
+	server := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(
+				[]byte(
+					`{"results": [], "links": {"self": "/v2/projects/123/faults/456/comments"}}`,
+				),
+			)
+		}),
+	)
+	defer server.Close()
+
+	viper.Reset()
+	viper.Set("endpoint", server.URL)
+	viper.Set("auth_token", "test-token")
+	viper.Set("project_id", 123)
+
+	commentsProjectID = 0
+	commentsFaultID = 456
+	commentsOutputFormat = "table"
+
+	err := commentsListCmd.RunE(commentsListCmd, []string{})
+	assert.NoError(t, err)
+}
+
+// TestDeploymentsViperProjectIDFallback tests that the deployments command uses viper project_id fallback
+func TestDeploymentsViperProjectIDFallback(t *testing.T) {
+	server := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"results": [], "links": {"self": "/v2/projects/123/deploys"}}`))
+		}),
+	)
+	defer server.Close()
+
+	viper.Reset()
+	viper.Set("endpoint", server.URL)
+	viper.Set("auth_token", "test-token")
+	viper.Set("project_id", 123)
+
+	deploymentsProjectID = 0
+	deploymentsOutputFormat = "table"
+
+	err := deploymentsListCmd.RunE(deploymentsListCmd, []string{})
+	assert.NoError(t, err)
+}
+
+// TestEnvironmentsViperProjectIDFallback tests that the environments command uses viper project_id fallback
+func TestEnvironmentsViperProjectIDFallback(t *testing.T) {
+	server := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(
+				[]byte(`{"results": [], "links": {"self": "/v2/projects/123/environments"}}`),
+			)
+		}),
+	)
+	defer server.Close()
+
+	viper.Reset()
+	viper.Set("endpoint", server.URL)
+	viper.Set("auth_token", "test-token")
+	viper.Set("project_id", 123)
+
+	environmentsProjectID = 0
+	environmentsOutputFormat = "table"
+
+	err := environmentsListCmd.RunE(environmentsListCmd, []string{})
+	assert.NoError(t, err)
+}
+
 // TestStatuspagesListCommand tests the statuspages list command validation
 func TestStatuspagesListCommand(t *testing.T) {
 	tests := []struct {

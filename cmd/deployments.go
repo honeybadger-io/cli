@@ -37,8 +37,8 @@ var deploymentsListCmd = &cobra.Command{
 	Short: "List deployments for a project",
 	Long:  `List all deployments for a specific project with optional filtering.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if deploymentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+		if err := resolveProjectID(&deploymentsProjectID); err != nil {
+			return err
 		}
 
 		authToken := viper.GetString("auth_token")
@@ -104,8 +104,8 @@ var deploymentsGetCmd = &cobra.Command{
 	Short: "Get a deployment by ID",
 	Long:  `Get detailed information about a specific deployment.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if deploymentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+		if err := resolveProjectID(&deploymentsProjectID); err != nil {
+			return err
 		}
 		if deploymentID == 0 {
 			return fmt.Errorf("deployment ID is required. Set it using --id flag")
@@ -158,8 +158,8 @@ var deploymentsDeleteCmd = &cobra.Command{
 	Short: "Delete a deployment",
 	Long:  `Delete a deployment record by ID. This action cannot be undone.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if deploymentsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+		if err := resolveProjectID(&deploymentsProjectID); err != nil {
+			return err
 		}
 		if deploymentID == 0 {
 			return fmt.Errorf("deployment ID is required. Set it using --id flag")

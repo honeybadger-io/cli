@@ -175,6 +175,31 @@ func TestCheckinsGetCommand(t *testing.T) {
 	}
 }
 
+func TestCheckinsViperProjectIDFallback(t *testing.T) {
+	server := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{
+				"results": [{"id": "abc123", "name": "Daily Backup", "slug": "daily-backup", "schedule_type": "simple", "report_period": "1 day"}],
+				"links": {"self": "/v2/projects/123/check_ins"}
+			}`))
+		}),
+	)
+	defer server.Close()
+
+	viper.Reset()
+	viper.Set("endpoint", server.URL)
+	viper.Set("auth_token", "test-token")
+	viper.Set("project_id", 123)
+
+	checkinsProjectID = 0
+	checkinsOutputFormat = "table"
+
+	err := checkinsListCmd.RunE(checkinsListCmd, []string{})
+	assert.NoError(t, err)
+}
+
 func TestCheckinsOutputFormat(t *testing.T) {
 	mockResponse := `{
 		"results": [{"id": "abc123", "name": "Daily Backup", "slug": "daily-backup", "schedule_type": "simple", "report_period": "1 day"}],

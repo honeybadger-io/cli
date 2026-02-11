@@ -36,8 +36,8 @@ var faultsListCmd = &cobra.Command{
 	Short: "List faults for a project",
 	Long:  `List all faults for a specific project with optional filtering.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if faultsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+		if err := resolveProjectID(&faultsProjectID); err != nil {
+			return err
 		}
 
 		authToken := viper.GetString("auth_token")
@@ -117,8 +117,8 @@ var faultsGetCmd = &cobra.Command{
 	Short: "Get a fault by ID",
 	Long:  `Get detailed information about a specific fault.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if faultsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+		if err := resolveProjectID(&faultsProjectID); err != nil {
+			return err
 		}
 		if faultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --id flag")
@@ -199,8 +199,8 @@ var faultsNoticesCmd = &cobra.Command{
 	Short: "List notices for a fault",
 	Long:  `List individual error occurrences (notices) for a specific fault.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if faultsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+		if err := resolveProjectID(&faultsProjectID); err != nil {
+			return err
 		}
 		if faultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --id flag")
@@ -269,8 +269,8 @@ var faultsCountsCmd = &cobra.Command{
 	Short: "Get fault counts for a project",
 	Long:  `Get summary counts of faults grouped by environment and status.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if faultsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+		if err := resolveProjectID(&faultsProjectID); err != nil {
+			return err
 		}
 
 		authToken := viper.GetString("auth_token")
@@ -328,8 +328,8 @@ var faultsAffectedUsersCmd = &cobra.Command{
 	Short: "List users affected by a fault",
 	Long:  `List all users who have been affected by a specific fault.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if faultsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+		if err := resolveProjectID(&faultsProjectID); err != nil {
+			return err
 		}
 		if faultID == 0 {
 			return fmt.Errorf("fault ID is required. Set it using --id flag")

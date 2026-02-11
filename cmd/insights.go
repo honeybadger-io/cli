@@ -45,8 +45,8 @@ Examples:
   # Query at a specific timestamp
   hb insights query --project-id 12345 --query "SELECT * FROM report.system.disk" --ts "2024-01-01T00:00:00Z"`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if insightsProjectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --project-id flag")
+		if err := resolveProjectID(&insightsProjectID); err != nil {
+			return err
 		}
 		if insightsQuery == "" {
 			return fmt.Errorf("query is required. Set it using --query flag")
@@ -178,9 +178,6 @@ func init() {
 		StringVarP(&insightsOutputFormat, "output", "o", "table", "Output format (table or json)")
 
 	// Mark required flags
-	if err := insightsQueryCmd.MarkFlagRequired("project-id"); err != nil {
-		fmt.Printf("error marking project-id flag as required: %v\n", err)
-	}
 	if err := insightsQueryCmd.MarkFlagRequired("query"); err != nil {
 		fmt.Printf("error marking query flag as required: %v\n", err)
 	}
