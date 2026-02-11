@@ -6,6 +6,12 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-02-10
+
+### Added
+
+- Added option to provide project_id via environment variable or config file (#23)
+
 ## [0.4.0] - 2026-01-20
 
 ### Added
