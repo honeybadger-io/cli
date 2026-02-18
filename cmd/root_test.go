@@ -158,7 +158,7 @@ endpoint: https://config.honeybadger.io
 	}{
 		{
 			name:          "environment variables take precedence over config file",
-			envAPIKey:     "env-api-key",
+			envAPIKey:     "env-api-key",    //nolint:gosec // test data
 			envEndpoint:   "https://env.honeybadger.io",
 			useConfigFile: true,
 			wantAPIKey:    "env-api-key",
@@ -169,7 +169,7 @@ endpoint: https://config.honeybadger.io
 			envAPIKey:     "",
 			envEndpoint:   "",
 			useConfigFile: true,
-			wantAPIKey:    "config-api-key",
+			wantAPIKey:    "config-api-key", //nolint:gosec // test data
 			wantEndpoint:  "https://config.honeybadger.io",
 		},
 		{
@@ -182,7 +182,7 @@ endpoint: https://config.honeybadger.io
 		},
 		{
 			name:          "partial environment override",
-			envAPIKey:     "env-api-key",
+			envAPIKey:     "env-api-key",    //nolint:gosec // test data
 			envEndpoint:   "",
 			useConfigFile: true,
 			wantAPIKey:    "env-api-key",
