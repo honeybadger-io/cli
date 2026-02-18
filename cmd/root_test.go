@@ -210,20 +210,20 @@ endpoint: https://config.honeybadger.io
 		wantAPIKey    string
 		wantEndpoint  string
 	}{
-		{
+		{ //nolint:gosec // G101 - test data, not real credentials
 			name:          "environment variables take precedence over config file",
-			envAPIKey:     "env-api-key",    //nolint:gosec // test data
+			envAPIKey:     "env-api-key",
 			envEndpoint:   "https://env.honeybadger.io",
 			useConfigFile: true,
 			wantAPIKey:    "env-api-key",
 			wantEndpoint:  "https://env.honeybadger.io",
 		},
-		{
+		{ //nolint:gosec // G101 - test data, not real credentials
 			name:          "config file values used when no environment variables",
 			envAPIKey:     "",
 			envEndpoint:   "",
 			useConfigFile: true,
-			wantAPIKey:    "config-api-key", //nolint:gosec // test data
+			wantAPIKey:    "config-api-key",
 			wantEndpoint:  "https://config.honeybadger.io",
 		},
 		{
@@ -234,9 +234,9 @@ endpoint: https://config.honeybadger.io
 			wantAPIKey:    "",
 			wantEndpoint:  "https://api.honeybadger.io",
 		},
-		{
+		{ //nolint:gosec // G101 - test data, not real credentials
 			name:          "partial environment override",
-			envAPIKey:     "env-api-key",    //nolint:gosec // test data
+			envAPIKey:     "env-api-key",
 			envEndpoint:   "",
 			useConfigFile: true,
 			wantAPIKey:    "env-api-key",
