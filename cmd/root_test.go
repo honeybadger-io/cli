@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -119,6 +120,59 @@ func TestResolveProjectIDFromEnvVar(t *testing.T) {
 	err := resolveProjectID(&projectID)
 	assert.NoError(t, err)
 	assert.Equal(t, 456, projectID)
+}
+
+func TestParseTimeFlag(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantTime  time.Time
+		wantError bool
+	}{
+		{
+			name:     "RFC3339 format",
+			input:    "2024-01-15T10:30:00Z",
+			wantTime: time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC),
+		},
+		{
+			name:     "RFC3339 with timezone offset",
+			input:    "2024-01-15T10:30:00+05:00",
+			wantTime: time.Date(2024, 1, 15, 10, 30, 0, 0, time.FixedZone("", 5*60*60)),
+		},
+		{
+			name:     "date-only format",
+			input:    "2024-01-15",
+			wantTime: time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:     "datetime without zone treated as UTC",
+			input:    "2024-01-15T10:30:00",
+			wantTime: time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC),
+		},
+		{
+			name:      "invalid format returns error",
+			input:     "not-a-date",
+			wantError: true,
+		},
+		{
+			name:      "empty string returns error",
+			input:     "",
+			wantError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseTimeFlag(tt.input)
+			if tt.wantError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "invalid time format")
+			} else {
+				assert.NoError(t, err)
+				assert.True(t, tt.wantTime.Equal(got), "expected %v, got %v", tt.wantTime, got)
+			}
+		})
+	}
 }
 
 func TestConfigurationLoading(t *testing.T) {
