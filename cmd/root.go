@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -171,6 +172,25 @@ func resolveProjectID(projectID *int) error {
 		)
 	}
 	return nil
+}
+
+// parseTimeFlag parses a user-provided time string into a time.Time.
+// Accepts RFC3339 (2024-01-01T00:00:00Z), date-only (2024-01-01),
+// or datetime without zone (2024-01-01T00:00:00, treated as UTC).
+func parseTimeFlag(value string) (time.Time, error) {
+	formats := []string{
+		time.RFC3339,
+		"2006-01-02",
+		"2006-01-02T15:04:05",
+	}
+	for _, format := range formats {
+		if t, err := time.Parse(format, value); err == nil {
+			return t, nil
+		}
+	}
+	return time.Time{}, fmt.Errorf(
+		"invalid time format %q (expected YYYY-MM-DD or RFC3339 like 2024-01-01T00:00:00Z)", value,
+	)
 }
 
 // readJSONInput reads JSON from either a direct string or a file path prefixed with 'file://'

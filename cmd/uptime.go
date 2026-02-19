@@ -17,8 +17,8 @@ var (
 	uptimeSiteID        string
 	uptimeOutputFormat  string
 	uptimeCLIInputJSON  string
-	uptimeCreatedAfter  int64
-	uptimeCreatedBefore int64
+	uptimeCreatedAfter  string
+	uptimeCreatedBefore string
 	uptimeLimit         int
 )
 
@@ -377,9 +377,21 @@ var uptimeOutagesCmd = &cobra.Command{
 			WithAuthToken(authToken)
 
 		options := hbapi.OutageListOptions{
-			CreatedAfter:  uptimeCreatedAfter,
-			CreatedBefore: uptimeCreatedBefore,
-			Limit:         uptimeLimit,
+			Limit: uptimeLimit,
+		}
+		if uptimeCreatedAfter != "" {
+			t, err := parseTimeFlag(uptimeCreatedAfter)
+			if err != nil {
+				return fmt.Errorf("invalid --created-after: %w", err)
+			}
+			options.CreatedAfter = t
+		}
+		if uptimeCreatedBefore != "" {
+			t, err := parseTimeFlag(uptimeCreatedBefore)
+			if err != nil {
+				return fmt.Errorf("invalid --created-before: %w", err)
+			}
+			options.CreatedBefore = t
 		}
 
 		ctx := context.Background()
@@ -449,9 +461,21 @@ var uptimeChecksCmd = &cobra.Command{
 			WithAuthToken(authToken)
 
 		options := hbapi.UptimeCheckListOptions{
-			CreatedAfter:  uptimeCreatedAfter,
-			CreatedBefore: uptimeCreatedBefore,
-			Limit:         uptimeLimit,
+			Limit: uptimeLimit,
+		}
+		if uptimeCreatedAfter != "" {
+			t, err := parseTimeFlag(uptimeCreatedAfter)
+			if err != nil {
+				return fmt.Errorf("invalid --created-after: %w", err)
+			}
+			options.CreatedAfter = t
+		}
+		if uptimeCreatedBefore != "" {
+			t, err := parseTimeFlag(uptimeCreatedBefore)
+			if err != nil {
+				return fmt.Errorf("invalid --created-before: %w", err)
+			}
+			options.CreatedBefore = t
 		}
 
 		ctx := context.Background()
@@ -540,9 +564,9 @@ func init() {
 	// Flags for outages
 	uptimeOutagesCmd.Flags().StringVar(&uptimeSiteID, "site-id", "", "Site ID")
 	uptimeOutagesCmd.Flags().
-		Int64Var(&uptimeCreatedAfter, "created-after", 0, "Filter by creation time (Unix timestamp)")
+		StringVar(&uptimeCreatedAfter, "created-after", "", "Filter by creation time (YYYY-MM-DD or RFC3339)")
 	uptimeOutagesCmd.Flags().
-		Int64Var(&uptimeCreatedBefore, "created-before", 0, "Filter by creation time (Unix timestamp)")
+		StringVar(&uptimeCreatedBefore, "created-before", "", "Filter by creation time (YYYY-MM-DD or RFC3339)")
 	uptimeOutagesCmd.Flags().
 		IntVar(&uptimeLimit, "limit", 25, "Maximum number of outages to return (max 25)")
 	uptimeOutagesCmd.Flags().
@@ -552,9 +576,9 @@ func init() {
 	// Flags for checks
 	uptimeChecksCmd.Flags().StringVar(&uptimeSiteID, "site-id", "", "Site ID")
 	uptimeChecksCmd.Flags().
-		Int64Var(&uptimeCreatedAfter, "created-after", 0, "Filter by creation time (Unix timestamp)")
+		StringVar(&uptimeCreatedAfter, "created-after", "", "Filter by creation time (YYYY-MM-DD or RFC3339)")
 	uptimeChecksCmd.Flags().
-		Int64Var(&uptimeCreatedBefore, "created-before", 0, "Filter by creation time (Unix timestamp)")
+		StringVar(&uptimeCreatedBefore, "created-before", "", "Filter by creation time (YYYY-MM-DD or RFC3339)")
 	uptimeChecksCmd.Flags().
 		IntVar(&uptimeLimit, "limit", 25, "Maximum number of checks to return (max 25)")
 	uptimeChecksCmd.Flags().

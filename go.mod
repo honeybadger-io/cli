@@ -3,7 +3,7 @@ module github.com/honeybadger-io/cli
 go 1.23
 
 require (
-	github.com/honeybadger-io/api-go v0.2.0
+	github.com/honeybadger-io/api-go v0.5.0
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
