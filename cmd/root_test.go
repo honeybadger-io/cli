@@ -73,7 +73,7 @@ endpoint: https://config.honeybadger.io
 		t.Fatalf("Failed to write config file: %v", err)
 	}
 
-	tests := []struct {
+	tests := []struct { // #nosec G101 - test data, not real credentials
 		name          string
 		envAPIKey     string
 		envEndpoint   string
