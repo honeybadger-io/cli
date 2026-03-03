@@ -39,6 +39,8 @@ API_KEY=""
 VERSION="latest"
 INTERVAL=$DEFAULT_INTERVAL
 INSTALL_SERVICE=true
+SERVICE_INSTALLED=false
+TMP_DIR=""
 
 #######################################
 # Print colored output
@@ -90,7 +92,7 @@ Examples:
   curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | bash -s -- --no-service
 
 EOF
-    exit 0
+    exit "${1:-0}"
 }
 
 #######################################
@@ -100,14 +102,30 @@ parse_args() {
     while [[ $# -gt 0 ]]; do
         case $1 in
             --api-key)
+                if [[ -z "${2:-}" || "$2" == --* ]]; then
+                    error "--api-key requires a value"
+                    exit 1
+                fi
                 API_KEY="$2"
                 shift 2
                 ;;
             --version)
+                if [[ -z "${2:-}" || "$2" == --* ]]; then
+                    error "--version requires a value"
+                    exit 1
+                fi
                 VERSION="$2"
                 shift 2
                 ;;
             --interval)
+                if [[ -z "${2:-}" || "$2" == --* ]]; then
+                    error "--interval requires a value"
+                    exit 1
+                fi
+                if ! [[ "$2" =~ ^[0-9]+$ ]] || [[ "$2" -le 0 ]]; then
+                    error "--interval must be a positive integer (got: $2)"
+                    exit 1
+                fi
                 INTERVAL="$2"
                 shift 2
                 ;;
@@ -120,7 +138,7 @@ parse_args() {
                 ;;
             *)
                 error "Unknown option: $1"
-                usage
+                usage 1
                 ;;
         esac
     done
@@ -222,36 +240,28 @@ install_binary() {
     local arch=$2
     local version=$3
 
-    # Remove 'v' prefix if present for the download URL
-    local version_number="${version#v}"
-
     # Construct download URL
     local archive_name="cli_${os}_${arch}.tar.gz"
     local download_url="https://github.com/${GITHUB_REPO}/releases/download/${version}/${archive_name}"
 
     info "Downloading Honeybadger CLI ${version} for ${os}/${arch}..."
 
-    # Create temporary directory
-    local tmp_dir
-    tmp_dir=$(mktemp -d)
-    trap "rm -rf $tmp_dir" EXIT
-
     # Download archive
-    if ! curl -sSL -o "${tmp_dir}/${archive_name}" "$download_url"; then
+    if ! curl -sSL -o "${TMP_DIR}/${archive_name}" "$download_url"; then
         error "Failed to download from: $download_url"
         exit 1
     fi
 
     # Extract archive
     info "Extracting archive..."
-    if ! tar -xzf "${tmp_dir}/${archive_name}" -C "$tmp_dir"; then
+    if ! tar -xzf "${TMP_DIR}/${archive_name}" -C "$TMP_DIR"; then
         error "Failed to extract archive"
         exit 1
     fi
 
     # Install binary
     info "Installing binary to ${INSTALL_DIR}/${BINARY_NAME}..."
-    if ! install -m 755 "${tmp_dir}/${BINARY_NAME}" "${INSTALL_DIR}/${BINARY_NAME}"; then
+    if ! install -m 755 "${TMP_DIR}/${BINARY_NAME}" "${INSTALL_DIR}/${BINARY_NAME}"; then
         error "Failed to install binary"
         exit 1
     fi
@@ -268,7 +278,8 @@ prompt_api_key() {
         echo -e "${YELLOW}Honeybadger API Key Required${NC}"
         echo "You can find your API key in your Honeybadger project settings."
         echo ""
-        read -rp "Enter your Honeybadger API key: " API_KEY
+        read -rsp "Enter your Honeybadger API key: " API_KEY
+        echo ""
 
         if [[ -z "$API_KEY" ]]; then
             error "API key is required for the agent service"
@@ -295,6 +306,12 @@ check_systemd() {
 #######################################
 create_systemd_service() {
     local service_file="/etc/systemd/system/${SERVICE_NAME}.service"
+
+    # Stop existing service if present
+    if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
+        info "Stopping existing ${SERVICE_NAME} service..."
+        systemctl stop "$SERVICE_NAME"
+    fi
 
     info "Creating systemd service..."
 
@@ -365,7 +382,7 @@ print_summary() {
     echo "Binary installed: ${INSTALL_DIR}/${BINARY_NAME}"
     echo "Version: ${VERSION}"
 
-    if [[ "$INSTALL_SERVICE" == true ]] && check_systemd; then
+    if [[ "$SERVICE_INSTALLED" == true ]]; then
         echo ""
         echo "Systemd Service: ${SERVICE_NAME}"
         echo ""
@@ -401,6 +418,10 @@ main() {
     # Parse command line arguments
     parse_args "$@"
 
+    # Create temporary directory for downloads
+    TMP_DIR=$(mktemp -d)
+    trap 'rm -rf "$TMP_DIR"' EXIT
+
     # Check prerequisites
     check_root
     check_dependencies
@@ -432,6 +453,7 @@ main() {
             prompt_api_key
             create_systemd_service
             start_service
+            SERVICE_INSTALLED=true
         fi
     fi
 
