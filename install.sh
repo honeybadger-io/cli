@@ -6,9 +6,9 @@
 # to run as a systemd service for continuous metrics reporting.
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | bash
-#   curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | bash -s -- --api-key YOUR_API_KEY
-#   curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | bash -s -- --version v1.0.0
+#   curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash
+#   curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --api-key YOUR_API_KEY
+#   curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --version v1.0.0
 #
 # Options:
 #   --api-key KEY       Honeybadger API key for the agent
@@ -80,16 +80,16 @@ Options:
 
 Examples:
   # Install latest version and configure as systemd service
-  curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | bash
+  curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash
 
   # Install with API key provided
-  curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | bash -s -- --api-key YOUR_API_KEY
+  curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --api-key YOUR_API_KEY
 
   # Install specific version
-  curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | bash -s -- --version v1.0.0
+  curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --version v1.0.0
 
   # Install binary only (no systemd service)
-  curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | bash -s -- --no-service
+  curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --no-service
 
 EOF
     exit "${1:-0}"
@@ -274,11 +274,16 @@ install_binary() {
 #######################################
 prompt_api_key() {
     if [[ -z "$API_KEY" ]]; then
+        if [[ ! -t 0 ]] && [[ ! -e /dev/tty ]]; then
+            error "No API key provided and no terminal available for interactive prompt"
+            error "Re-run with: --api-key YOUR_API_KEY"
+            exit 1
+        fi
         echo ""
         echo -e "${YELLOW}Honeybadger API Key Required${NC}"
         echo "You can find your API key in your Honeybadger project settings."
         echo ""
-        read -rsp "Enter your Honeybadger API key: " API_KEY
+        read -rsp "Enter your Honeybadger API key: " API_KEY < /dev/tty
         echo ""
 
         if [[ -z "$API_KEY" ]]; then

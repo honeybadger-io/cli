@@ -40,6 +40,12 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize(initConfig)
 
+	if Version != "" {
+		rootCmd.Version = Version
+	} else {
+		rootCmd.Version = "dev"
+	}
+
 	rootCmd.PersistentFlags().
 		StringVar(&cfgFile, "config", "", "config file (default is config/honeybadger.yml)")
 	rootCmd.PersistentFlags().
@@ -49,13 +55,19 @@ func init() {
 	rootCmd.PersistentFlags().
 		StringVar(&endpoint, "endpoint", defaultEndpoint, "Honeybadger endpoint")
 
-	if err := viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key")); err != nil {
+	if err := viper.BindPFlag(
+		"api_key", rootCmd.PersistentFlags().Lookup("api-key"),
+	); err != nil {
 		fmt.Printf("error binding api-key flag: %v\n", err)
 	}
-	if err := viper.BindPFlag("auth_token", rootCmd.PersistentFlags().Lookup("auth-token")); err != nil {
+	if err := viper.BindPFlag(
+		"auth_token", rootCmd.PersistentFlags().Lookup("auth-token"),
+	); err != nil {
 		fmt.Printf("error binding auth-token flag: %v\n", err)
 	}
-	if err := viper.BindPFlag("endpoint", rootCmd.PersistentFlags().Lookup("endpoint")); err != nil {
+	if err := viper.BindPFlag(
+		"endpoint", rootCmd.PersistentFlags().Lookup("endpoint"),
+	); err != nil {
 		fmt.Printf("error binding endpoint flag: %v\n", err)
 	}
 }
