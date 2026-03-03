@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
@@ -24,12 +25,25 @@ var (
 	Date string
 )
 
+// Command group IDs
+const (
+	GroupReportingAPI = "reporting"
+	GroupDataAPI      = "data"
+)
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "hb",
 	Short: "Honeybadger CLI tool",
-	Long: `A command line interface for interacting with Honeybadger's Reporting API.
-This tool allows you to manage deployments and other reporting features.`,
+	Long: `A command line interface for interacting with Honeybadger.
+
+This tool provides access to two APIs:
+
+  Reporting API - For sending data to Honeybadger (deployments, metrics)
+                  Authenticate with --api-key or HONEYBADGER_API_KEY
+
+  Data API      - For reading and managing your Honeybadger data
+                  Authenticate with --auth-token or HONEYBADGER_AUTH_TOKEN`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -46,8 +60,18 @@ func init() {
 		rootCmd.Version = "dev"
 	}
 
+	// Add command groups
+	rootCmd.AddGroup(&cobra.Group{
+		ID:    GroupReportingAPI,
+		Title: "Reporting API Commands (use --api-key):",
+	})
+	rootCmd.AddGroup(&cobra.Group{
+		ID:    GroupDataAPI,
+		Title: "Data API Commands (use --auth-token):",
+	})
+
 	rootCmd.PersistentFlags().
-		StringVar(&cfgFile, "config", "", "config file (default is config/honeybadger.yml)")
+		StringVar(&cfgFile, "config", "", "config file (default is ~/.honeybadger-cli.yaml)")
 	rootCmd.PersistentFlags().
 		StringVar(&apiKey, "api-key", "", "Honeybadger API key (for Reporting API)")
 	rootCmd.PersistentFlags().
@@ -55,18 +79,19 @@ func init() {
 	rootCmd.PersistentFlags().
 		StringVar(&endpoint, "endpoint", defaultEndpoint, "Honeybadger endpoint")
 
-	if err := viper.BindPFlag(
-		"api_key", rootCmd.PersistentFlags().Lookup("api-key"),
-	); err != nil {
+	err := viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key"))
+	if err != nil {
 		fmt.Printf("error binding api-key flag: %v\n", err)
 	}
 	if err := viper.BindPFlag(
-		"auth_token", rootCmd.PersistentFlags().Lookup("auth-token"),
+		"auth_token",
+		rootCmd.PersistentFlags().Lookup("auth-token"),
 	); err != nil {
 		fmt.Printf("error binding auth-token flag: %v\n", err)
 	}
 	if err := viper.BindPFlag(
-		"endpoint", rootCmd.PersistentFlags().Lookup("endpoint"),
+		"endpoint",
+		rootCmd.PersistentFlags().Lookup("endpoint"),
 	); err != nil {
 		fmt.Printf("error binding endpoint flag: %v\n", err)
 	}
@@ -76,15 +101,23 @@ func initConfig() {
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 	} else {
-		// Search for config in config directory
-		viper.AddConfigPath("config")
-		viper.SetConfigType("yml")
-		viper.SetConfigName("honeybadger")
+		// Search for config in home directory
+		home, err := os.UserHomeDir()
+		if err == nil {
+			viper.AddConfigPath(home)
+		}
+		viper.SetConfigType("yaml")
+		viper.SetConfigName(".honeybadger-cli")
 	}
 
 	viper.AutomaticEnv()
 	viper.SetEnvPrefix("HONEYBADGER")
 	viper.SetDefault("endpoint", defaultEndpoint)
+
+	// Register project_id for env var lookup (HONEYBADGER_PROJECT_ID).
+	// Unlike api_key/auth_token/endpoint, project_id has no root-level flag
+	// to bind, so we use BindEnv to make viper aware of it.
+	_ = viper.BindEnv("project_id")
 
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
@@ -105,13 +138,45 @@ func initConfig() {
 
 // convertEndpointForDataAPI converts api.honeybadger.io to app.honeybadger.io for Data API calls
 func convertEndpointForDataAPI(endpoint string) string {
-	switch endpoint {
+	trimmed := strings.TrimSpace(endpoint)
+	if trimmed == "" {
+		return endpoint
+	}
+
+	parsed, err := url.Parse(trimmed)
+	if err == nil && parsed.Scheme != "" && parsed.Host != "" {
+		switch parsed.Host {
+		case "api.honeybadger.io":
+			parsed.Host = "app.honeybadger.io"
+		case "eu-api.honeybadger.io":
+			parsed.Host = "eu-app.honeybadger.io"
+		}
+		return parsed.String()
+	}
+
+	normalized := strings.TrimRight(trimmed, "/")
+	switch normalized {
 	case "https://api.honeybadger.io":
 		return "https://app.honeybadger.io"
 	case "https://eu-api.honeybadger.io":
 		return "https://eu-app.honeybadger.io"
+	default:
+		return trimmed
 	}
-	return endpoint
+}
+
+// resolveProjectID resolves the project ID from the flag value, falling back to viper config/env.
+// Returns an error if no project ID is found from any source.
+func resolveProjectID(projectID *int) error {
+	if *projectID == 0 {
+		*projectID = viper.GetInt("project_id")
+	}
+	if *projectID == 0 {
+		return fmt.Errorf(
+			"project ID is required. Set it using --project-id flag, HONEYBADGER_PROJECT_ID environment variable, or project_id in your config file",
+		)
+	}
+	return nil
 }
 
 // readJSONInput reads JSON from either a direct string or a file path prefixed with 'file://'
