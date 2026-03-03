@@ -247,7 +247,7 @@ install_binary() {
     info "Downloading Honeybadger CLI ${version} for ${os}/${arch}..."
 
     # Download archive
-    if ! curl -sSL -o "${TMP_DIR}/${archive_name}" "$download_url"; then
+    if ! curl -fsSL -o "${TMP_DIR}/${archive_name}" "$download_url"; then
         error "Failed to download from: $download_url"
         exit 1
     fi
@@ -260,6 +260,7 @@ install_binary() {
     fi
 
     # Install binary
+    mkdir -p "$INSTALL_DIR"
     info "Installing binary to ${INSTALL_DIR}/${BINARY_NAME}..."
     if ! install -m 755 "${TMP_DIR}/${BINARY_NAME}" "${INSTALL_DIR}/${BINARY_NAME}"; then
         error "Failed to install binary"
@@ -320,6 +321,8 @@ create_systemd_service() {
 
     info "Creating systemd service..."
 
+    # Pre-create with restrictive permissions since the file will contain the API key
+    install -m 600 /dev/null "$service_file"
     cat > "$service_file" << EOF
 [Unit]
 Description=Honeybadger Agent - System Metrics Reporter
@@ -346,9 +349,6 @@ ProtectControlGroups=true
 [Install]
 WantedBy=multi-user.target
 EOF
-
-    # Secure the service file (contains API key)
-    chmod 600 "$service_file"
 
     success "Systemd service created at ${service_file}"
 }
