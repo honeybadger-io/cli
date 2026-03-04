@@ -24,6 +24,22 @@ Note: The install path includes `/cmd/hb` so Go installs the `hb` binary name.
 
 Pre-built binaries for Linux, macOS, and Windows are available on the [GitHub releases page](https://github.com/honeybadger-io/cli/releases).
 
+### Install Script
+
+On Linux, you can use the install script to download the binary and optionally set up a systemd service for the [metrics agent](#reporting-api-commands):
+
+```bash
+curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --api-key YOUR_API_KEY
+```
+
+To install the binary without setting up a systemd service:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --no-service
+```
+
+Run with `--help` for all options including `--version` and `--interval`.
+
 ## Configuration
 
 The CLI can be configured using either command-line flags, environment variables, or a configuration file.
