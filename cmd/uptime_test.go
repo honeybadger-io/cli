@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUptimeSitesListCommand(t *testing.T) {
@@ -238,4 +239,103 @@ func TestUptimeOutputFormat(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	}
+}
+
+// TestOutagesTimestampConversion verifies that human-readable date strings
+// are parsed to time.Time and sent as Unix epoch query params to the API.
+func TestOutagesTimestampConversion(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		// 2024-01-01T00:00:00Z = Unix 1704067200
+		assert.Equal(t, "1704067200", query.Get("created_after"),
+			"created_after should be sent as Unix epoch seconds")
+		// 2024-01-02T00:00:00Z = Unix 1704153600
+		assert.Equal(t, "1704153600", query.Get("created_before"),
+			"created_before should be sent as Unix epoch seconds")
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"results": []}`))
+	}))
+	defer server.Close()
+
+	viper.Reset()
+	viper.Set("endpoint", server.URL)
+	viper.Set("auth_token", "test-token")
+
+	uptimeProjectID = 123
+	uptimeSiteID = "abc123"
+	uptimeCreatedAfter = "2024-01-01"
+	uptimeCreatedBefore = "2024-01-02"
+	uptimeLimit = 25
+	uptimeOutputFormat = "json"
+
+	err := uptimeOutagesCmd.RunE(uptimeOutagesCmd, []string{})
+	require.NoError(t, err)
+
+	// Reset for other tests
+	uptimeCreatedAfter = ""
+	uptimeCreatedBefore = ""
+}
+
+// TestOutagesEmptyTimestampsOmitted verifies that empty timestamp flags
+// are not sent as query parameters.
+func TestOutagesEmptyTimestampsOmitted(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		assert.Empty(t, query.Get("created_after"),
+			"empty timestamp should not be sent as a query param")
+		assert.Empty(t, query.Get("created_before"),
+			"empty timestamp should not be sent as a query param")
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"results": []}`))
+	}))
+	defer server.Close()
+
+	viper.Reset()
+	viper.Set("endpoint", server.URL)
+	viper.Set("auth_token", "test-token")
+
+	uptimeProjectID = 123
+	uptimeSiteID = "abc123"
+	uptimeCreatedAfter = ""
+	uptimeCreatedBefore = ""
+	uptimeOutputFormat = "json"
+
+	err := uptimeOutagesCmd.RunE(uptimeOutagesCmd, []string{})
+	require.NoError(t, err)
+}
+
+// TestUptimeChecksTimestampConversion verifies the same date-string-to-epoch
+// conversion works for the uptime checks command.
+func TestUptimeChecksTimestampConversion(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		assert.Equal(t, "1704067200", query.Get("created_after"))
+		assert.Equal(t, "1704153600", query.Get("created_before"))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"results": []}`))
+	}))
+	defer server.Close()
+
+	viper.Reset()
+	viper.Set("endpoint", server.URL)
+	viper.Set("auth_token", "test-token")
+
+	uptimeProjectID = 123
+	uptimeSiteID = "abc123"
+	uptimeCreatedAfter = "2024-01-01T00:00:00Z"
+	uptimeCreatedBefore = "2024-01-02T00:00:00Z"
+	uptimeLimit = 25
+	uptimeOutputFormat = "json"
+
+	err := uptimeChecksCmd.RunE(uptimeChecksCmd, []string{})
+	require.NoError(t, err)
+
+	uptimeCreatedAfter = ""
+	uptimeCreatedBefore = ""
 }

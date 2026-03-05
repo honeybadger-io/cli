@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestCommentsListCommand tests the comments list command validation
@@ -396,4 +397,69 @@ func TestStatuspagesListCommand(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestDeploymentsTimestampConversion verifies that human-readable date strings
+// are parsed to time.Time and sent as Unix epoch query params to the API.
+func TestDeploymentsTimestampConversion(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		// 2024-01-01T00:00:00Z = Unix 1704067200
+		assert.Equal(t, "1704067200", query.Get("created_after"),
+			"created_after should be sent as Unix epoch seconds")
+		// 2024-01-02T00:00:00Z = Unix 1704153600
+		assert.Equal(t, "1704153600", query.Get("created_before"),
+			"created_before should be sent as Unix epoch seconds")
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"results": []}`))
+	}))
+	defer server.Close()
+
+	viper.Reset()
+	viper.Set("endpoint", server.URL)
+	viper.Set("auth_token", "test-token")
+
+	deploymentsProjectID = 123
+	deploymentsCreatedAfter = "2024-01-01"
+	deploymentsCreatedBefore = "2024-01-02"
+	deploymentsLimit = 25
+	deploymentsOutputFormat = "json"
+
+	err := deploymentsListCmd.RunE(deploymentsListCmd, []string{})
+	require.NoError(t, err)
+
+	// Reset for other tests
+	deploymentsCreatedAfter = ""
+	deploymentsCreatedBefore = ""
+}
+
+// TestDeploymentsEmptyTimestampsOmitted verifies that empty timestamp flags
+// are not sent as query parameters.
+func TestDeploymentsEmptyTimestampsOmitted(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		assert.Empty(t, query.Get("created_after"),
+			"empty timestamp should not be sent as a query param")
+		assert.Empty(t, query.Get("created_before"),
+			"empty timestamp should not be sent as a query param")
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"results": []}`))
+	}))
+	defer server.Close()
+
+	viper.Reset()
+	viper.Set("endpoint", server.URL)
+	viper.Set("auth_token", "test-token")
+
+	deploymentsProjectID = 123
+	deploymentsCreatedAfter = ""
+	deploymentsCreatedBefore = ""
+	deploymentsOutputFormat = "json"
+
+	err := deploymentsListCmd.RunE(deploymentsListCmd, []string{})
+	require.NoError(t, err)
 }

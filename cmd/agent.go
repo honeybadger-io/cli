@@ -124,7 +124,7 @@ func sendMetric(payload interface{}) error {
 	req.Header.Set("X-API-Key", viper.GetString("api_key"))
 
 	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec // endpoint is intentionally user-configurable
 	if err != nil {
 		return fmt.Errorf("error sending metrics: %w", err)
 	}
