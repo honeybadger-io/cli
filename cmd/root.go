@@ -55,6 +55,12 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize(initConfig)
 
+	if Version != "" {
+		rootCmd.Version = Version
+	} else {
+		rootCmd.Version = "dev"
+	}
+
 	// Add command groups
 	rootCmd.AddGroup(&cobra.Group{
 		ID:    GroupReportingAPI,

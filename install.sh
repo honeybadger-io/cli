@@ -1,0 +1,517 @@
+#!/bin/bash
+#
+# Honeybadger CLI Installation Script
+#
+# This script installs the Honeybadger CLI (hb) and optionally configures it
+# to run as a systemd service for continuous metrics reporting.
+#
+# Usage:
+#   curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --service --api-key YOUR_API_KEY
+#   curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | bash -s -- --version v1.0.0
+#
+# Options:
+#   --service           Also set up a systemd service (requires root)
+#   --api-key KEY       Honeybadger API key for the agent (requires --service)
+#   --version VERSION   Specific version to install (default: latest)
+#   --interval SECONDS  Metrics reporting interval (default: 60, requires --service)
+#   --install-dir DIR   Override install directory
+#   --help              Show this help message
+#
+
+set -e
+
+# Configuration
+GITHUB_REPO="honeybadger-io/cli"
+BINARY_NAME="hb"
+INSTALL_DIR=""
+SERVICE_NAME="honeybadger-agent"
+DEFAULT_INTERVAL=60
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Script options
+API_KEY=""
+VERSION="latest"
+INTERVAL=$DEFAULT_INTERVAL
+INSTALL_SERVICE=false
+SERVICE_INSTALLED=false
+TMP_DIR=""
+
+#######################################
+# Print colored output
+#######################################
+info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+success() {
+    echo -e "${GREEN}[OK]${NC} $1"
+}
+
+warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+error() {
+    echo -e "${RED}[ERROR]${NC} $1" >&2
+}
+
+#######################################
+# Show usage information
+#######################################
+usage() {
+    cat << EOF
+Honeybadger CLI Installation Script
+
+Usage:
+  $0 [options]
+
+Options:
+  --service           Also set up a systemd service for the metrics agent (requires root)
+  --api-key KEY       Honeybadger API key for the agent (requires --service)
+  --version VERSION   Specific version to install (default: latest)
+  --interval SECONDS  Metrics reporting interval in seconds (default: 60, requires --service)
+  --install-dir DIR   Override install directory (default: ~/.local/bin or /usr/local/bin as root)
+  --help              Show this help message
+
+Examples:
+  # Install the binary (no sudo required)
+  curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | bash
+
+  # Install a specific version
+  curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | bash -s -- --version v1.0.0
+
+  # Install and set up as a systemd service (requires sudo)
+  curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --service --api-key YOUR_API_KEY
+
+EOF
+    exit "${1:-0}"
+}
+
+#######################################
+# Parse command line arguments
+#######################################
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --api-key)
+                if [[ -z "${2:-}" || "$2" == --* ]]; then
+                    error "--api-key requires a value"
+                    exit 1
+                fi
+                API_KEY="$2"
+                shift 2
+                ;;
+            --version)
+                if [[ -z "${2:-}" || "$2" == --* ]]; then
+                    error "--version requires a value"
+                    exit 1
+                fi
+                VERSION="$2"
+                shift 2
+                ;;
+            --interval)
+                if [[ -z "${2:-}" || "$2" == --* ]]; then
+                    error "--interval requires a value"
+                    exit 1
+                fi
+                if ! [[ "$2" =~ ^[0-9]+$ ]] || [[ "$2" -le 0 ]]; then
+                    error "--interval must be a positive integer (got: $2)"
+                    exit 1
+                fi
+                INTERVAL="$2"
+                shift 2
+                ;;
+            --service)
+                INSTALL_SERVICE=true
+                shift
+                ;;
+            --install-dir)
+                if [[ -z "${2:-}" || "$2" == --* ]]; then
+                    error "--install-dir requires a value"
+                    exit 1
+                fi
+                INSTALL_DIR="$2"
+                shift 2
+                ;;
+            --help|-h)
+                usage
+                ;;
+            *)
+                error "Unknown option: $1"
+                usage 1
+                ;;
+        esac
+    done
+}
+
+#######################################
+# Determine install directory based on privileges
+#######################################
+resolve_install_dir() {
+    if [[ -z "$INSTALL_DIR" ]]; then
+        if [[ $EUID -eq 0 ]]; then
+            INSTALL_DIR="/usr/local/bin"
+        else
+            INSTALL_DIR="${HOME}/.local/bin"
+        fi
+    fi
+}
+
+#######################################
+# Check if install dir is in PATH
+#######################################
+check_path() {
+    case ":${PATH}:" in
+        *":${INSTALL_DIR}:"*)
+            ;;
+        *)
+            warn "${INSTALL_DIR} is not in your PATH"
+            echo "  Add it by running:"
+            echo "    export PATH=\"${INSTALL_DIR}:\$PATH\""
+            echo "  To make it permanent, add the line above to your shell profile (~/.bashrc, ~/.zshrc, etc.)"
+            ;;
+    esac
+}
+
+#######################################
+# Check for required dependencies
+#######################################
+check_dependencies() {
+    local missing=()
+
+    if ! command -v curl &> /dev/null; then
+        missing+=("curl")
+    fi
+
+    if ! command -v tar &> /dev/null; then
+        missing+=("tar")
+    fi
+
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        error "Missing required dependencies: ${missing[*]}"
+        error "Please install them and try again."
+        exit 1
+    fi
+}
+
+#######################################
+# Detect operating system
+#######################################
+detect_os() {
+    local os
+    os=$(uname -s)
+
+    case "$os" in
+        Linux)
+            echo "Linux"
+            ;;
+        Darwin)
+            echo "Darwin"
+            ;;
+        *)
+            error "Unsupported operating system: $os"
+            exit 1
+            ;;
+    esac
+}
+
+#######################################
+# Detect CPU architecture
+#######################################
+detect_arch() {
+    local arch
+    arch=$(uname -m)
+
+    case "$arch" in
+        x86_64|amd64)
+            echo "x86_64"
+            ;;
+        aarch64|arm64)
+            echo "arm64"
+            ;;
+        *)
+            error "Unsupported architecture: $arch"
+            exit 1
+            ;;
+    esac
+}
+
+#######################################
+# Get the latest release version from GitHub
+#######################################
+get_latest_version() {
+    local version
+    version=$(curl -sS "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+
+    if [[ -z "$version" ]]; then
+        error "Failed to fetch latest version from GitHub"
+        exit 1
+    fi
+
+    echo "$version"
+}
+
+#######################################
+# Download and install the binary
+#######################################
+install_binary() {
+    local os=$1
+    local arch=$2
+    local version=$3
+
+    # Construct download URL
+    local archive_name="cli_${os}_${arch}.tar.gz"
+    local download_url="https://github.com/${GITHUB_REPO}/releases/download/${version}/${archive_name}"
+
+    info "Downloading Honeybadger CLI ${version} for ${os}/${arch}..."
+
+    # Download archive
+    if ! curl -fsSL -o "${TMP_DIR}/${archive_name}" "$download_url"; then
+        error "Failed to download from: $download_url"
+        exit 1
+    fi
+
+    # Extract archive
+    info "Extracting archive..."
+    if ! tar -xzf "${TMP_DIR}/${archive_name}" -C "$TMP_DIR"; then
+        error "Failed to extract archive"
+        exit 1
+    fi
+
+    # Install binary
+    mkdir -p "$INSTALL_DIR"
+    info "Installing binary to ${INSTALL_DIR}/${BINARY_NAME}..."
+    if ! install -m 755 "${TMP_DIR}/${BINARY_NAME}" "${INSTALL_DIR}/${BINARY_NAME}"; then
+        error "Failed to install binary"
+        exit 1
+    fi
+
+    success "Binary installed successfully"
+}
+
+#######################################
+# Prompt for API key if not provided
+#######################################
+prompt_api_key() {
+    if [[ -z "$API_KEY" ]]; then
+        if [[ ! -t 0 ]] && [[ ! -e /dev/tty ]]; then
+            error "No API key provided and no terminal available for interactive prompt"
+            error "Re-run with: --api-key YOUR_API_KEY"
+            exit 1
+        fi
+        echo ""
+        echo -e "${YELLOW}Honeybadger API Key Required${NC}"
+        echo "You can find your API key in your Honeybadger project settings."
+        echo ""
+        read -rsp "Enter your Honeybadger API key: " API_KEY < /dev/tty
+        echo ""
+
+        if [[ -z "$API_KEY" ]]; then
+            error "API key is required for the agent service"
+            exit 1
+        fi
+    fi
+}
+
+#######################################
+# Check if systemd is available
+#######################################
+check_systemd() {
+    if ! command -v systemctl &> /dev/null; then
+        warn "systemd is not available on this system"
+        warn "Skipping service installation. You can run the agent manually with:"
+        echo "  ${INSTALL_DIR}/${BINARY_NAME} agent --api-key YOUR_API_KEY"
+        return 1
+    fi
+    return 0
+}
+
+#######################################
+# Create systemd service file
+#######################################
+create_systemd_service() {
+    local service_file="/etc/systemd/system/${SERVICE_NAME}.service"
+
+    # Stop existing service if present
+    if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
+        info "Stopping existing ${SERVICE_NAME} service..."
+        systemctl stop "$SERVICE_NAME"
+    fi
+
+    info "Creating systemd service..."
+
+    # Pre-create with restrictive permissions since the file will contain the API key
+    install -m 600 /dev/null "$service_file"
+    cat > "$service_file" << EOF
+[Unit]
+Description=Honeybadger Agent - System Metrics Reporter
+Documentation=https://github.com/honeybadger-io/cli
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=${INSTALL_DIR}/${BINARY_NAME} agent --interval ${INTERVAL}
+Restart=always
+RestartSec=10
+Environment="HONEYBADGER_API_KEY=${API_KEY}"
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    success "Systemd service created at ${service_file}"
+}
+
+#######################################
+# Enable and start the service
+#######################################
+start_service() {
+    info "Reloading systemd daemon..."
+    systemctl daemon-reload
+
+    info "Enabling ${SERVICE_NAME} service..."
+    systemctl enable "$SERVICE_NAME"
+
+    info "Starting ${SERVICE_NAME} service..."
+    systemctl start "$SERVICE_NAME"
+
+    # Wait a moment and check status
+    sleep 2
+    if systemctl is-active --quiet "$SERVICE_NAME"; then
+        success "Service is running"
+    else
+        warn "Service may not have started correctly. Check with: systemctl status ${SERVICE_NAME}"
+    fi
+}
+
+#######################################
+# Print installation summary
+#######################################
+print_summary() {
+    echo ""
+    echo "================================================"
+    echo -e "${GREEN}Honeybadger CLI Installation Complete${NC}"
+    echo "================================================"
+    echo ""
+    echo "Binary installed: ${INSTALL_DIR}/${BINARY_NAME}"
+    echo "Version: ${VERSION}"
+
+    if [[ "$SERVICE_INSTALLED" == true ]]; then
+        echo ""
+        echo "Systemd Service: ${SERVICE_NAME}"
+        echo ""
+        echo "Useful commands:"
+        echo "  systemctl status ${SERVICE_NAME}   # Check service status"
+        echo "  systemctl restart ${SERVICE_NAME}  # Restart the service"
+        echo "  systemctl stop ${SERVICE_NAME}     # Stop the service"
+        echo "  journalctl -u ${SERVICE_NAME} -f   # View logs"
+    else
+        echo ""
+        echo "Run the agent manually:"
+        echo "  ${BINARY_NAME} agent --api-key YOUR_API_KEY"
+    fi
+
+    echo ""
+    echo "CLI Usage:"
+    echo "  ${BINARY_NAME} --help                 # Show all commands"
+    echo "  ${BINARY_NAME} agent --help           # Agent help"
+    echo "  ${BINARY_NAME} deploy --help          # Deploy reporting help"
+    echo ""
+}
+
+#######################################
+# Main installation flow
+#######################################
+main() {
+    echo ""
+    echo "================================================"
+    echo "  Honeybadger CLI Installer"
+    echo "================================================"
+    echo ""
+
+    # Parse command line arguments
+    parse_args "$@"
+
+    # Warn if --api-key or --interval used without --service
+    if [[ "$INSTALL_SERVICE" == false ]]; then
+        if [[ -n "$API_KEY" ]]; then
+            warn "--api-key has no effect without --service"
+        fi
+        if [[ "$INTERVAL" -ne "$DEFAULT_INTERVAL" ]]; then
+            warn "--interval has no effect without --service"
+        fi
+    fi
+
+    # If --service is requested, require root
+    if [[ "$INSTALL_SERVICE" == true ]] && [[ $EUID -ne 0 ]]; then
+        error "--service requires root (use sudo)"
+        exit 1
+    fi
+
+    # Create temporary directory for downloads
+    TMP_DIR=$(mktemp -d)
+    trap 'rm -rf "$TMP_DIR"' EXIT
+
+    # Determine install directory
+    resolve_install_dir
+
+    # Check prerequisites
+    check_dependencies
+
+    # Detect system
+    local os
+    local arch
+    os=$(detect_os)
+    arch=$(detect_arch)
+    info "Detected system: ${os}/${arch}"
+
+    # Determine version to install
+    if [[ "$VERSION" == "latest" ]]; then
+        VERSION=$(get_latest_version)
+    fi
+    info "Version to install: ${VERSION}"
+
+    # Install binary
+    install_binary "$os" "$arch" "$VERSION"
+
+    # Verify installation
+    if ! "${INSTALL_DIR}/${BINARY_NAME}" --version &> /dev/null; then
+        warn "Binary installed but version check failed"
+    fi
+
+    # Check if install dir is in PATH
+    check_path
+
+    # Setup systemd service if requested
+    if [[ "$INSTALL_SERVICE" == true ]]; then
+        if check_systemd; then
+            prompt_api_key
+            create_systemd_service
+            start_service
+            SERVICE_INSTALLED=true
+        fi
+    fi
+
+    # Print summary
+    print_summary
+}
+
+# Run main function
+main "$@"
