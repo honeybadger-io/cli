@@ -26,19 +26,21 @@ Pre-built binaries for Linux, macOS, and Windows are available on the [GitHub re
 
 ### Install Script
 
-On Linux, you can use the install script to download the binary and optionally set up a systemd service for the [metrics agent](#reporting-api-commands):
+On Linux and macOS, you can use the install script to download the binary:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --api-key YOUR_API_KEY
+curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | bash
 ```
 
-To install the binary without setting up a systemd service:
+No `sudo` required — the binary installs to `~/.local/bin` by default. When run as root, it installs to `/usr/local/bin`.
+
+To also set up a systemd service for the [metrics agent](#reporting-api-commands):
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --no-service
+curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --service --api-key YOUR_API_KEY
 ```
 
-Run with `--help` for all options including `--version` and `--interval`.
+Run with `--help` for all options including `--version`, `--interval`, and `--install-dir`.
 
 ## Configuration
 

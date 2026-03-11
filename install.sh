@@ -6,15 +6,16 @@
 # to run as a systemd service for continuous metrics reporting.
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash
-#   curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --api-key YOUR_API_KEY
-#   curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --version v1.0.0
+#   curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --service --api-key YOUR_API_KEY
+#   curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | bash -s -- --version v1.0.0
 #
 # Options:
-#   --api-key KEY       Honeybadger API key for the agent
+#   --service           Also set up a systemd service (requires root)
+#   --api-key KEY       Honeybadger API key for the agent (requires --service)
 #   --version VERSION   Specific version to install (default: latest)
-#   --interval SECONDS  Metrics reporting interval (default: 60)
-#   --no-service        Install binary only, skip systemd service setup
+#   --interval SECONDS  Metrics reporting interval (default: 60, requires --service)
+#   --install-dir DIR   Override install directory
 #   --help              Show this help message
 #
 
@@ -23,7 +24,7 @@ set -e
 # Configuration
 GITHUB_REPO="honeybadger-io/cli"
 BINARY_NAME="hb"
-INSTALL_DIR="/usr/local/bin"
+INSTALL_DIR=""
 SERVICE_NAME="honeybadger-agent"
 DEFAULT_INTERVAL=60
 
@@ -38,7 +39,7 @@ NC='\033[0m' # No Color
 API_KEY=""
 VERSION="latest"
 INTERVAL=$DEFAULT_INTERVAL
-INSTALL_SERVICE=true
+INSTALL_SERVICE=false
 SERVICE_INSTALLED=false
 TMP_DIR=""
 
@@ -72,24 +73,22 @@ Usage:
   $0 [options]
 
 Options:
-  --api-key KEY       Honeybadger API key for the agent
+  --service           Also set up a systemd service for the metrics agent (requires root)
+  --api-key KEY       Honeybadger API key for the agent (requires --service)
   --version VERSION   Specific version to install (default: latest)
-  --interval SECONDS  Metrics reporting interval in seconds (default: 60)
-  --no-service        Install binary only, skip systemd service setup
+  --interval SECONDS  Metrics reporting interval in seconds (default: 60, requires --service)
+  --install-dir DIR   Override install directory (default: ~/.local/bin or /usr/local/bin as root)
   --help              Show this help message
 
 Examples:
-  # Install latest version and configure as systemd service
-  curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash
+  # Install the binary (no sudo required)
+  curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | bash
 
-  # Install with API key provided
-  curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --api-key YOUR_API_KEY
+  # Install a specific version
+  curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | bash -s -- --version v1.0.0
 
-  # Install specific version
-  curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --version v1.0.0
-
-  # Install binary only (no systemd service)
-  curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --no-service
+  # Install and set up as a systemd service (requires sudo)
+  curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --service --api-key YOUR_API_KEY
 
 EOF
     exit "${1:-0}"
@@ -129,9 +128,17 @@ parse_args() {
                 INTERVAL="$2"
                 shift 2
                 ;;
-            --no-service)
-                INSTALL_SERVICE=false
+            --service)
+                INSTALL_SERVICE=true
                 shift
+                ;;
+            --install-dir)
+                if [[ -z "${2:-}" || "$2" == --* ]]; then
+                    error "--install-dir requires a value"
+                    exit 1
+                fi
+                INSTALL_DIR="$2"
+                shift 2
                 ;;
             --help|-h)
                 usage
@@ -145,13 +152,32 @@ parse_args() {
 }
 
 #######################################
-# Check if running as root
+# Determine install directory based on privileges
 #######################################
-check_root() {
-    if [[ $EUID -ne 0 ]]; then
-        error "This script must be run as root (use sudo)"
-        exit 1
+resolve_install_dir() {
+    if [[ -z "$INSTALL_DIR" ]]; then
+        if [[ $EUID -eq 0 ]]; then
+            INSTALL_DIR="/usr/local/bin"
+        else
+            INSTALL_DIR="${HOME}/.local/bin"
+        fi
     fi
+}
+
+#######################################
+# Check if install dir is in PATH
+#######################################
+check_path() {
+    case ":${PATH}:" in
+        *":${INSTALL_DIR}:"*)
+            ;;
+        *)
+            warn "${INSTALL_DIR} is not in your PATH"
+            echo "  Add it by running:"
+            echo "    export PATH=\"${INSTALL_DIR}:\$PATH\""
+            echo "  To make it permanent, add the line above to your shell profile (~/.bashrc, ~/.zshrc, etc.)"
+            ;;
+    esac
 }
 
 #######################################
@@ -423,12 +449,30 @@ main() {
     # Parse command line arguments
     parse_args "$@"
 
+    # Warn if --api-key or --interval used without --service
+    if [[ "$INSTALL_SERVICE" == false ]]; then
+        if [[ -n "$API_KEY" ]]; then
+            warn "--api-key has no effect without --service"
+        fi
+        if [[ "$INTERVAL" -ne "$DEFAULT_INTERVAL" ]]; then
+            warn "--interval has no effect without --service"
+        fi
+    fi
+
+    # If --service is requested, require root
+    if [[ "$INSTALL_SERVICE" == true ]] && [[ $EUID -ne 0 ]]; then
+        error "--service requires root (use sudo)"
+        exit 1
+    fi
+
     # Create temporary directory for downloads
     TMP_DIR=$(mktemp -d)
     trap 'rm -rf "$TMP_DIR"' EXIT
 
+    # Determine install directory
+    resolve_install_dir
+
     # Check prerequisites
-    check_root
     check_dependencies
 
     # Detect system
@@ -451,6 +495,9 @@ main() {
     if ! "${INSTALL_DIR}/${BINARY_NAME}" --version &> /dev/null; then
         warn "Binary installed but version check failed"
     fi
+
+    # Check if install dir is in PATH
+    check_path
 
     # Setup systemd service if requested
     if [[ "$INSTALL_SERVICE" == true ]]; then
