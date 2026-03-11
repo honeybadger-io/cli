@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-03-05
+
 ### Changed
 
 - BREAKING: `deployments list`, `uptime outages`, and `uptime checks` now require human-readable values for `--created-after`/`--created-before` (`YYYY-MM-DD` or RFC3339). Unix epoch input for these flags is no longer accepted.
