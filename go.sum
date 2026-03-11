@@ -14,8 +14,8 @@ github.com/go-viper/mapstructure/v2 v2.4.0/go.mod h1:oJDH3BJKyqBA2TXFhDsKDGDTlnd
 github.com/google/go-cmp v0.5.6/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
-github.com/honeybadger-io/api-go v0.2.0 h1:ezoDgaBomS8eP022F4rmzFgKhyRmzqvcYDiMSKhd6sg=
-github.com/honeybadger-io/api-go v0.2.0/go.mod h1:VurinfWN9qR1Bd9Zju2pIDgG1vIi5Qq3GpcsfToQiBU=
+github.com/honeybadger-io/api-go v0.5.0 h1:rLvofEgM6heH8T/g20i6EW9ymnYN2uEKgJfN6kSg9bE=
+github.com/honeybadger-io/api-go v0.5.0/go.mod h1:VurinfWN9qR1Bd9Zju2pIDgG1vIi5Qq3GpcsfToQiBU=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/kr/pretty v0.2.1/go.mod h1:ipq/a2n7PKx3OHsz4KJII5eveXtPO4qwEXGdVfWzfnI=

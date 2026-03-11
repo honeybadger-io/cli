@@ -18,8 +18,8 @@ var (
 	deploymentsOutputFormat  string
 	deploymentsEnvironment   string
 	deploymentsLocalUser     string
-	deploymentsCreatedAfter  int64
-	deploymentsCreatedBefore int64
+	deploymentsCreatedAfter  string
+	deploymentsCreatedBefore string
 	deploymentsLimit         int
 )
 
@@ -57,9 +57,21 @@ var deploymentsListCmd = &cobra.Command{
 		options := hbapi.DeploymentListOptions{
 			Environment:   deploymentsEnvironment,
 			LocalUsername: deploymentsLocalUser,
-			CreatedAfter:  deploymentsCreatedAfter,
-			CreatedBefore: deploymentsCreatedBefore,
 			Limit:         deploymentsLimit,
+		}
+		if deploymentsCreatedAfter != "" {
+			t, err := parseTimeFlag(deploymentsCreatedAfter)
+			if err != nil {
+				return fmt.Errorf("invalid --created-after: %w", err)
+			}
+			options.CreatedAfter = t
+		}
+		if deploymentsCreatedBefore != "" {
+			t, err := parseTimeFlag(deploymentsCreatedBefore)
+			if err != nil {
+				return fmt.Errorf("invalid --created-before: %w", err)
+			}
+			options.CreatedBefore = t
 		}
 
 		ctx := context.Background()
@@ -206,9 +218,9 @@ func init() {
 	deploymentsListCmd.Flags().
 		StringVar(&deploymentsLocalUser, "local-user", "", "Filter by local username")
 	deploymentsListCmd.Flags().
-		Int64Var(&deploymentsCreatedAfter, "created-after", 0, "Filter by creation time (Unix timestamp)")
+		StringVar(&deploymentsCreatedAfter, "created-after", "", "Filter by creation time (YYYY-MM-DD or RFC3339)")
 	deploymentsListCmd.Flags().
-		Int64Var(&deploymentsCreatedBefore, "created-before", 0, "Filter by creation time (Unix timestamp)")
+		StringVar(&deploymentsCreatedBefore, "created-before", "", "Filter by creation time (YYYY-MM-DD or RFC3339)")
 	deploymentsListCmd.Flags().
 		IntVar(&deploymentsLimit, "limit", 25, "Maximum number of deployments to return (max 25)")
 
