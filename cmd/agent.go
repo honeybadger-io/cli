@@ -193,15 +193,20 @@ func sendMetric(payload interface{}, tags map[string]string) error {
 		return fmt.Errorf("error marshaling metrics: %w", err)
 	}
 
-	// If tags are present, unmarshal to a map, merge tags on top, and re-marshal.
-	// Tags override any existing fields (e.g. "host" overrides auto-detected hostname).
+	// If tags are present, unmarshal to a map of raw JSON values, overlay tags,
+	// and re-marshal. Using json.RawMessage preserves the original numeric
+	// representations (avoiding float64 coercion for large uint64 values).
 	if len(tags) > 0 {
-		var merged map[string]interface{}
+		var merged map[string]json.RawMessage
 		if err := json.Unmarshal(jsonData, &merged); err != nil {
 			return fmt.Errorf("error unmarshaling metrics for tag merge: %w", err)
 		}
 		for k, v := range tags {
-			merged[k] = v
+			tagJSON, err := json.Marshal(v)
+			if err != nil {
+				return fmt.Errorf("error marshaling tag %q: %w", k, err)
+			}
+			merged[k] = tagJSON
 		}
 		jsonData, err = json.Marshal(merged)
 		if err != nil {
