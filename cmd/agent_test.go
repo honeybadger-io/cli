@@ -13,6 +13,45 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestParseTags(t *testing.T) {
+	t.Run("parses valid key=value tags", func(t *testing.T) {
+		input := []string{"environment=stage", "role=web-1"}
+		result, err := parseTags(input)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{
+			"environment": "stage",
+			"role":        "web-1",
+		}, result)
+	})
+
+	t.Run("handles values containing equals signs", func(t *testing.T) {
+		input := []string{"label=a=b=c"}
+		result, err := parseTags(input)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{"label": "a=b=c"}, result)
+	})
+
+	t.Run("rejects tag without equals sign", func(t *testing.T) {
+		input := []string{"badtag"}
+		_, err := parseTags(input)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid tag")
+	})
+
+	t.Run("rejects tag with empty key", func(t *testing.T) {
+		input := []string{"=value"}
+		_, err := parseTags(input)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid tag")
+	})
+
+	t.Run("returns empty map for no tags", func(t *testing.T) {
+		result, err := parseTags(nil)
+		require.NoError(t, err)
+		assert.Empty(t, result)
+	})
+}
+
 func TestAgentCommand(t *testing.T) {
 	// Save original values
 	originalClient := http.DefaultClient

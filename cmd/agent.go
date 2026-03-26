@@ -21,6 +21,7 @@ import (
 )
 
 var interval int
+var tagFlags []string
 
 type cpuPayload struct {
 	Ts          string  `json:"ts"`
@@ -101,6 +102,21 @@ Metrics are aggregated and reported at a configurable interval (default: 60 seco
 func init() {
 	rootCmd.AddCommand(agentCmd)
 	agentCmd.Flags().IntVarP(&interval, "interval", "i", 60, "Reporting interval in seconds")
+	agentCmd.Flags().StringArrayVarP(&tagFlags, "tag", "t", nil, "Tag in key=value format (repeatable, e.g. --tag environment=stage)")
+}
+
+// parseTags converts a slice of "key=value" strings into a map.
+// Returns an error if any tag is malformed.
+func parseTags(raw []string) (map[string]string, error) {
+	tags := make(map[string]string)
+	for _, tag := range raw {
+		key, value, ok := strings.Cut(tag, "=")
+		if !ok || key == "" {
+			return nil, fmt.Errorf("invalid tag %q: must be in key=value format", tag)
+		}
+		tags[key] = value
+	}
+	return tags, nil
 }
 
 // sendMetric sends a single metric event to Honeybadger
