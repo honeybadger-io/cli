@@ -353,3 +353,63 @@ func TestSendMetricWithTags(t *testing.T) {
 		assert.Equal(t, "report.system.cpu", receivedEvent["event_type"])
 	})
 }
+
+func TestReportMetricsWithTags(t *testing.T) {
+	t.Run("tags appear in all submitted events", func(t *testing.T) {
+		var receivedEvents []map[string]interface{}
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var event map[string]interface{}
+			decoder := json.NewDecoder(r.Body)
+			if err := decoder.Decode(&event); err == nil {
+				receivedEvents = append(receivedEvents, event)
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		viper.Reset()
+		viper.Set("api_key", "test-key")
+		viper.Set("endpoint", server.URL)
+
+		tags := map[string]string{"environment": "stage", "role": "web-1"}
+		err := reportMetrics("auto-host", tags)
+		require.NoError(t, err)
+
+		// Should have at least CPU + memory + 1 disk = 3 events
+		require.GreaterOrEqual(t, len(receivedEvents), 3)
+
+		for _, event := range receivedEvents {
+			assert.Equal(t, "stage", event["environment"], "event_type=%s missing environment tag", event["event_type"])
+			assert.Equal(t, "web-1", event["role"], "event_type=%s missing role tag", event["event_type"])
+			assert.Equal(t, "auto-host", event["host"], "event_type=%s has wrong host", event["event_type"])
+		}
+	})
+
+	t.Run("host tag overrides hostname in all events", func(t *testing.T) {
+		var receivedEvents []map[string]interface{}
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var event map[string]interface{}
+			decoder := json.NewDecoder(r.Body)
+			if err := decoder.Decode(&event); err == nil {
+				receivedEvents = append(receivedEvents, event)
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		viper.Reset()
+		viper.Set("api_key", "test-key")
+		viper.Set("endpoint", server.URL)
+
+		tags := map[string]string{"host": "custom-host", "environment": "prod"}
+		err := reportMetrics("auto-host", tags)
+		require.NoError(t, err)
+
+		require.GreaterOrEqual(t, len(receivedEvents), 3)
+
+		for _, event := range receivedEvents {
+			assert.Equal(t, "custom-host", event["host"], "event_type=%s host not overridden", event["event_type"])
+			assert.Equal(t, "prod", event["environment"], "event_type=%s missing environment tag", event["event_type"])
+		}
+	})
+}
