@@ -179,7 +179,10 @@ func loadConfigTags() (map[string]string, error) {
 	}
 	for key := range raw {
 		if reservedTagKeys[key] {
-			return nil, fmt.Errorf("invalid config tag: %q is a reserved metric field and cannot be used as a tag key", key)
+			return nil, fmt.Errorf(
+				"invalid config tag: %q is a reserved metric field and cannot be used as a tag key",
+				key,
+			)
 		}
 	}
 	return raw, nil
