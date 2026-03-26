@@ -147,7 +147,7 @@ func TestMetricsCollection(t *testing.T) {
 		hostname, err := os.Hostname()
 		require.NoError(t, err)
 
-		err = reportMetrics(hostname)
+		err = reportMetrics(hostname, nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "error sending metrics")
 	})
@@ -186,7 +186,7 @@ func TestMetricsCollection(t *testing.T) {
 		interval = 1 // 1 second
 
 		// Run the agent command
-		err := reportMetrics("test-host")
+		err := reportMetrics("test-host", nil)
 		require.NoError(t, err)
 
 		// Wait for metrics to be reported
@@ -243,5 +243,90 @@ func TestMetricsCollection(t *testing.T) {
 			}
 		}
 		assert.True(t, foundDiskEvent, "No disk metrics were received")
+	})
+}
+
+func TestSendMetricWithTags(t *testing.T) {
+	t.Run("tags are merged into event JSON", func(t *testing.T) {
+		var receivedEvent map[string]interface{}
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			decoder := json.NewDecoder(r.Body)
+			err := decoder.Decode(&receivedEvent)
+			require.NoError(t, err)
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		viper.Reset()
+		viper.Set("api_key", "test-key")
+		viper.Set("endpoint", server.URL)
+
+		payload := cpuPayload{
+			Ts:    "2026-01-01T00:00:00Z",
+			Event: "report.system.cpu",
+			Host:  "auto-hostname",
+		}
+		tags := map[string]string{"environment": "stage", "role": "web-1"}
+
+		err := sendMetric(payload, tags)
+		require.NoError(t, err)
+
+		assert.Equal(t, "stage", receivedEvent["environment"])
+		assert.Equal(t, "web-1", receivedEvent["role"])
+		assert.Equal(t, "auto-hostname", receivedEvent["host"])
+	})
+
+	t.Run("host tag overrides struct host field", func(t *testing.T) {
+		var receivedEvent map[string]interface{}
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			decoder := json.NewDecoder(r.Body)
+			err := decoder.Decode(&receivedEvent)
+			require.NoError(t, err)
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		viper.Reset()
+		viper.Set("api_key", "test-key")
+		viper.Set("endpoint", server.URL)
+
+		payload := cpuPayload{
+			Ts:    "2026-01-01T00:00:00Z",
+			Event: "report.system.cpu",
+			Host:  "auto-hostname",
+		}
+		tags := map[string]string{"host": "custom-host"}
+
+		err := sendMetric(payload, tags)
+		require.NoError(t, err)
+
+		assert.Equal(t, "custom-host", receivedEvent["host"])
+	})
+
+	t.Run("works with no tags", func(t *testing.T) {
+		var receivedEvent map[string]interface{}
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			decoder := json.NewDecoder(r.Body)
+			err := decoder.Decode(&receivedEvent)
+			require.NoError(t, err)
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		viper.Reset()
+		viper.Set("api_key", "test-key")
+		viper.Set("endpoint", server.URL)
+
+		payload := cpuPayload{
+			Ts:    "2026-01-01T00:00:00Z",
+			Event: "report.system.cpu",
+			Host:  "auto-hostname",
+		}
+
+		err := sendMetric(payload, nil)
+		require.NoError(t, err)
+
+		assert.Equal(t, "auto-hostname", receivedEvent["host"])
+		assert.Equal(t, "report.system.cpu", receivedEvent["event_type"])
 	})
 }

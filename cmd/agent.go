@@ -91,7 +91,7 @@ Metrics are aggregated and reported at a configurable interval (default: 60 seco
 			case <-ctx.Done():
 				return nil
 			case <-ticker.C:
-				if err := reportMetrics(hostname); err != nil {
+				if err := reportMetrics(hostname, nil); err != nil {
 					fmt.Fprintf(os.Stderr, "Error reporting metrics: %v\n", err)
 				}
 			}
@@ -131,18 +131,34 @@ func mergeTags(configTags, flagTags map[string]string) map[string]string {
 	return merged
 }
 
-// sendMetric sends a single metric event to Honeybadger
-func sendMetric(payload interface{}) error {
+// sendMetric sends a single metric event to Honeybadger.
+// Tags are merged into the JSON payload, overriding any existing fields.
+func sendMetric(payload interface{}, tags map[string]string) error {
+	// Marshal struct to JSON, then unmarshal to map so we can merge tags
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("error marshaling metrics: %w", err)
+	}
+
+	var merged map[string]interface{}
+	if err := json.Unmarshal(jsonData, &merged); err != nil {
+		return fmt.Errorf("error unmarshaling metrics for tag merge: %w", err)
+	}
+
+	for k, v := range tags {
+		merged[k] = v
+	}
+
+	finalJSON, err := json.Marshal(merged)
+	if err != nil {
+		return fmt.Errorf("error marshaling final payload: %w", err)
 	}
 
 	apiEndpoint := viper.GetString("endpoint")
 	req, err := http.NewRequest(
 		"POST",
 		fmt.Sprintf("%s/v1/events", apiEndpoint),
-		strings.NewReader(string(jsonData)+"\n"),
+		strings.NewReader(string(finalJSON)+"\n"),
 	)
 	if err != nil {
 		return fmt.Errorf("error creating request: %w", err)
@@ -170,7 +186,7 @@ func sendMetric(payload interface{}) error {
 	return nil
 }
 
-func reportMetrics(hostname string) error {
+func reportMetrics(hostname string, tags map[string]string) error {
 	timestamp := time.Now().UTC().Format(time.RFC3339)
 
 	// Collect and send CPU metrics
@@ -203,7 +219,7 @@ func reportMetrics(hostname string) error {
 		LoadAvg15:   loadAvg.Load15,
 		NumCPUs:     numCPU,
 	}
-	if err := sendMetric(cpuPayload); err != nil {
+	if err := sendMetric(cpuPayload, tags); err != nil {
 		return fmt.Errorf("error sending CPU metrics: %w", err)
 	}
 
@@ -223,7 +239,7 @@ func reportMetrics(hostname string) error {
 		Available:   virtualMem.Available,
 		UsedPercent: math.Round(virtualMem.UsedPercent*100) / 100,
 	}
-	if err := sendMetric(memoryPayload); err != nil {
+	if err := sendMetric(memoryPayload, tags); err != nil {
 		return fmt.Errorf("error sending memory metrics: %w", err)
 	}
 
@@ -262,7 +278,7 @@ func reportMetrics(hostname string) error {
 			Free:        usage.Free,
 			UsedPercent: math.Round(usage.UsedPercent*100) / 100,
 		}
-		if err := sendMetric(diskPayload); err != nil {
+		if err := sendMetric(diskPayload, tags); err != nil {
 			return fmt.Errorf("error sending disk metrics for %s: %w", part.Mountpoint, err)
 		}
 	}
