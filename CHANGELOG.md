@@ -8,10 +8,7 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Added `--tag key=value` flag (repeatable, short `-t`) to annotate agent metrics with custom metadata such as environment or role
-- Added `agent.tags` YAML config option for setting tags in the configuration file (CLI flags take precedence)
-- Added `--tag host=custom-name` support to override the auto-detected hostname
-- Added validation to reject tags that collide with reserved metric field names
+- Add --tag flag to agent for custom metric metadata (#25)
 
 ## [0.6.0] - 2026-03-05
 
