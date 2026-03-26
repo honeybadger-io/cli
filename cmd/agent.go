@@ -81,7 +81,10 @@ Metrics are aggregated and reported at a configurable interval (default: 60 seco
 		}
 
 		// Load config file tags and merge (CLI flags take precedence)
-		configTags := loadConfigTags()
+		configTags, err := loadConfigTags()
+		if err != nil {
+			return err
+		}
 		tags := mergeTags(configTags, flagTags)
 
 		ctx := context.Background()
@@ -114,14 +117,36 @@ func init() {
 	agentCmd.Flags().StringArrayVarP(&tagFlags, "tag", "t", nil, "Tag in key=value format (repeatable, e.g. --tag environment=stage)")
 }
 
+// reservedTagKeys are metric payload fields that tags must not override.
+// "host" is intentionally excluded — it can be overridden via tags.
+var reservedTagKeys = map[string]bool{
+	"ts":              true,
+	"event_type":      true,
+	"used_percent":    true,
+	"load_avg_1":      true,
+	"load_avg_5":      true,
+	"load_avg_15":     true,
+	"num_cpus":        true,
+	"total_bytes":     true,
+	"used_bytes":      true,
+	"free_bytes":      true,
+	"available_bytes": true,
+	"mountpoint":      true,
+	"device":          true,
+	"fstype":          true,
+}
+
 // parseTags converts a slice of "key=value" strings into a map.
-// Returns an error if any tag is malformed.
+// Returns an error if any tag is malformed or uses a reserved key.
 func parseTags(raw []string) (map[string]string, error) {
 	tags := make(map[string]string)
 	for _, tag := range raw {
 		key, value, ok := strings.Cut(tag, "=")
 		if !ok || key == "" {
 			return nil, fmt.Errorf("invalid tag %q: must be in key=value format", tag)
+		}
+		if reservedTagKeys[key] {
+			return nil, fmt.Errorf("invalid tag %q: %q is a reserved metric field and cannot be used as a tag key", tag, key)
 		}
 		tags[key] = value
 	}
@@ -141,12 +166,18 @@ func mergeTags(configTags, flagTags map[string]string) map[string]string {
 }
 
 // loadConfigTags reads tags from the "agent.tags" section of the config file.
-func loadConfigTags() map[string]string {
+// Returns an error if any tag uses a reserved key.
+func loadConfigTags() (map[string]string, error) {
 	raw := viper.GetStringMapString("agent.tags")
 	if len(raw) == 0 {
-		return nil
+		return nil, nil
 	}
-	return raw
+	for key := range raw {
+		if reservedTagKeys[key] {
+			return nil, fmt.Errorf("invalid config tag: %q is a reserved metric field and cannot be used as a tag key", key)
+		}
+	}
+	return raw, nil
 }
 
 // sendMetric sends a single metric event to Honeybadger.

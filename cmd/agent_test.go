@@ -50,6 +50,20 @@ func TestParseTags(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, result)
 	})
+
+	t.Run("rejects reserved metric field keys", func(t *testing.T) {
+		for _, key := range []string{"ts", "event_type", "used_percent", "total_bytes", "mountpoint"} {
+			_, err := parseTags([]string{key + "=foo"})
+			require.Error(t, err, "expected error for reserved key %q", key)
+			assert.Contains(t, err.Error(), "reserved metric field")
+		}
+	})
+
+	t.Run("allows host as a tag key", func(t *testing.T) {
+		result, err := parseTags([]string{"host=custom"})
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{"host": "custom"}, result)
+	})
 }
 
 func TestMergeTags(t *testing.T) {
@@ -90,7 +104,8 @@ func TestAgentTagsFromConfig(t *testing.T) {
 			"role":        "web-1",
 		})
 
-		result := loadConfigTags()
+		result, err := loadConfigTags()
+		require.NoError(t, err)
 		assert.Equal(t, map[string]string{
 			"environment": "production",
 			"role":        "web-1",
@@ -99,8 +114,19 @@ func TestAgentTagsFromConfig(t *testing.T) {
 
 	t.Run("returns empty map when no config tags", func(t *testing.T) {
 		viper.Reset()
-		result := loadConfigTags()
+		result, err := loadConfigTags()
+		require.NoError(t, err)
 		assert.Empty(t, result)
+	})
+
+	t.Run("rejects reserved keys in config tags", func(t *testing.T) {
+		viper.Reset()
+		viper.Set("agent.tags", map[string]interface{}{
+			"event_type": "bad",
+		})
+		_, err := loadConfigTags()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "reserved metric field")
 	})
 }
 
