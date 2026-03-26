@@ -52,6 +52,35 @@ func TestParseTags(t *testing.T) {
 	})
 }
 
+func TestMergeTags(t *testing.T) {
+	t.Run("CLI flags override config tags", func(t *testing.T) {
+		configTags := map[string]string{"environment": "config-env", "region": "us-east-1"}
+		flagTags := map[string]string{"environment": "flag-env"}
+		result := mergeTags(configTags, flagTags)
+		assert.Equal(t, map[string]string{
+			"environment": "flag-env",
+			"region":      "us-east-1",
+		}, result)
+	})
+
+	t.Run("returns flag tags when no config tags", func(t *testing.T) {
+		flagTags := map[string]string{"role": "web-1"}
+		result := mergeTags(nil, flagTags)
+		assert.Equal(t, map[string]string{"role": "web-1"}, result)
+	})
+
+	t.Run("returns config tags when no flag tags", func(t *testing.T) {
+		configTags := map[string]string{"role": "web-1"}
+		result := mergeTags(configTags, nil)
+		assert.Equal(t, map[string]string{"role": "web-1"}, result)
+	})
+
+	t.Run("returns empty map when both nil", func(t *testing.T) {
+		result := mergeTags(nil, nil)
+		assert.Empty(t, result)
+	})
+}
+
 func TestAgentCommand(t *testing.T) {
 	// Save original values
 	originalClient := http.DefaultClient

@@ -119,6 +119,18 @@ func parseTags(raw []string) (map[string]string, error) {
 	return tags, nil
 }
 
+// mergeTags combines config tags with CLI flag tags. Flag tags take precedence.
+func mergeTags(configTags, flagTags map[string]string) map[string]string {
+	merged := make(map[string]string)
+	for k, v := range configTags {
+		merged[k] = v
+	}
+	for k, v := range flagTags {
+		merged[k] = v
+	}
+	return merged
+}
+
 // sendMetric sends a single metric event to Honeybadger
 func sendMetric(payload interface{}) error {
 	jsonData, err := json.Marshal(payload)
