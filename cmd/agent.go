@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"net/http"
 	"os"
@@ -161,12 +162,8 @@ func parseTags(raw []string) (map[string]string, error) {
 // mergeTags combines config tags with CLI flag tags. Flag tags take precedence.
 func mergeTags(configTags, flagTags map[string]string) map[string]string {
 	merged := make(map[string]string)
-	for k, v := range configTags {
-		merged[k] = v
-	}
-	for k, v := range flagTags {
-		merged[k] = v
-	}
+	maps.Copy(merged, configTags)
+	maps.Copy(merged, flagTags)
 	return merged
 }
 
@@ -187,7 +184,7 @@ func loadConfigTags() (map[string]string, error) {
 
 // sendMetric sends a single metric event to Honeybadger.
 // Tags are merged into the JSON payload, overriding any existing fields.
-func sendMetric(payload interface{}, tags map[string]string) error {
+func sendMetric(payload any, tags map[string]string) error {
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("error marshaling metrics: %w", err)
