@@ -67,13 +67,22 @@ var agentCmd = &cobra.Command{
 This command collects and reports system metrics such as CPU usage, memory usage, disk usage, and load averages.
 Metrics are aggregated and reported at a configurable interval (default: 60 seconds).`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		// Check for API key before starting
 		apiKey := viper.GetString("api_key")
 		if apiKey == "" {
 			return fmt.Errorf(
 				"API key not configured. Use --api-key flag or set HONEYBADGER_API_KEY environment variable",
 			)
 		}
+
+		// Parse CLI flag tags
+		flagTags, err := parseTags(tagFlags)
+		if err != nil {
+			return err
+		}
+
+		// Load config file tags and merge (CLI flags take precedence)
+		configTags := loadConfigTags()
+		tags := mergeTags(configTags, flagTags)
 
 		ctx := context.Background()
 		ticker := time.NewTicker(time.Duration(interval) * time.Second)
@@ -91,7 +100,7 @@ Metrics are aggregated and reported at a configurable interval (default: 60 seco
 			case <-ctx.Done():
 				return nil
 			case <-ticker.C:
-				if err := reportMetrics(hostname, nil); err != nil {
+				if err := reportMetrics(hostname, tags); err != nil {
 					fmt.Fprintf(os.Stderr, "Error reporting metrics: %v\n", err)
 				}
 			}
@@ -129,6 +138,15 @@ func mergeTags(configTags, flagTags map[string]string) map[string]string {
 		merged[k] = v
 	}
 	return merged
+}
+
+// loadConfigTags reads tags from the "agent.tags" section of the config file.
+func loadConfigTags() map[string]string {
+	raw := viper.GetStringMapString("agent.tags")
+	if len(raw) == 0 {
+		return nil
+	}
+	return raw
 }
 
 // sendMetric sends a single metric event to Honeybadger.

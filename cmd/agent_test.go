@@ -81,6 +81,29 @@ func TestMergeTags(t *testing.T) {
 	})
 }
 
+func TestAgentTagsFromConfig(t *testing.T) {
+	t.Run("loads tags from viper config", func(t *testing.T) {
+		viper.Reset()
+		viper.Set("api_key", "test-key")
+		viper.Set("agent.tags", map[string]interface{}{
+			"environment": "production",
+			"role":        "web-1",
+		})
+
+		result := loadConfigTags()
+		assert.Equal(t, map[string]string{
+			"environment": "production",
+			"role":        "web-1",
+		}, result)
+	})
+
+	t.Run("returns empty map when no config tags", func(t *testing.T) {
+		viper.Reset()
+		result := loadConfigTags()
+		assert.Empty(t, result)
+	})
+}
+
 func TestAgentCommand(t *testing.T) {
 	// Save original values
 	originalClient := http.DefaultClient
