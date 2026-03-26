@@ -20,8 +20,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-var interval int
-var tagFlags []string
+var (
+	interval int
+	tagFlags []string
+)
 
 type cpuPayload struct {
 	Ts          string  `json:"ts"`
@@ -114,7 +116,10 @@ Metrics are aggregated and reported at a configurable interval (default: 60 seco
 func init() {
 	rootCmd.AddCommand(agentCmd)
 	agentCmd.Flags().IntVarP(&interval, "interval", "i", 60, "Reporting interval in seconds")
-	agentCmd.Flags().StringArrayVarP(&tagFlags, "tag", "t", nil, "Tag in key=value format (repeatable, e.g. --tag environment=stage)")
+	agentCmd.Flags().StringArrayVarP(
+		&tagFlags, "tag", "t", nil,
+		"Tag in key=value format (repeatable, e.g. --tag environment=stage)",
+	)
 }
 
 // reservedTagKeys are metric payload fields that tags must not override.

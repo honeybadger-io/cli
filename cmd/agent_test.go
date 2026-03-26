@@ -405,9 +405,13 @@ func TestReportMetricsWithTags(t *testing.T) {
 		require.GreaterOrEqual(t, len(receivedEvents), 3)
 
 		for _, event := range receivedEvents {
-			assert.Equal(t, "stage", event["environment"], "event_type=%s missing environment tag", event["event_type"])
-			assert.Equal(t, "web-1", event["role"], "event_type=%s missing role tag", event["event_type"])
-			assert.Equal(t, "auto-host", event["host"], "event_type=%s has wrong host", event["event_type"])
+			eventType := event["event_type"]
+			assert.Equal(t, "stage", event["environment"],
+				"event_type=%s missing environment tag", eventType)
+			assert.Equal(t, "web-1", event["role"],
+				"event_type=%s missing role tag", eventType)
+			assert.Equal(t, "auto-host", event["host"],
+				"event_type=%s has wrong host", eventType)
 		}
 	})
 
@@ -434,8 +438,11 @@ func TestReportMetricsWithTags(t *testing.T) {
 		require.GreaterOrEqual(t, len(receivedEvents), 3)
 
 		for _, event := range receivedEvents {
-			assert.Equal(t, "custom-host", event["host"], "event_type=%s host not overridden", event["event_type"])
-			assert.Equal(t, "prod", event["environment"], "event_type=%s missing environment tag", event["event_type"])
+			eventType := event["event_type"]
+			assert.Equal(t, "custom-host", event["host"],
+				"event_type=%s host not overridden", eventType)
+			assert.Equal(t, "prod", event["environment"],
+				"event_type=%s missing environment tag", eventType)
 		}
 	})
 }
