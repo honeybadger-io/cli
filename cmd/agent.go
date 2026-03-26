@@ -152,31 +152,32 @@ func loadConfigTags() map[string]string {
 // sendMetric sends a single metric event to Honeybadger.
 // Tags are merged into the JSON payload, overriding any existing fields.
 func sendMetric(payload interface{}, tags map[string]string) error {
-	// Marshal struct to JSON, then unmarshal to map so we can merge tags
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("error marshaling metrics: %w", err)
 	}
 
-	var merged map[string]interface{}
-	if err := json.Unmarshal(jsonData, &merged); err != nil {
-		return fmt.Errorf("error unmarshaling metrics for tag merge: %w", err)
-	}
-
-	for k, v := range tags {
-		merged[k] = v
-	}
-
-	finalJSON, err := json.Marshal(merged)
-	if err != nil {
-		return fmt.Errorf("error marshaling final payload: %w", err)
+	// If tags are present, unmarshal to a map, merge tags on top, and re-marshal.
+	// Tags override any existing fields (e.g. "host" overrides auto-detected hostname).
+	if len(tags) > 0 {
+		var merged map[string]interface{}
+		if err := json.Unmarshal(jsonData, &merged); err != nil {
+			return fmt.Errorf("error unmarshaling metrics for tag merge: %w", err)
+		}
+		for k, v := range tags {
+			merged[k] = v
+		}
+		jsonData, err = json.Marshal(merged)
+		if err != nil {
+			return fmt.Errorf("error marshaling final payload: %w", err)
+		}
 	}
 
 	apiEndpoint := viper.GetString("endpoint")
 	req, err := http.NewRequest(
 		"POST",
 		fmt.Sprintf("%s/v1/events", apiEndpoint),
-		strings.NewReader(string(finalJSON)+"\n"),
+		strings.NewReader(string(jsonData)+"\n"),
 	)
 	if err != nil {
 		return fmt.Errorf("error creating request: %w", err)
