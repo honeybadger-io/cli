@@ -152,7 +152,10 @@ func parseTags(raw []string) (map[string]string, error) {
 			return nil, fmt.Errorf("invalid tag %q: must be in key=value format", tag)
 		}
 		if reservedTagKeys[key] {
-			return nil, fmt.Errorf("invalid tag %q: %q is a reserved metric field and cannot be used as a tag key", tag, key)
+			return nil, fmt.Errorf(
+				"invalid tag %q: %q is a reserved metric field and cannot be used as a tag key",
+				tag, key,
+			)
 		}
 		tags[key] = value
 	}
