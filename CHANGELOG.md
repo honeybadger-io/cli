@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-04-06
+
 ### Added
 
 - Add --tag flag to agent for custom metric metadata (#25)
