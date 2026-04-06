@@ -56,6 +56,12 @@ api_key: your-project-api-key-here      # For Reporting API (deploy, agent comma
 auth_token: your-personal-auth-token    # For Data API (projects, faults, insights commands)
 project_id: 12345                       # Optional, default project ID for Data API commands
 endpoint: https://api.honeybadger.io    # Optional, use https://eu-api.honeybadger.io for EU region
+
+# Optional tags for the metrics agent (added to every event)
+agent:
+  tags:
+    environment: production
+    role: web-1
 ```
 
 ### Environment Variables
@@ -119,6 +125,12 @@ hb deploy --environment production --revision abc123
 
 # Start the metrics agent
 hb agent --interval 60
+
+# Start the metrics agent with custom tags
+hb agent --tag environment=production --tag role=web-1
+
+# Override the hostname reported by the agent
+hb agent --tag host=web-1.prod --tag environment=production
 
 # Run a command and report to a check-in
 hb run --id XyZZy -- /usr/local/bin/backup.sh

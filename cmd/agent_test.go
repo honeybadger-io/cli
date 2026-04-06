@@ -13,6 +13,123 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestParseTags(t *testing.T) {
+	t.Run("parses valid key=value tags", func(t *testing.T) {
+		input := []string{"environment=stage", "role=web-1"}
+		result, err := parseTags(input)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{
+			"environment": "stage",
+			"role":        "web-1",
+		}, result)
+	})
+
+	t.Run("handles values containing equals signs", func(t *testing.T) {
+		input := []string{"label=a=b=c"}
+		result, err := parseTags(input)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{"label": "a=b=c"}, result)
+	})
+
+	t.Run("rejects tag without equals sign", func(t *testing.T) {
+		input := []string{"badtag"}
+		_, err := parseTags(input)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid tag")
+	})
+
+	t.Run("rejects tag with empty key", func(t *testing.T) {
+		input := []string{"=value"}
+		_, err := parseTags(input)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid tag")
+	})
+
+	t.Run("returns empty map for no tags", func(t *testing.T) {
+		result, err := parseTags(nil)
+		require.NoError(t, err)
+		assert.Empty(t, result)
+	})
+
+	t.Run("rejects reserved metric field keys", func(t *testing.T) {
+		for _, key := range []string{"ts", "event_type", "used_percent", "total_bytes", "mountpoint"} {
+			_, err := parseTags([]string{key + "=foo"})
+			require.Error(t, err, "expected error for reserved key %q", key)
+			assert.Contains(t, err.Error(), "reserved metric field")
+		}
+	})
+
+	t.Run("allows host as a tag key", func(t *testing.T) {
+		result, err := parseTags([]string{"host=custom"})
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{"host": "custom"}, result)
+	})
+}
+
+func TestMergeTags(t *testing.T) {
+	t.Run("CLI flags override config tags", func(t *testing.T) {
+		configTags := map[string]string{"environment": "config-env", "region": "us-east-1"}
+		flagTags := map[string]string{"environment": "flag-env"}
+		result := mergeTags(configTags, flagTags)
+		assert.Equal(t, map[string]string{
+			"environment": "flag-env",
+			"region":      "us-east-1",
+		}, result)
+	})
+
+	t.Run("returns flag tags when no config tags", func(t *testing.T) {
+		flagTags := map[string]string{"role": "web-1"}
+		result := mergeTags(nil, flagTags)
+		assert.Equal(t, map[string]string{"role": "web-1"}, result)
+	})
+
+	t.Run("returns config tags when no flag tags", func(t *testing.T) {
+		configTags := map[string]string{"role": "web-1"}
+		result := mergeTags(configTags, nil)
+		assert.Equal(t, map[string]string{"role": "web-1"}, result)
+	})
+
+	t.Run("returns empty map when both nil", func(t *testing.T) {
+		result := mergeTags(nil, nil)
+		assert.Empty(t, result)
+	})
+}
+
+func TestAgentTagsFromConfig(t *testing.T) {
+	t.Run("loads tags from viper config", func(t *testing.T) {
+		viper.Reset()
+		viper.Set("api_key", "test-key")
+		viper.Set("agent.tags", map[string]interface{}{
+			"environment": "production",
+			"role":        "web-1",
+		})
+
+		result, err := loadConfigTags()
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{
+			"environment": "production",
+			"role":        "web-1",
+		}, result)
+	})
+
+	t.Run("returns empty map when no config tags", func(t *testing.T) {
+		viper.Reset()
+		result, err := loadConfigTags()
+		require.NoError(t, err)
+		assert.Empty(t, result)
+	})
+
+	t.Run("rejects reserved keys in config tags", func(t *testing.T) {
+		viper.Reset()
+		viper.Set("agent.tags", map[string]interface{}{
+			"event_type": "bad",
+		})
+		_, err := loadConfigTags()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "reserved metric field")
+	})
+}
+
 func TestAgentCommand(t *testing.T) {
 	// Save original values
 	originalClient := http.DefaultClient
@@ -79,7 +196,7 @@ func TestMetricsCollection(t *testing.T) {
 		hostname, err := os.Hostname()
 		require.NoError(t, err)
 
-		err = reportMetrics(hostname)
+		err = reportMetrics(hostname, nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "error sending metrics")
 	})
@@ -118,7 +235,7 @@ func TestMetricsCollection(t *testing.T) {
 		interval = 1 // 1 second
 
 		// Run the agent command
-		err := reportMetrics("test-host")
+		err := reportMetrics("test-host", nil)
 		require.NoError(t, err)
 
 		// Wait for metrics to be reported
@@ -175,5 +292,157 @@ func TestMetricsCollection(t *testing.T) {
 			}
 		}
 		assert.True(t, foundDiskEvent, "No disk metrics were received")
+	})
+}
+
+func TestSendMetricWithTags(t *testing.T) {
+	t.Run("tags are merged into event JSON", func(t *testing.T) {
+		var receivedEvent map[string]interface{}
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			decoder := json.NewDecoder(r.Body)
+			err := decoder.Decode(&receivedEvent)
+			require.NoError(t, err)
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		viper.Reset()
+		viper.Set("api_key", "test-key")
+		viper.Set("endpoint", server.URL)
+
+		payload := cpuPayload{
+			Ts:    "2026-01-01T00:00:00Z",
+			Event: "report.system.cpu",
+			Host:  "auto-hostname",
+		}
+		tags := map[string]string{"environment": "stage", "role": "web-1"}
+
+		err := sendMetric(payload, tags)
+		require.NoError(t, err)
+
+		assert.Equal(t, "stage", receivedEvent["environment"])
+		assert.Equal(t, "web-1", receivedEvent["role"])
+		assert.Equal(t, "auto-hostname", receivedEvent["host"])
+	})
+
+	t.Run("host tag overrides struct host field", func(t *testing.T) {
+		var receivedEvent map[string]interface{}
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			decoder := json.NewDecoder(r.Body)
+			err := decoder.Decode(&receivedEvent)
+			require.NoError(t, err)
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		viper.Reset()
+		viper.Set("api_key", "test-key")
+		viper.Set("endpoint", server.URL)
+
+		payload := cpuPayload{
+			Ts:    "2026-01-01T00:00:00Z",
+			Event: "report.system.cpu",
+			Host:  "auto-hostname",
+		}
+		tags := map[string]string{"host": "custom-host"}
+
+		err := sendMetric(payload, tags)
+		require.NoError(t, err)
+
+		assert.Equal(t, "custom-host", receivedEvent["host"])
+	})
+
+	t.Run("works with no tags", func(t *testing.T) {
+		var receivedEvent map[string]interface{}
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			decoder := json.NewDecoder(r.Body)
+			err := decoder.Decode(&receivedEvent)
+			require.NoError(t, err)
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		viper.Reset()
+		viper.Set("api_key", "test-key")
+		viper.Set("endpoint", server.URL)
+
+		payload := cpuPayload{
+			Ts:    "2026-01-01T00:00:00Z",
+			Event: "report.system.cpu",
+			Host:  "auto-hostname",
+		}
+
+		err := sendMetric(payload, nil)
+		require.NoError(t, err)
+
+		assert.Equal(t, "auto-hostname", receivedEvent["host"])
+		assert.Equal(t, "report.system.cpu", receivedEvent["event_type"])
+	})
+}
+
+func TestReportMetricsWithTags(t *testing.T) {
+	t.Run("tags appear in all submitted events", func(t *testing.T) {
+		var receivedEvents []map[string]interface{}
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var event map[string]interface{}
+			decoder := json.NewDecoder(r.Body)
+			if err := decoder.Decode(&event); err == nil {
+				receivedEvents = append(receivedEvents, event)
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		viper.Reset()
+		viper.Set("api_key", "test-key")
+		viper.Set("endpoint", server.URL)
+
+		tags := map[string]string{"environment": "stage", "role": "web-1"}
+		err := reportMetrics("auto-host", tags)
+		require.NoError(t, err)
+
+		// Should have at least CPU + memory + 1 disk = 3 events
+		require.GreaterOrEqual(t, len(receivedEvents), 3)
+
+		for _, event := range receivedEvents {
+			eventType := event["event_type"]
+			assert.Equal(t, "stage", event["environment"],
+				"event_type=%s missing environment tag", eventType)
+			assert.Equal(t, "web-1", event["role"],
+				"event_type=%s missing role tag", eventType)
+			assert.Equal(t, "auto-host", event["host"],
+				"event_type=%s has wrong host", eventType)
+		}
+	})
+
+	t.Run("host tag overrides hostname in all events", func(t *testing.T) {
+		var receivedEvents []map[string]interface{}
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var event map[string]interface{}
+			decoder := json.NewDecoder(r.Body)
+			if err := decoder.Decode(&event); err == nil {
+				receivedEvents = append(receivedEvents, event)
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		viper.Reset()
+		viper.Set("api_key", "test-key")
+		viper.Set("endpoint", server.URL)
+
+		tags := map[string]string{"host": "custom-host", "environment": "prod"}
+		err := reportMetrics("auto-host", tags)
+		require.NoError(t, err)
+
+		require.GreaterOrEqual(t, len(receivedEvents), 3)
+
+		for _, event := range receivedEvents {
+			eventType := event["event_type"]
+			assert.Equal(t, "custom-host", event["host"],
+				"event_type=%s host not overridden", eventType)
+			assert.Equal(t, "prod", event["environment"],
+				"event_type=%s missing environment tag", eventType)
+		}
 	})
 }

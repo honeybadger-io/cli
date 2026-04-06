@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"net/http"
 	"os"
@@ -20,7 +21,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-var interval int
+var (
+	interval int
+	tagFlags []string
+)
 
 type cpuPayload struct {
 	Ts          string  `json:"ts"`
@@ -66,13 +70,25 @@ var agentCmd = &cobra.Command{
 This command collects and reports system metrics such as CPU usage, memory usage, disk usage, and load averages.
 Metrics are aggregated and reported at a configurable interval (default: 60 seconds).`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		// Check for API key before starting
 		apiKey := viper.GetString("api_key")
 		if apiKey == "" {
 			return fmt.Errorf(
 				"API key not configured. Use --api-key flag or set HONEYBADGER_API_KEY environment variable",
 			)
 		}
+
+		// Parse CLI flag tags
+		flagTags, err := parseTags(tagFlags)
+		if err != nil {
+			return err
+		}
+
+		// Load config file tags and merge (CLI flags take precedence)
+		configTags, err := loadConfigTags()
+		if err != nil {
+			return err
+		}
+		tags := mergeTags(configTags, flagTags)
 
 		ctx := context.Background()
 		ticker := time.NewTicker(time.Duration(interval) * time.Second)
@@ -90,7 +106,7 @@ Metrics are aggregated and reported at a configurable interval (default: 60 seco
 			case <-ctx.Done():
 				return nil
 			case <-ticker.C:
-				if err := reportMetrics(hostname); err != nil {
+				if err := reportMetrics(hostname, tags); err != nil {
 					fmt.Fprintf(os.Stderr, "Error reporting metrics: %v\n", err)
 				}
 			}
@@ -101,13 +117,104 @@ Metrics are aggregated and reported at a configurable interval (default: 60 seco
 func init() {
 	rootCmd.AddCommand(agentCmd)
 	agentCmd.Flags().IntVarP(&interval, "interval", "i", 60, "Reporting interval in seconds")
+	agentCmd.Flags().StringArrayVarP(
+		&tagFlags, "tag", "t", nil,
+		"Tag in key=value format (repeatable, e.g. --tag environment=stage)",
+	)
 }
 
-// sendMetric sends a single metric event to Honeybadger
-func sendMetric(payload interface{}) error {
+// reservedTagKeys are metric payload fields that tags must not override.
+// "host" is intentionally excluded — it can be overridden via tags.
+var reservedTagKeys = map[string]bool{
+	"ts":              true,
+	"event_type":      true,
+	"used_percent":    true,
+	"load_avg_1":      true,
+	"load_avg_5":      true,
+	"load_avg_15":     true,
+	"num_cpus":        true,
+	"total_bytes":     true,
+	"used_bytes":      true,
+	"free_bytes":      true,
+	"available_bytes": true,
+	"mountpoint":      true,
+	"device":          true,
+	"fstype":          true,
+}
+
+// parseTags converts a slice of "key=value" strings into a map.
+// Returns an error if any tag is malformed or uses a reserved key.
+func parseTags(raw []string) (map[string]string, error) {
+	tags := make(map[string]string)
+	for _, tag := range raw {
+		key, value, ok := strings.Cut(tag, "=")
+		if !ok || key == "" {
+			return nil, fmt.Errorf("invalid tag %q: must be in key=value format", tag)
+		}
+		if reservedTagKeys[key] {
+			return nil, fmt.Errorf(
+				"invalid tag %q: %q is a reserved metric field and cannot be used as a tag key",
+				tag, key,
+			)
+		}
+		tags[key] = value
+	}
+	return tags, nil
+}
+
+// mergeTags combines config tags with CLI flag tags. Flag tags take precedence.
+func mergeTags(configTags, flagTags map[string]string) map[string]string {
+	merged := make(map[string]string)
+	maps.Copy(merged, configTags)
+	maps.Copy(merged, flagTags)
+	return merged
+}
+
+// loadConfigTags reads tags from the "agent.tags" section of the config file.
+// Returns an error if any tag uses a reserved key.
+func loadConfigTags() (map[string]string, error) {
+	raw := viper.GetStringMapString("agent.tags")
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	for key := range raw {
+		if reservedTagKeys[key] {
+			return nil, fmt.Errorf(
+				"invalid config tag: %q is a reserved metric field and cannot be used as a tag key",
+				key,
+			)
+		}
+	}
+	return raw, nil
+}
+
+// sendMetric sends a single metric event to Honeybadger.
+// Tags are merged into the JSON payload, overriding any existing fields.
+func sendMetric(payload any, tags map[string]string) error {
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("error marshaling metrics: %w", err)
+	}
+
+	// If tags are present, unmarshal to a map of raw JSON values, overlay tags,
+	// and re-marshal. Using json.RawMessage preserves the original numeric
+	// representations (avoiding float64 coercion for large uint64 values).
+	if len(tags) > 0 {
+		var merged map[string]json.RawMessage
+		if err := json.Unmarshal(jsonData, &merged); err != nil {
+			return fmt.Errorf("error unmarshaling metrics for tag merge: %w", err)
+		}
+		for k, v := range tags {
+			tagJSON, err := json.Marshal(v)
+			if err != nil {
+				return fmt.Errorf("error marshaling tag %q: %w", k, err)
+			}
+			merged[k] = tagJSON
+		}
+		jsonData, err = json.Marshal(merged)
+		if err != nil {
+			return fmt.Errorf("error marshaling final payload: %w", err)
+		}
 	}
 
 	apiEndpoint := viper.GetString("endpoint")
@@ -142,7 +249,7 @@ func sendMetric(payload interface{}) error {
 	return nil
 }
 
-func reportMetrics(hostname string) error {
+func reportMetrics(hostname string, tags map[string]string) error {
 	timestamp := time.Now().UTC().Format(time.RFC3339)
 
 	// Collect and send CPU metrics
@@ -175,7 +282,7 @@ func reportMetrics(hostname string) error {
 		LoadAvg15:   loadAvg.Load15,
 		NumCPUs:     numCPU,
 	}
-	if err := sendMetric(cpuPayload); err != nil {
+	if err := sendMetric(cpuPayload, tags); err != nil {
 		return fmt.Errorf("error sending CPU metrics: %w", err)
 	}
 
@@ -195,7 +302,7 @@ func reportMetrics(hostname string) error {
 		Available:   virtualMem.Available,
 		UsedPercent: math.Round(virtualMem.UsedPercent*100) / 100,
 	}
-	if err := sendMetric(memoryPayload); err != nil {
+	if err := sendMetric(memoryPayload, tags); err != nil {
 		return fmt.Errorf("error sending memory metrics: %w", err)
 	}
 
@@ -234,7 +341,7 @@ func reportMetrics(hostname string) error {
 			Free:        usage.Free,
 			UsedPercent: math.Round(usage.UsedPercent*100) / 100,
 		}
-		if err := sendMetric(diskPayload); err != nil {
+		if err := sendMetric(diskPayload, tags); err != nil {
 			return fmt.Errorf("error sending disk metrics for %s: %w", part.Mountpoint, err)
 		}
 	}
