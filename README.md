@@ -106,6 +106,7 @@ These commands use `--auth-token` or `HONEYBADGER_AUTH_TOKEN` (personal auth tok
 | Command | Description |
 |---------|-------------|
 | `hb accounts` | Manage Honeybadger accounts and team members |
+| `hb alarms` | Manage Insights alarms for your projects |
 | `hb check-ins` | Manage check-ins for cron job and scheduled task monitoring |
 | `hb comments` | Manage comments on faults |
 | `hb deployments` | View and manage deployment history |
