@@ -185,13 +185,17 @@ var alarmsCreateCmd = &cobra.Command{
 
 The --cli-input-json flag accepts either a JSON string or a file path prefixed with 'file://'.
 
+stream_ids is required and must be a non-empty array of the project's Insights stream
+IDs; an empty or omitted value is rejected by the API. Find the IDs in the Insights UI
+or via a BadgerQL query like "stats count() by @stream.id, @stream.name".
+
 Example JSON payload:
 {
   "alarm": {
     "name": "High Error Rate",
     "description": "Alert when errors spike",
     "query": "filter event_type::str == \"notice\"",
-    "stream_ids": ["default"],
+    "stream_ids": ["<stream-id>"],
     "evaluation_period": "5m",
     "lookback_lag": "1m",
     "trigger_config": {
@@ -265,11 +269,16 @@ var alarmsUpdateCmd = &cobra.Command{
 
 The --cli-input-json flag accepts either a JSON string or a file path prefixed with 'file://'.
 
+stream_ids is required and must be a non-empty array of the project's Insights stream
+IDs; an empty or omitted value is rejected by the API. Find the IDs in the Insights UI
+or via a BadgerQL query like "stats count() by @stream.id, @stream.name".
+
 Example JSON payload:
 {
   "alarm": {
     "name": "Updated Alarm Name",
     "query": "filter event_type::str == \"notice\"",
+    "stream_ids": ["<stream-id>"],
     "evaluation_period": "10m",
     "lookback_lag": "1m",
     "trigger_config": {
