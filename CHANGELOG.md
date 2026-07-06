@@ -6,6 +6,10 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Add `alarms` command for managing Insights alarms (list, get, create, update, delete, history)
+
 ## [0.7.0] - 2026-04-06
 
 ### Added
