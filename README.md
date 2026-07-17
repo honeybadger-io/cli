@@ -115,6 +115,7 @@ These commands use `--auth-token` or `HONEYBADGER_AUTH_TOKEN` (personal auth tok
 | `hb insights` | Execute BadgerQL queries against your Insights data |
 | `hb projects` | Manage Honeybadger projects |
 | `hb statuspages` | Manage public status pages |
+| `hb streams` | View Insights data streams for your projects |
 | `hb teams` | Manage teams and team memberships |
 | `hb uptime` | Manage uptime monitoring checks |
 
@@ -147,6 +148,12 @@ hb insights query --project-id 12345 --query "fields @ts, @preview | sort @ts"
 
 # List faults for a project
 hb faults list --project-id 12345
+
+# Resolve a fault
+hb faults update --project-id 12345 --id 678 --resolved
+
+# List Insights streams for a project
+hb streams list --project-id 12345
 ```
 
 See the [Honeybadger CLI documentation](https://docs.honeybadger.io/resources/cli/) for more information.

@@ -182,7 +182,10 @@ var projectsGetCmd = &cobra.Command{
 var projectsCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new project",
-	Long: `Create a new project in a specific account.
+	Long: `Create a new project.
+
+If --account-id is omitted, the project is created in the first account your
+auth token has access to.
 
 The --cli-input-json flag accepts either a JSON string or a file path prefixed with 'file://'.
 
@@ -200,9 +203,6 @@ Example JSON payload:
   }
 }`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if projectAccountID == "" {
-			return fmt.Errorf("account ID is required. Set it using --account-id flag")
-		}
 		if projectCLIInputJSON == "" {
 			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
 		}
@@ -620,15 +620,12 @@ func init() {
 
 	// Flags for create command
 	projectsCreateCmd.Flags().
-		StringVar(&projectAccountID, "account-id", "", "Account ID to create project in")
+		StringVar(&projectAccountID, "account-id", "", "Account ID to create project in (defaults to the first account your auth token can access)")
 	projectsCreateCmd.Flags().
 		StringVar(&projectCLIInputJSON, "cli-input-json", "", "JSON payload (string or file://path)")
 	projectsCreateCmd.Flags().
 		StringVarP(&projectOutputFormat, "output", "o", "text", "Output format (text or json)")
 
-	if err := projectsCreateCmd.MarkFlagRequired("account-id"); err != nil {
-		fmt.Printf("error marking account-id flag as required: %v\n", err)
-	}
 	if err := projectsCreateCmd.MarkFlagRequired("cli-input-json"); err != nil {
 		fmt.Printf("error marking cli-input-json flag as required: %v\n", err)
 	}
