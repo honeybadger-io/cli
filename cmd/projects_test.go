@@ -71,9 +71,7 @@ func TestProjectsCreateCommand(t *testing.T) {
 
 						w.Header().Set("Content-Type", "application/json")
 						w.WriteHeader(http.StatusCreated)
-						_, _ = w.Write(
-							[]byte(`{"id": 123, "name": "My Project", "created_at": "2024-01-01T00:00:00Z"}`),
-						)
+						_, _ = w.Write([]byte(`{"id": 123, "name": "My Project"}`))
 					}),
 				)
 				defer server.Close()
