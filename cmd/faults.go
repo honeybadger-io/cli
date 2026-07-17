@@ -20,6 +20,11 @@ var (
 	faultLimit             int
 	faultOutputFormat      string
 	faultAffectedUserQuery string
+	faultResolved          bool
+	faultIgnored           bool
+	faultResolveOnDeploy   bool
+	faultAssigneeID        int
+	faultUnassign          bool
 )
 
 // faultsCmd represents the faults command
@@ -263,6 +268,94 @@ var faultsNoticesCmd = &cobra.Command{
 	},
 }
 
+// faultsUpdateCmd represents the faults update command
+var faultsUpdateCmd = &cobra.Command{
+	Use:   "update",
+	Short: "Update a fault's state",
+	Long: `Update a fault's resolved, ignored, assignee, or resolve-on-deploy state.
+
+Only the flags you pass are updated; other fields are left unchanged. Setting
+--resolved or --ignored to true in the same request takes precedence over
+--resolve-on-deploy.
+
+Examples:
+  # Resolve a fault
+  hb faults update --project-id 12345 --id 678 --resolved
+
+  # Un-resolve a fault
+  hb faults update --project-id 12345 --id 678 --resolved=false
+
+  # Ignore a fault
+  hb faults update --project-id 12345 --id 678 --ignored
+
+  # Mark a fault to be resolved automatically on the next deploy
+  hb faults update --project-id 12345 --id 678 --resolve-on-deploy
+
+  # Assign a fault to a user
+  hb faults update --project-id 12345 --id 678 --assignee-id 42
+
+  # Unassign a fault
+  hb faults update --project-id 12345 --id 678 --unassign`,
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		if err := resolveProjectID(&faultsProjectID); err != nil {
+			return err
+		}
+		if faultID == 0 {
+			return fmt.Errorf("fault ID is required. Set it using --id flag")
+		}
+		if faultAssigneeID != 0 && faultUnassign {
+			return fmt.Errorf("--assignee-id and --unassign are mutually exclusive")
+		}
+
+		params := hbapi.FaultUpdateParams{}
+		if cmd.Flags().Changed("resolved") {
+			params.Resolved = &faultResolved
+		}
+		if cmd.Flags().Changed("ignored") {
+			params.Ignored = &faultIgnored
+		}
+		if cmd.Flags().Changed("resolve-on-deploy") {
+			params.ResolveOnDeploy = &faultResolveOnDeploy
+		}
+		if faultAssigneeID != 0 {
+			params.AssigneeID = hbapi.Value(faultAssigneeID)
+		} else if faultUnassign {
+			params.AssigneeID = hbapi.Null[int]()
+		}
+
+		if params.Resolved == nil && params.Ignored == nil && params.ResolveOnDeploy == nil &&
+			params.AssigneeID == nil {
+			return fmt.Errorf(
+				"nothing to update. Set at least one of --resolved, --ignored, --resolve-on-deploy, --assignee-id, or --unassign",
+			)
+		}
+
+		authToken := viper.GetString("auth_token")
+		if authToken == "" {
+			return fmt.Errorf(
+				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
+			)
+		}
+
+		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
+
+		// Create API client
+		client := hbapi.NewClient().
+			WithBaseURL(endpoint).
+			WithAuthToken(authToken)
+
+		ctx := context.Background()
+		result, err := client.Faults.Update(ctx, faultsProjectID, faultID, params)
+		if err != nil {
+			return fmt.Errorf("failed to update fault: %w", err)
+		}
+
+		fmt.Println(result.Message)
+
+		return nil
+	},
+}
+
 // faultsCountsCmd represents the faults counts command
 var faultsCountsCmd = &cobra.Command{
 	Use:   "counts",
@@ -386,6 +479,7 @@ func init() {
 	rootCmd.AddCommand(faultsCmd)
 	faultsCmd.AddCommand(faultsListCmd)
 	faultsCmd.AddCommand(faultsGetCmd)
+	faultsCmd.AddCommand(faultsUpdateCmd)
 	faultsCmd.AddCommand(faultsNoticesCmd)
 	faultsCmd.AddCommand(faultsCountsCmd)
 	faultsCmd.AddCommand(faultsAffectedUsersCmd)
@@ -407,6 +501,19 @@ func init() {
 	faultsGetCmd.Flags().
 		StringVarP(&faultOutputFormat, "output", "o", "text", "Output format (text or json)")
 
+	// Flags for update command
+	faultsUpdateCmd.Flags().IntVar(&faultID, "id", 0, "Fault ID")
+	faultsUpdateCmd.Flags().
+		BoolVar(&faultResolved, "resolved", false, "Set the fault's resolved state (use --resolved=false to un-resolve)")
+	faultsUpdateCmd.Flags().
+		BoolVar(&faultIgnored, "ignored", false, "Set the fault's ignored state (use --ignored=false to un-ignore)")
+	faultsUpdateCmd.Flags().
+		BoolVar(&faultResolveOnDeploy, "resolve-on-deploy", false, "Mark the fault to be resolved automatically on the next deploy")
+	faultsUpdateCmd.Flags().
+		IntVar(&faultAssigneeID, "assignee-id", 0, "User ID to assign the fault to")
+	faultsUpdateCmd.Flags().
+		BoolVar(&faultUnassign, "unassign", false, "Remove the fault's assignee")
+
 	// Flags for notices command
 	faultsNoticesCmd.Flags().IntVar(&faultID, "id", 0, "Fault ID")
 	faultsNoticesCmd.Flags().
@@ -427,6 +534,9 @@ func init() {
 
 	// Mark required flags
 	if err := faultsGetCmd.MarkFlagRequired("id"); err != nil {
+		fmt.Printf("error marking id flag as required: %v\n", err)
+	}
+	if err := faultsUpdateCmd.MarkFlagRequired("id"); err != nil {
 		fmt.Printf("error marking id flag as required: %v\n", err)
 	}
 	if err := faultsNoticesCmd.MarkFlagRequired("id"); err != nil {

@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Add `streams` command for listing Insights streams
+- Add `faults update` command for resolving, ignoring, assigning, and marking faults to resolve on deploy
+- Add `--stream-ids` flag to `insights query` to restrict queries to specific streams
+
+### Changed
+
+- `projects create` no longer requires `--account-id`; when omitted, the project is created in the first account the auth token has access to
+
 ## [0.8.0] - 2026-07-06
 
 ### Added

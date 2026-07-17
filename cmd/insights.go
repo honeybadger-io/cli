@@ -18,6 +18,7 @@ var (
 	insightsQuery        string
 	insightsTimestamp    string
 	insightsTimezone     string
+	insightsStreamIDs    []string
 	insightsOutputFormat string
 )
 
@@ -43,7 +44,10 @@ Examples:
   hb insights query --project-id 12345 --query "SELECT * FROM report.system.memory" --timezone "America/New_York"
 
   # Query at a specific timestamp
-  hb insights query --project-id 12345 --query "SELECT * FROM report.system.disk" --ts "2024-01-01T00:00:00Z"`,
+  hb insights query --project-id 12345 --query "SELECT * FROM report.system.disk" --ts "2024-01-01T00:00:00Z"
+
+  # Restrict the query to specific streams (find IDs with 'hb streams list')
+  hb insights query --project-id 12345 --query "fields @ts, @message" --stream-ids "abc123,def456"`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveProjectID(&insightsProjectID); err != nil {
 			return err
@@ -68,9 +72,10 @@ Examples:
 
 		// Build request
 		request := hbapi.InsightsQueryRequest{
-			Query:    insightsQuery,
-			Ts:       insightsTimestamp,
-			Timezone: insightsTimezone,
+			Query:     insightsQuery,
+			Ts:        insightsTimestamp,
+			Timezone:  insightsTimezone,
+			StreamIDs: insightsStreamIDs,
 		}
 
 		ctx := context.Background()
@@ -174,6 +179,8 @@ func init() {
 		StringVar(&insightsTimestamp, "ts", "", "Timestamp for the query (RFC3339 format)")
 	insightsQueryCmd.Flags().
 		StringVar(&insightsTimezone, "timezone", "", "Timezone for the query (e.g., 'America/New_York')")
+	insightsQueryCmd.Flags().
+		StringSliceVar(&insightsStreamIDs, "stream-ids", nil, "Restrict the query to specific stream IDs (comma-separated; see 'hb streams list')")
 	insightsQueryCmd.Flags().
 		StringVarP(&insightsOutputFormat, "output", "o", "table", "Output format (table or json)")
 
