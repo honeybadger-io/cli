@@ -274,9 +274,9 @@ var faultsUpdateCmd = &cobra.Command{
 	Short: "Update a fault's state",
 	Long: `Update a fault's resolved, ignored, assignee, or resolve-on-deploy state.
 
-Only the flags you pass are updated; other fields are left unchanged. Setting
---resolved or --ignored to true in the same request takes precedence over
---resolve-on-deploy.
+Only the flags you pass are updated; other fields are left unchanged. Note that
+when --resolved or --ignored is set to true in the same request as
+--resolve-on-deploy, the API gives the former precedence.
 
 Examples:
   # Resolve a fault
