@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-07-17
+
 ### Added
 
 - Add `streams` command for listing Insights streams
