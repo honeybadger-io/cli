@@ -74,6 +74,12 @@ Alternatively, set a personal auth token with `--auth-token`,
 `HONEYBADGER_AUTH_TOKEN`, or `auth_token` in the config file. A personal auth
 token always takes precedence over stored OAuth credentials.
 
+**Note:** OAuth tokens are scoped to the account you choose on the consent
+screen. Commands that span accounts — notably `hb accounts list` — return
+`403 Insufficient scope` with an OAuth token; use a personal auth token for
+those. Account-scoped commands (projects, faults, insights, and so on) work
+normally with either.
+
 ### Configuration File
 
 By default, the CLI looks for a configuration file at `~/.honeybadger-cli.yaml` in your home directory. You can specify a different configuration file using the `--config` flag.
