@@ -38,9 +38,13 @@ func TestSaveAndLoadRoundTrip(t *testing.T) {
 	}}
 	require.NoError(t, Save(path, f))
 
-	info, err := os.Stat(path)
-	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(), "credentials file must be owner-only")
+	if runtime.GOOS != "windows" { // Unix permission bits are advisory on Windows
+		info, err := os.Stat(path)
+		require.NoError(t, err)
+		assert.Equal(
+			t, os.FileMode(0o600), info.Mode().Perm(), "credentials file must be owner-only",
+		)
+	}
 
 	loaded, err := Load(path)
 	require.NoError(t, err)
