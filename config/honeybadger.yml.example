@@ -3,3 +3,7 @@
 
 # Your Honeybadger API key
 api_key: your-api-key-here
+
+# Personal auth token for Data API commands (optional). Prefer `hb auth login`
+# to sign in with OAuth instead; a token set here takes precedence.
+# auth_token: your-personal-auth-token

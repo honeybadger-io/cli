@@ -44,7 +44,8 @@ This tool provides access to two APIs:
                   Authenticate with --api-key or HONEYBADGER_API_KEY
 
   Data API      - For reading and managing your Honeybadger data
-                  Authenticate with --auth-token or HONEYBADGER_AUTH_TOKEN`,
+                  Authenticate with 'hb auth login' (OAuth), or with
+                  --auth-token or HONEYBADGER_AUTH_TOKEN`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -68,7 +69,7 @@ func init() {
 	})
 	rootCmd.AddGroup(&cobra.Group{
 		ID:    GroupDataAPI,
-		Title: "Data API Commands (use --auth-token):",
+		Title: "Data API Commands (use 'hb auth login' or --auth-token):",
 	})
 
 	rootCmd.PersistentFlags().
@@ -119,6 +120,10 @@ func initConfig() {
 	// Unlike api_key/auth_token/endpoint, project_id has no root-level flag
 	// to bind, so we use BindEnv to make viper aware of it.
 	_ = viper.BindEnv("project_id")
+
+	// Register oauth_client_id for env var lookup (HONEYBADGER_OAUTH_CLIENT_ID),
+	// used by `hb auth login` to skip dynamic client registration.
+	_ = viper.BindEnv("oauth_client_id")
 
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())

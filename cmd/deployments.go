@@ -9,7 +9,6 @@ import (
 
 	hbapi "github.com/honeybadger-io/api-go"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -41,18 +40,10 @@ var deploymentsListCmd = &cobra.Command{
 			return err
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		options := hbapi.DeploymentListOptions{
 			Environment:   deploymentsEnvironment,
@@ -123,18 +114,10 @@ var deploymentsGetCmd = &cobra.Command{
 			return fmt.Errorf("deployment ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		ctx := context.Background()
 		deployment, err := client.Deployments.Get(ctx, deploymentsProjectID, deploymentID)
@@ -177,21 +160,13 @@ var deploymentsDeleteCmd = &cobra.Command{
 			return fmt.Errorf("deployment ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
 
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
 		ctx := context.Background()
-		err := client.Deployments.Delete(ctx, deploymentsProjectID, deploymentID)
+		err = client.Deployments.Delete(ctx, deploymentsProjectID, deploymentID)
 		if err != nil {
 			return fmt.Errorf("failed to delete deployment: %w", err)
 		}

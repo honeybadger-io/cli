@@ -46,6 +46,45 @@ Run with `--help` for all options including `--version`, `--interval`, and `--in
 
 The CLI can be configured using either command-line flags, environment variables, or a configuration file.
 
+### Authentication
+
+The CLI talks to two Honeybadger APIs with different credentials:
+
+ * **Reporting API** (`deploy`, `agent`, `run`, `check-in`): uses a project API key via `--api-key` or `HONEYBADGER_API_KEY`.
+ * **Data API** (everything else): uses your personal credentials — either OAuth via `hb auth login`, or a personal auth token.
+
+The easiest way to authenticate the Data API commands is OAuth:
+
+```bash
+hb auth login             # sign in (picks the best method for your environment)
+hb auth login --web       # force the browser flow on this machine
+hb auth login --device    # force the device flow (sign in from another device)
+hb auth status            # show how you're currently authenticated
+hb auth logout            # revoke and delete the stored credentials
+```
+
+`hb auth login` picks the sign-in method automatically: on a machine with a
+browser it uses the OAuth 2.0 authorization code flow with PKCE (RFC 8252); in
+an SSH session or on a headless machine it uses the device authorization flow
+(RFC 8628, where the server supports it), showing a one-time code you enter
+from any other device. Either way it prints a tip for switching to the other
+method. It authenticates against the endpoint you've configured (US by
+default, EU with `--endpoint https://eu-api.honeybadger.io`). Tokens are
+stored in
+`~/.honeybadger-cli-credentials.json` (owner-only permissions; override the
+location with `HONEYBADGER_CREDENTIALS_FILE`) and are refreshed automatically
+when they expire.
+
+Alternatively, set a personal auth token with `--auth-token`,
+`HONEYBADGER_AUTH_TOKEN`, or `auth_token` in the config file. A personal auth
+token always takes precedence over stored OAuth credentials.
+
+**Note:** OAuth tokens are scoped to the account you choose on the consent
+screen. Commands that span accounts — notably `hb accounts list` — return
+`403 Insufficient scope` with an OAuth token; use a personal auth token for
+those. Account-scoped commands (projects, faults, insights, and so on) work
+normally with either.
+
 ### Configuration File
 
 By default, the CLI looks for a configuration file at `~/.honeybadger-cli.yaml` in your home directory. You can specify a different configuration file using the `--config` flag.
@@ -101,7 +140,7 @@ These commands use `--api-key` or `HONEYBADGER_API_KEY` (project API key):
 
 ### Data API Commands
 
-These commands use `--auth-token` or `HONEYBADGER_AUTH_TOKEN` (personal auth token):
+These commands authenticate with `hb auth login` (OAuth), or with `--auth-token` / `HONEYBADGER_AUTH_TOKEN` (personal auth token):
 
 | Command | Description |
 |---------|-------------|
