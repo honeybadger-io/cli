@@ -1,6 +1,6 @@
 // Package credentials stores OAuth tokens obtained by `hb auth login` in a
-// JSON file, keyed by authorization server host so logins to multiple
-// Honeybadger instances (e.g. US and EU) can coexist.
+// JSON file, keyed by canonical issuer URL so logins to multiple Honeybadger
+// instances (e.g. US and EU) can coexist.
 package credentials
 
 import (
@@ -78,7 +78,9 @@ func Load(path string) (*File, error) {
 	return f, nil
 }
 
-// Save writes the credentials file with owner-only permissions.
+// Save writes the credentials file with owner-only permissions. The write is
+// atomic (temp file + rename) so a crash can't truncate the file, and the
+// secrets are never on disk with permissions wider than 0600.
 func Save(path string, f *File) error {
 	data, err := json.MarshalIndent(f, "", "  ")
 	if err != nil {
@@ -86,17 +88,37 @@ func Save(path string, f *File) error {
 	}
 	data = append(data, '\n')
 
-	if dir := filepath.Dir(path); dir != "." {
+	dir := filepath.Dir(path)
+	if dir != "." {
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			return fmt.Errorf("failed to create credentials directory: %w", err)
 		}
 	}
-	if err := os.WriteFile(path, data, 0o600); err != nil {
+
+	tmp, err := os.CreateTemp(dir, filepath.Base(path)+".tmp-*")
+	if err != nil {
 		return fmt.Errorf("failed to write credentials file: %w", err)
 	}
-	// Tighten permissions in case the file pre-existed with a wider mode.
-	if err := os.Chmod(path, 0o600); err != nil {
+	defer func() {
+		_ = tmp.Close()
+		_ = os.Remove(tmp.Name()) // #nosec G703 -- temp file we created beside the credentials file
+	}()
+
+	if err := tmp.Chmod(0o600); err != nil {
 		return fmt.Errorf("failed to set credentials file permissions: %w", err)
+	}
+	if _, err := tmp.Write(data); err != nil {
+		return fmt.Errorf("failed to write credentials file: %w", err)
+	}
+	if err := tmp.Sync(); err != nil {
+		return fmt.Errorf("failed to write credentials file: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("failed to write credentials file: %w", err)
+	}
+	// #nosec G703 -- both paths derive from the user's own credentials file location
+	if err := os.Rename(tmp.Name(), path); err != nil {
+		return fmt.Errorf("failed to write credentials file: %w", err)
 	}
 	return nil
 }

@@ -99,7 +99,7 @@ func runAuthLogin(cmd *cobra.Command) error {
 		return err
 	}
 
-	host, err := issuerHost(issuer)
+	issuerKey, err := oauth.CanonicalIssuer(issuer)
 	if err != nil {
 		return err
 	}
@@ -109,10 +109,19 @@ func runAuthLogin(cmd *cobra.Command) error {
 	}
 	credsFile, err := credentials.Load(credsPath)
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Warning: %v (starting with fresh credentials)\n", err)
+		// Preserve the unreadable file instead of overwriting it on save,
+		// which would silently drop credentials for other issuers.
+		backup := credsPath + ".corrupt"
+		if renameErr := os.Rename(credsPath, backup); renameErr != nil {
+			return fmt.Errorf(
+				"credentials file is unreadable (%v) and could not be moved aside: %v",
+				err, renameErr,
+			)
+		}
+		_, _ = fmt.Fprintf(os.Stderr, "Warning: %v (moved to %s; starting fresh)\n", err, backup)
 		credsFile = &credentials.File{Version: 1, Credentials: map[string]*credentials.Entry{}}
 	}
-	entry := credsFile.Credentials[host]
+	entry := credsFile.Credentials[issuerKey]
 	if entry == nil {
 		entry = &credentials.Entry{}
 	}
@@ -134,12 +143,12 @@ func runAuthLogin(cmd *cobra.Command) error {
 	entry.TokenType = token.TokenType
 	entry.Scope = token.Scope
 	entry.ExpiresAt = token.ExpiresAt
-	credsFile.Credentials[host] = entry
+	credsFile.Credentials[issuerKey] = entry
 	if err := credentials.Save(credsPath, credsFile); err != nil {
 		return err
 	}
 
-	_, _ = fmt.Fprintf(out, "✓ Logged in to %s\n", host)
+	_, _ = fmt.Fprintf(out, "✓ Logged in to %s\n", issuerKey)
 	return nil
 }
 
@@ -298,7 +307,7 @@ func loginWithDeviceFlow(
 func runAuthLogout(cmd *cobra.Command) error {
 	out := cmd.OutOrStdout()
 	issuer := convertEndpointForDataAPI(viper.GetString("endpoint"))
-	host, err := issuerHost(issuer)
+	issuerKey, err := oauth.CanonicalIssuer(issuer)
 	if err != nil {
 		return err
 	}
@@ -310,9 +319,9 @@ func runAuthLogout(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	entry := credsFile.Credentials[host]
+	entry := credsFile.Credentials[issuerKey]
 	if entry == nil {
-		_, _ = fmt.Fprintf(out, "Not logged in to %s\n", host)
+		_, _ = fmt.Fprintf(out, "Not logged in to %s\n", issuerKey)
 		return nil
 	}
 
@@ -337,18 +346,18 @@ func runAuthLogout(cmd *cobra.Command) error {
 		}
 	}
 
-	delete(credsFile.Credentials, host)
+	delete(credsFile.Credentials, issuerKey)
 	if err := credentials.Save(credsPath, credsFile); err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintf(out, "✓ Logged out of %s\n", host)
+	_, _ = fmt.Fprintf(out, "✓ Logged out of %s\n", issuerKey)
 	return nil
 }
 
 func runAuthStatus(cmd *cobra.Command) error {
 	out := cmd.OutOrStdout()
 	issuer := convertEndpointForDataAPI(viper.GetString("endpoint"))
-	host, err := issuerHost(issuer)
+	issuerKey, err := oauth.CanonicalIssuer(issuer)
 	if err != nil {
 		return err
 	}
@@ -370,12 +379,12 @@ func runAuthStatus(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	entry := credsFile.Credentials[host]
+	entry := credsFile.Credentials[issuerKey]
 	if entry == nil || entry.AccessToken == "" {
-		return fmt.Errorf("not logged in to %s. Run 'hb auth login' to authenticate", host)
+		return fmt.Errorf("not logged in to %s. Run 'hb auth login' to authenticate", issuerKey)
 	}
 
-	_, _ = fmt.Fprintf(out, "Logged in to %s via OAuth\n", host)
+	_, _ = fmt.Fprintf(out, "Logged in to %s via OAuth\n", issuerKey)
 	if entry.Scope != "" {
 		_, _ = fmt.Fprintf(out, "Scopes: %s\n", entry.Scope)
 	}
@@ -423,7 +432,7 @@ func newDataAPIClient() (*hbapi.Client, error) {
 // refreshing and persisting it when expired. It returns "" (no error) when
 // the user has never logged in.
 func storedAccessToken(issuer string) (string, error) {
-	host, err := issuerHost(issuer)
+	issuerKey, err := oauth.CanonicalIssuer(issuer)
 	if err != nil {
 		return "", nil //nolint:nilerr // an unparsable endpoint just means no stored OAuth creds
 	}
@@ -436,7 +445,7 @@ func storedAccessToken(issuer string) (string, error) {
 		_, _ = fmt.Fprintf(os.Stderr, "Warning: ignoring credentials file: %v\n", err)
 		return "", nil
 	}
-	entry := credsFile.Credentials[host]
+	entry := credsFile.Credentials[issuerKey]
 	if entry == nil || entry.AccessToken == "" {
 		return "", nil
 	}
@@ -467,6 +476,7 @@ func storedAccessToken(issuer string) (string, error) {
 		)
 	}
 
+	rotated := token.RefreshToken != entry.RefreshToken
 	entry.AccessToken = token.AccessToken
 	entry.RefreshToken = token.RefreshToken
 	entry.TokenType = token.TokenType
@@ -475,6 +485,14 @@ func storedAccessToken(issuer string) (string, error) {
 	}
 	entry.ExpiresAt = token.ExpiresAt
 	if err := credentials.Save(credsPath, credsFile); err != nil {
+		if rotated {
+			// The server invalidated the old refresh token; losing the new
+			// one would silently break every later command.
+			return "", fmt.Errorf(
+				"failed to save refreshed credentials (%v); run 'hb auth login' to sign in again",
+				err,
+			)
+		}
 		_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to save refreshed credentials: %v\n", err)
 	}
 	return token.AccessToken, nil
@@ -497,14 +515,6 @@ func cmdContext(cmd *cobra.Command) context.Context {
 		return ctx
 	}
 	return context.Background()
-}
-
-func issuerHost(issuer string) (string, error) {
-	parsed, err := url.Parse(issuer)
-	if err != nil || parsed.Host == "" {
-		return "", fmt.Errorf("invalid endpoint %q", issuer)
-	}
-	return parsed.Host, nil
 }
 
 // redirectURIPort extracts the port from a stored loopback redirect URI,

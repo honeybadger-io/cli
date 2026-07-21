@@ -63,7 +63,7 @@ func (f *AuthCodeFlow) Run(ctx context.Context) (*Token, error) {
 	}
 	redirectURI := RedirectURIFor(f.Listener)
 
-	authURL := f.Metadata.AuthorizationEndpoint + "?" + url.Values{
+	authURL, err := buildAuthorizeURL(f.Metadata.AuthorizationEndpoint, url.Values{
 		"response_type":         {"code"},
 		"client_id":             {f.ClientID},
 		"redirect_uri":          {redirectURI},
@@ -71,12 +71,18 @@ func (f *AuthCodeFlow) Run(ctx context.Context) (*Token, error) {
 		"state":                 {state},
 		"code_challenge":        {s256Challenge(verifier)},
 		"code_challenge_method": {"S256"},
-	}.Encode()
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	results := make(chan callbackResult, 1)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
-		res := handleCallback(w, r, state)
+		res, ok := handleCallback(w, r, state)
+		if !ok {
+			return // not a response to this login attempt; keep waiting
+		}
 		select {
 		case results <- res:
 		default: // a result was already delivered; ignore duplicates
@@ -121,7 +127,26 @@ func (f *AuthCodeFlow) Run(ctx context.Context) (*Token, error) {
 	})
 }
 
-func handleCallback(w http.ResponseWriter, r *http.Request, state string) callbackResult {
+// buildAuthorizeURL appends the authorization parameters to the endpoint,
+// preserving any query component the endpoint already carries.
+func buildAuthorizeURL(endpoint string, params url.Values) (string, error) {
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		return "", fmt.Errorf("invalid authorization endpoint %q", endpoint)
+	}
+	existing := parsed.Query()
+	for key, values := range params {
+		existing[key] = values
+	}
+	parsed.RawQuery = existing.Encode()
+	return parsed.String(), nil
+}
+
+// handleCallback processes one request to the loopback redirect endpoint.
+// The second return value reports whether the request belongs to this login
+// attempt: requests without a matching state (port scans, stray requests, a
+// forged abort) get an error page but must not terminate the flow.
+func handleCallback(w http.ResponseWriter, r *http.Request, state string) (callbackResult, bool) {
 	q := r.URL.Query()
 
 	if q.Get("state") != state {
@@ -131,19 +156,19 @@ func handleCallback(w http.ResponseWriter, r *http.Request, state string) callba
 			"Login failed",
 			"The response didn't match this login attempt (state mismatch). Return to the terminal and try again.",
 		)
-		return callbackResult{err: fmt.Errorf("authorization response state mismatch")}
+		return callbackResult{}, false
 	}
 	if errCode := q.Get("error"); errCode != "" {
 		writeCallbackPage(w, http.StatusBadRequest, "Login failed",
 			"Authorization was not granted. You can close this tab and return to the terminal.")
 		oauthErr := &Error{Code: errCode, Description: q.Get("error_description")}
-		return callbackResult{err: fmt.Errorf("authorization failed: %w", oauthErr)}
+		return callbackResult{err: fmt.Errorf("authorization failed: %w", oauthErr)}, true
 	}
 	code := q.Get("code")
 	if code == "" {
 		writeCallbackPage(w, http.StatusBadRequest, "Login failed",
 			"The authorization response was missing a code. Return to the terminal and try again.")
-		return callbackResult{err: fmt.Errorf("authorization response missing code")}
+		return callbackResult{err: fmt.Errorf("authorization response missing code")}, true
 	}
 
 	writeCallbackPage(
@@ -152,7 +177,7 @@ func handleCallback(w http.ResponseWriter, r *http.Request, state string) callba
 		"Login successful",
 		"You're logged in to the Honeybadger CLI. You can close this tab and return to the terminal.",
 	)
-	return callbackResult{code: code}
+	return callbackResult{code: code}, true
 }
 
 func writeCallbackPage(w http.ResponseWriter, status int, title, message string) {

@@ -50,12 +50,52 @@ func TestDiscover(t *testing.T) {
 	})
 
 	t.Run("missing token endpoint", func(t *testing.T) {
-		server := httptest.NewServer(metadataHandler(&Metadata{Issuer: "x"}))
+		mux := http.NewServeMux()
+		server := httptest.NewServer(mux)
 		defer server.Close()
+		mux.HandleFunc("/.well-known/oauth-authorization-server",
+			func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = fmt.Fprintf(w, `{"issuer": %q}`, server.URL)
+			})
 
 		_, err := Discover(context.Background(), server.Client(), server.URL)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "missing token_endpoint")
+	})
+
+	t.Run("issuer mismatch is rejected", func(t *testing.T) {
+		server := httptest.NewServer(metadataHandler(&Metadata{
+			Issuer:        "https://evil.example.com",
+			TokenEndpoint: "https://evil.example.com/oauth/token",
+		}))
+		defer server.Close()
+
+		_, err := Discover(context.Background(), server.Client(), server.URL)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "does not match the requested issuer")
+	})
+
+	t.Run("non-loopback http issuer is rejected", func(t *testing.T) {
+		_, err := Discover(context.Background(), http.DefaultClient, "http://example.com")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "http is only allowed for loopback hosts")
+	})
+
+	t.Run("path issuers use the RFC 8414 well-known location", func(t *testing.T) {
+		mux := http.NewServeMux()
+		server := httptest.NewServer(mux)
+		defer server.Close()
+		mux.HandleFunc("/.well-known/oauth-authorization-server/tenant",
+			func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = fmt.Fprintf(
+					w, `{"issuer": "%s/tenant", "token_endpoint": "%s/tenant/oauth/token"}`,
+					server.URL, server.URL,
+				)
+			})
+
+		md, err := Discover(context.Background(), server.Client(), server.URL+"/tenant")
+		require.NoError(t, err)
+		assert.Equal(t, server.URL+"/tenant/oauth/token", md.TokenEndpoint)
 	})
 }
 
@@ -244,12 +284,26 @@ func TestAuthCodeFlow(t *testing.T) {
 		assert.Contains(t, err.Error(), "access_denied")
 	})
 
-	t.Run("state mismatch", func(t *testing.T) {
+	t.Run("state mismatch does not abort the flow", func(t *testing.T) {
 		f := newFakeAuthServer(t)
 		f.tamperWith = "state"
-		_, err := runAuthCodeFlow(t, f)
+		listener, err := ListenLoopback(0)
+		require.NoError(t, err)
+
+		flow := &AuthCodeFlow{
+			HTTPClient:  f.server.Client(),
+			Metadata:    f.metadata(),
+			ClientID:    "client-1",
+			Scope:       "read write",
+			Listener:    listener,
+			OpenBrowser: f.browse,
+			Out:         testWriter{t},
+			Timeout:     500 * time.Millisecond,
+		}
+		_, err = flow.Run(context.Background())
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "state mismatch")
+		assert.Contains(t, err.Error(), "timed out",
+			"a mismatched state must be ignored, not delivered as a result")
 	})
 }
 
@@ -448,3 +502,17 @@ func (w testWriter) Write(p []byte) (int, error) {
 }
 
 func parseURL(s string) (*url.URL, error) { return url.Parse(s) }
+
+func TestBuildAuthorizeURL(t *testing.T) {
+	u, err := buildAuthorizeURL(
+		"https://example.com/oauth/authorize?tenant=acme",
+		url.Values{"state": {"s1"}, "client_id": {"c1"}},
+	)
+	require.NoError(t, err)
+	parsed, err := url.Parse(u)
+	require.NoError(t, err)
+	q := parsed.Query()
+	assert.Equal(t, "acme", q.Get("tenant"), "existing query params must be preserved")
+	assert.Equal(t, "s1", q.Get("state"))
+	assert.Equal(t, "c1", q.Get("client_id"))
+}

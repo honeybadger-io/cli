@@ -145,7 +145,7 @@ func loadTestCredentials(t *testing.T) *credentials.File {
 }
 
 func saveTestCredentials(t *testing.T, f *fakeOAuthServer, entry *credentials.Entry) {
-	host, err := issuerHost(f.server.URL)
+	host, err := oauth.CanonicalIssuer(f.server.URL)
 	require.NoError(t, err)
 	path, err := credentials.Path()
 	require.NoError(t, err)
@@ -168,7 +168,7 @@ func TestAuthLoginBrowserFlow(t *testing.T) {
 	assert.Equal(t, 1, f.registrations, "should dynamically register a client")
 
 	creds := loadTestCredentials(t)
-	host, _ := issuerHost(f.server.URL)
+	host, _ := oauth.CanonicalIssuer(f.server.URL)
 	entry := creds.Credentials[host]
 	require.NotNil(t, entry)
 	assert.Equal(t, "registered-client", entry.ClientID)
@@ -193,7 +193,7 @@ func TestAuthLoginDeviceFlow(t *testing.T) {
 	assert.Contains(t, out.String(), "Logged in")
 
 	creds := loadTestCredentials(t)
-	host, _ := issuerHost(f.server.URL)
+	host, _ := oauth.CanonicalIssuer(f.server.URL)
 	entry := creds.Credentials[host]
 	require.NotNil(t, entry)
 	assert.Equal(t, oauth.DeviceGrantType, entry.GrantType)
@@ -277,7 +277,7 @@ func TestAuthLogout(t *testing.T) {
 		"should revoke both tokens")
 
 	creds := loadTestCredentials(t)
-	host, _ := issuerHost(f.server.URL)
+	host, _ := oauth.CanonicalIssuer(f.server.URL)
 	assert.Nil(t, creds.Credentials[host])
 }
 
@@ -334,7 +334,7 @@ func TestNewDataAPIClient(t *testing.T) {
 		assert.Equal(t, "Bearer oauth-access", f.apiAuthHeaders[0])
 
 		creds := loadTestCredentials(t)
-		host, _ := issuerHost(f.server.URL)
+		host, _ := oauth.CanonicalIssuer(f.server.URL)
 		assert.Equal(t, "oauth-access", creds.Credentials[host].AccessToken)
 		assert.Equal(t, "oauth-refresh", creds.Credentials[host].RefreshToken)
 	})

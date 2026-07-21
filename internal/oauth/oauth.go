@@ -50,10 +50,92 @@ func (m *Metadata) SupportsGrant(grant string) bool {
 	return false
 }
 
+// CanonicalIssuer normalizes an issuer URL for comparison and storage:
+// lowercased scheme and host, no trailing slash, no query or fragment. It
+// also enforces the RFC 8414 transport rules: HTTPS is required except for
+// loopback hosts (which keep local development and tests working).
+func CanonicalIssuer(issuer string) (string, error) {
+	parsed, err := url.Parse(strings.TrimSpace(issuer))
+	if err != nil || parsed.Host == "" {
+		return "", fmt.Errorf("invalid issuer URL %q", issuer)
+	}
+	parsed.Scheme = strings.ToLower(parsed.Scheme)
+	parsed.Host = strings.ToLower(parsed.Host)
+	parsed.Path = strings.TrimRight(parsed.Path, "/")
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	if err := checkEndpointScheme(parsed); err != nil {
+		return "", fmt.Errorf("invalid issuer URL %q: %w", issuer, err)
+	}
+	return parsed.String(), nil
+}
+
+// checkEndpointScheme requires https, allowing http only for loopback hosts.
+func checkEndpointScheme(u *url.URL) error {
+	switch u.Scheme {
+	case "https":
+		return nil
+	case "http":
+		host := u.Hostname()
+		if host == "localhost" || host == "127.0.0.1" || host == "::1" {
+			return nil
+		}
+		return fmt.Errorf("http is only allowed for loopback hosts; use https")
+	default:
+		return fmt.Errorf("unsupported URL scheme %q", u.Scheme)
+	}
+}
+
+// wellKnownURL builds the RFC 8414 §3.1 metadata URL: the well-known path is
+// inserted between the authority and any issuer path component.
+func wellKnownURL(issuer string) (string, error) {
+	parsed, err := url.Parse(issuer)
+	if err != nil {
+		return "", fmt.Errorf("invalid issuer URL %q", issuer)
+	}
+	path := parsed.Path
+	parsed.Path = "/.well-known/oauth-authorization-server" + path
+	return parsed.String(), nil
+}
+
+// validateEndpoints checks that every advertised endpoint the CLI will send
+// credentials to is a well-formed HTTPS (or loopback) URL.
+func (m *Metadata) validateEndpoints() error {
+	endpoints := map[string]string{
+		"authorization_endpoint":        m.AuthorizationEndpoint,
+		"token_endpoint":                m.TokenEndpoint,
+		"device_authorization_endpoint": m.DeviceAuthorizationEndpoint,
+		"registration_endpoint":         m.RegistrationEndpoint,
+		"revocation_endpoint":           m.RevocationEndpoint,
+	}
+	for name, endpoint := range endpoints {
+		if endpoint == "" {
+			continue
+		}
+		parsed, err := url.Parse(endpoint)
+		if err != nil || parsed.Host == "" {
+			return fmt.Errorf("invalid OAuth server metadata: malformed %s %q", name, endpoint)
+		}
+		if err := checkEndpointScheme(parsed); err != nil {
+			return fmt.Errorf("invalid OAuth server metadata: %s: %w", name, err)
+		}
+	}
+	return nil
+}
+
 // Discover fetches the authorization server metadata for the given issuer
-// from the RFC 8414 well-known location.
+// from the RFC 8414 well-known location. The returned metadata is validated:
+// the advertised issuer must match the requested one (mix-up protection,
+// RFC 8414 §3.3) and all endpoints must be HTTPS (or loopback).
 func Discover(ctx context.Context, hc *http.Client, issuer string) (*Metadata, error) {
-	wellKnown := strings.TrimRight(issuer, "/") + "/.well-known/oauth-authorization-server"
+	canonical, err := CanonicalIssuer(issuer)
+	if err != nil {
+		return nil, err
+	}
+	wellKnown, err := wellKnownURL(canonical)
+	if err != nil {
+		return nil, err
+	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, wellKnown, nil)
 	if err != nil {
@@ -78,8 +160,19 @@ func Discover(ctx context.Context, hc *http.Client, issuer string) (*Metadata, e
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&md); err != nil {
 		return nil, fmt.Errorf("failed to parse OAuth server metadata: %w", err)
 	}
+
+	advertised, err := CanonicalIssuer(md.Issuer)
+	if err != nil || advertised != canonical {
+		return nil, fmt.Errorf(
+			"OAuth server metadata issuer %q does not match the requested issuer %q",
+			md.Issuer, canonical,
+		)
+	}
 	if md.TokenEndpoint == "" {
 		return nil, fmt.Errorf("invalid OAuth server metadata: missing token_endpoint")
+	}
+	if err := md.validateEndpoints(); err != nil {
+		return nil, err
 	}
 	return &md, nil
 }
