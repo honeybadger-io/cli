@@ -104,7 +104,15 @@ func setupAuthTest(t *testing.T, f *fakeOAuthServer) {
 	viper.Reset()
 	viper.Set("endpoint", f.server.URL)
 	authLoginDevice = false
+	authLoginWeb = false
 	authLoginScopes = oauthDefaultScopes
+
+	// Neutralize environment-based flow selection so tests behave the same
+	// on developer machines, SSH sessions, and CI.
+	for _, envVar := range []string{"SSH_CONNECTION", "SSH_CLIENT", "SSH_TTY", "WAYLAND_DISPLAY"} {
+		t.Setenv(envVar, "")
+	}
+	t.Setenv("DISPLAY", ":0")
 
 	// The fake "browser" completes the authorization immediately.
 	originalOpenBrowser := openBrowser
@@ -361,5 +369,123 @@ func TestNewDataAPIClient(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "auth token is required")
 		assert.Contains(t, err.Error(), "hb auth login")
+	})
+}
+
+func TestChooseDeviceFlow(t *testing.T) {
+	withDevice := &oauth.Metadata{
+		GrantTypesSupported: []string{"authorization_code", "refresh_token", oauth.DeviceGrantType},
+	}
+	withoutDevice := &oauth.Metadata{
+		GrantTypesSupported: []string{"authorization_code", "refresh_token"},
+	}
+	deviceOnly := &oauth.Metadata{
+		GrantTypesSupported: []string{oauth.DeviceGrantType, "refresh_token"},
+	}
+
+	reset := func(t *testing.T) {
+		authLoginDevice = false
+		authLoginWeb = false
+		for _, envVar := range []string{"SSH_CONNECTION", "SSH_CLIENT", "SSH_TTY", "WAYLAND_DISPLAY"} {
+			t.Setenv(envVar, "")
+		}
+		t.Setenv("DISPLAY", ":0")
+	}
+
+	t.Run("conflicting flags error", func(t *testing.T) {
+		reset(t)
+		authLoginDevice = true
+		authLoginWeb = true
+		_, err := chooseDeviceFlow(withDevice)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "cannot be combined")
+	})
+
+	t.Run("--device wins even without a terminal heuristic", func(t *testing.T) {
+		reset(t)
+		authLoginDevice = true
+		useDevice, err := chooseDeviceFlow(withDevice)
+		require.NoError(t, err)
+		assert.True(t, useDevice)
+	})
+
+	t.Run("--web wins even over SSH", func(t *testing.T) {
+		reset(t)
+		authLoginWeb = true
+		t.Setenv("SSH_CONNECTION", "10.0.0.1 1234 10.0.0.2 22")
+		useDevice, err := chooseDeviceFlow(withDevice)
+		require.NoError(t, err)
+		assert.False(t, useDevice)
+	})
+
+	t.Run("SSH session prefers device flow when supported", func(t *testing.T) {
+		reset(t)
+		t.Setenv("SSH_CONNECTION", "10.0.0.1 1234 10.0.0.2 22")
+		useDevice, err := chooseDeviceFlow(withDevice)
+		require.NoError(t, err)
+		assert.True(t, useDevice)
+	})
+
+	t.Run("SSH session without server device support stays on browser flow", func(t *testing.T) {
+		reset(t)
+		t.Setenv("SSH_TTY", "/dev/pts/0")
+		useDevice, err := chooseDeviceFlow(withoutDevice)
+		require.NoError(t, err)
+		assert.False(t, useDevice)
+	})
+
+	t.Run("local machine prefers browser flow", func(t *testing.T) {
+		reset(t)
+		useDevice, err := chooseDeviceFlow(withDevice)
+		require.NoError(t, err)
+		assert.False(t, useDevice)
+	})
+
+	t.Run("device-only server uses device flow", func(t *testing.T) {
+		reset(t)
+		useDevice, err := chooseDeviceFlow(deviceOnly)
+		require.NoError(t, err)
+		assert.True(t, useDevice)
+	})
+}
+
+func TestAuthLoginAutoSelectsDeviceOverSSH(t *testing.T) {
+	f := newFakeOAuthServer(t, true)
+	setupAuthTest(t, f)
+	t.Setenv("SSH_CONNECTION", "10.0.0.1 1234 10.0.0.2 22")
+
+	var out bytes.Buffer
+	authLoginCmd.SetOut(&out)
+	defer authLoginCmd.SetOut(nil)
+
+	require.NoError(t, authLoginCmd.RunE(authLoginCmd, []string{}))
+	assert.Contains(t, out.String(), "AAAA-BBBB", "should have auto-selected the device flow")
+	assert.Contains(t, out.String(), "--web", "device flow should hint at the browser alternative")
+}
+
+func TestAuthLoginHints(t *testing.T) {
+	t.Run("browser flow hints at --device when supported", func(t *testing.T) {
+		f := newFakeOAuthServer(t, true)
+		setupAuthTest(t, f)
+		authLoginWeb = true
+
+		var out bytes.Buffer
+		authLoginCmd.SetOut(&out)
+		defer authLoginCmd.SetOut(nil)
+
+		require.NoError(t, authLoginCmd.RunE(authLoginCmd, []string{}))
+		assert.Contains(t, out.String(), "--device")
+	})
+
+	t.Run("browser flow shows no hint when the server lacks the device grant", func(t *testing.T) {
+		f := newFakeOAuthServer(t, false)
+		setupAuthTest(t, f)
+
+		var out bytes.Buffer
+		authLoginCmd.SetOut(&out)
+		defer authLoginCmd.SetOut(nil)
+
+		require.NoError(t, authLoginCmd.RunE(authLoginCmd, []string{}))
+		assert.NotContains(t, out.String(), "--device")
 	})
 }

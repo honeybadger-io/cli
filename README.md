@@ -56,16 +56,21 @@ The CLI talks to two Honeybadger APIs with different credentials:
 The easiest way to authenticate the Data API commands is OAuth:
 
 ```bash
-hb auth login             # opens your browser to authorize the CLI
-hb auth login --device    # sign in from another device (SSH/headless machines)
+hb auth login             # sign in (picks the best method for your environment)
+hb auth login --web       # force the browser flow on this machine
+hb auth login --device    # force the device flow (sign in from another device)
 hb auth status            # show how you're currently authenticated
 hb auth logout            # revoke and delete the stored credentials
 ```
 
-`hb auth login` uses the OAuth 2.0 authorization code flow with PKCE (RFC 8252)
-against the endpoint you've configured (US by default, EU with
-`--endpoint https://eu-api.honeybadger.io`); `--device` uses the device
-authorization flow (RFC 8628) where supported. Tokens are stored in
+`hb auth login` picks the sign-in method automatically: on a machine with a
+browser it uses the OAuth 2.0 authorization code flow with PKCE (RFC 8252); in
+an SSH session or on a headless machine it uses the device authorization flow
+(RFC 8628, where the server supports it), showing a one-time code you enter
+from any other device. Either way it prints a tip for switching to the other
+method. It authenticates against the endpoint you've configured (US by
+default, EU with `--endpoint https://eu-api.honeybadger.io`). Tokens are
+stored in
 `~/.honeybadger-cli-credentials.json` (owner-only permissions; override the
 location with `HONEYBADGER_CREDENTIALS_FILE`) and are refreshed automatically
 when they expire.

@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -27,6 +28,7 @@ const (
 
 var (
 	authLoginDevice bool
+	authLoginWeb    bool
 	authLoginScopes string
 )
 
@@ -36,9 +38,11 @@ var authCmd = &cobra.Command{
 	Short: "Authenticate the CLI with your Honeybadger account",
 	Long: `Log in to Honeybadger with OAuth instead of configuring a personal auth token.
 
-'hb auth login' opens your browser to authorize the CLI (OAuth 2.0
-authorization code flow with PKCE). On a machine without a browser, use
-'hb auth login --device' to sign in from another device.
+'hb auth login' signs you in with OAuth 2.0. On a machine with a browser it
+opens the authorization page directly (authorization code flow with PKCE); in
+an SSH session or on a headless machine it shows a one-time code you enter
+from another device instead (device authorization flow). Use --web or
+--device to override the automatic choice.
 
 A personal auth token (--auth-token, HONEYBADGER_AUTH_TOKEN, or auth_token in
 the config file) always takes precedence over OAuth credentials when set.`,
@@ -49,9 +53,10 @@ var authLoginCmd = &cobra.Command{
 	Short: "Log in to Honeybadger with OAuth",
 	Long: `Log in to Honeybadger using OAuth 2.0.
 
-By default this opens your browser to authorize the CLI. With --device it uses
-the device authorization flow instead: the CLI shows a one-time code you enter
-on another device (useful over SSH or on headless machines).
+The CLI picks the best sign-in method for the environment: the browser-based
+authorization code flow when a browser is likely available, or the device
+authorization flow (a one-time code you enter from another device) in SSH
+sessions and on headless machines. Force a method with --web or --device.
 
 Credentials are stored in ~/.honeybadger-cli-credentials.json (override with
 HONEYBADGER_CREDENTIALS_FILE) and refreshed automatically when they expire.`,
@@ -79,6 +84,8 @@ var authStatusCmd = &cobra.Command{
 func init() {
 	authLoginCmd.Flags().BoolVar(&authLoginDevice, "device", false,
 		"use the device authorization flow (sign in from another device)")
+	authLoginCmd.Flags().BoolVar(&authLoginWeb, "web", false,
+		"use the browser-based authorization flow on this machine")
 	authLoginCmd.Flags().StringVar(&authLoginScopes, "scopes", oauthDefaultScopes,
 		"space-separated OAuth scopes to request")
 
@@ -126,8 +133,14 @@ func runAuthLogin(cmd *cobra.Command) error {
 		entry = &credentials.Entry{}
 	}
 
+	useDevice, err := chooseDeviceFlow(metadata)
+	if err != nil {
+		return err
+	}
+	printAltFlowHint(out, metadata, useDevice)
+
 	var token *oauth.Token
-	if authLoginDevice {
+	if useDevice {
 		token, err = loginWithDeviceFlow(ctx, cmd, httpClient, metadata, entry)
 	} else {
 		token, err = loginWithBrowserFlow(ctx, cmd, httpClient, metadata, entry)
@@ -150,6 +163,65 @@ func runAuthLogin(cmd *cobra.Command) error {
 
 	_, _ = fmt.Fprintf(out, "✓ Logged in to %s\n", issuerKey)
 	return nil
+}
+
+// chooseDeviceFlow picks the login method: an explicit --device or --web flag
+// wins; otherwise the device flow is used when the server supports it and a
+// local browser is unlikely to reach the user (SSH session, or no graphical
+// display on platforms that need one).
+func chooseDeviceFlow(metadata *oauth.Metadata) (bool, error) {
+	if authLoginDevice && authLoginWeb {
+		return false, fmt.Errorf("--device and --web cannot be combined")
+	}
+	if authLoginDevice {
+		return true, nil
+	}
+	if authLoginWeb {
+		return false, nil
+	}
+	if !metadata.SupportsGrant(oauth.DeviceGrantType) {
+		return false, nil
+	}
+	if !metadata.SupportsGrant("authorization_code") {
+		return true, nil
+	}
+	return !browserLikelyAvailable(), nil
+}
+
+// browserLikelyAvailable reports whether opening a browser on this machine
+// can plausibly reach the user.
+func browserLikelyAvailable() bool {
+	for _, envVar := range []string{"SSH_CONNECTION", "SSH_CLIENT", "SSH_TTY"} {
+		if os.Getenv(envVar) != "" {
+			return false
+		}
+	}
+	switch runtime.GOOS {
+	case "darwin", "windows":
+		return true
+	default:
+		return os.Getenv("DISPLAY") != "" || os.Getenv("WAYLAND_DISPLAY") != ""
+	}
+}
+
+// printAltFlowHint tells the user how to switch to the sign-in method we
+// didn't pick, when the server supports it.
+func printAltFlowHint(out io.Writer, metadata *oauth.Metadata, usingDevice bool) {
+	if usingDevice {
+		if metadata.SupportsGrant("authorization_code") {
+			_, _ = fmt.Fprintf(
+				out,
+				"Tip: to sign in with a browser on this machine instead, run 'hb auth login --web'.\n\n",
+			)
+		}
+		return
+	}
+	if metadata.SupportsGrant(oauth.DeviceGrantType) {
+		_, _ = fmt.Fprintf(
+			out,
+			"Tip: no browser here? Run 'hb auth login --device' to sign in from another device.\n\n",
+		)
+	}
 }
 
 // loginWithBrowserFlow runs the authorization code + PKCE flow (RFC 8252),
