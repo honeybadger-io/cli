@@ -59,11 +59,13 @@ func CanonicalIssuer(issuer string) (string, error) {
 	if err != nil || parsed.Host == "" {
 		return "", fmt.Errorf("invalid issuer URL %q", issuer)
 	}
+	// RFC 8414 §2: an issuer identifier has no query or fragment component.
+	if parsed.RawQuery != "" || parsed.Fragment != "" {
+		return "", fmt.Errorf("invalid issuer URL %q: must not contain a query or fragment", issuer)
+	}
 	parsed.Scheme = strings.ToLower(parsed.Scheme)
 	parsed.Host = strings.ToLower(parsed.Host)
 	parsed.Path = strings.TrimRight(parsed.Path, "/")
-	parsed.RawQuery = ""
-	parsed.Fragment = ""
 	if err := checkEndpointScheme(parsed); err != nil {
 		return "", fmt.Errorf("invalid issuer URL %q: %w", issuer, err)
 	}

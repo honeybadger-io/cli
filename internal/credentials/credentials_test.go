@@ -1,8 +1,11 @@
 package credentials
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -50,6 +53,9 @@ func TestSaveAndLoadRoundTrip(t *testing.T) {
 }
 
 func TestSaveTightensPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix permission bits are advisory on Windows")
+	}
 	path := filepath.Join(t.TempDir(), "credentials.json")
 	// #nosec G306 -- deliberately wide permissions; Save must tighten them
 	require.NoError(t, os.WriteFile(path, []byte("{}"), 0o644))
@@ -86,4 +92,52 @@ func TestExpired(t *testing.T) {
 	assert.True(t, (&Entry{ExpiresAt: now.Add(30 * time.Second)}).Expired(now, skew),
 		"tokens inside the skew window count as expired")
 	assert.True(t, (&Entry{ExpiresAt: now.Add(-time.Hour)}).Expired(now, skew))
+}
+
+func TestUpdateSerializesConcurrentWriters(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "credentials.json")
+
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			_, err := Update(path, func(f *File) error {
+				f.Credentials[fmt.Sprintf("issuer-%d.example.com", n)] = &Entry{
+					AccessToken: fmt.Sprintf("token-%d", n),
+				}
+				return nil
+			})
+			assert.NoError(t, err)
+		}(i)
+	}
+	wg.Wait()
+
+	loaded, err := Load(path)
+	require.NoError(t, err)
+	require.Len(t, loaded.Credentials, 8, "no writer's update may be lost")
+	for i := 0; i < 8; i++ {
+		key := fmt.Sprintf("issuer-%d.example.com", i)
+		require.NotNil(t, loaded.Credentials[key])
+		assert.Equal(t, fmt.Sprintf("token-%d", i), loaded.Credentials[key].AccessToken)
+	}
+}
+
+func TestUpdateMutationErrorDoesNotSave(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "credentials.json")
+	_, err := Update(path, func(f *File) error {
+		f.Credentials["x"] = &Entry{AccessToken: "t"}
+		return nil
+	})
+	require.NoError(t, err)
+
+	_, err = Update(path, func(f *File) error {
+		delete(f.Credentials, "x")
+		return fmt.Errorf("boom")
+	})
+	require.Error(t, err)
+
+	loaded, err := Load(path)
+	require.NoError(t, err)
+	assert.NotNil(t, loaded.Credentials["x"], "a failed mutation must not be persisted")
 }

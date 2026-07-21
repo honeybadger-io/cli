@@ -1,7 +1,7 @@
 # OAuth Login for the Honeybadger CLI
 
-**Date:** 2026-07-21
-**Status:** Approved (autonomous session — decisions documented for review)
+**Date:** 2026-07-21 (revised same day after code review and E2E testing)
+**Status:** Implemented
 
 ## Goal
 
@@ -61,8 +61,11 @@ Alternatives considered:
 
 Pure OAuth client, no viper/cobra dependencies:
 
-- `Discover(ctx, httpClient, issuer)` → `Metadata` (RFC 8414; falls back to
-  conventional endpoint paths under the issuer if the metadata document 404s).
+- `Discover(ctx, httpClient, issuer)` → `Metadata` (RFC 8414). No fallback:
+  a missing metadata document is an error. The advertised issuer must exactly
+  match the requested one (mix-up protection), issuers may not carry a query
+  or fragment, all endpoints must be HTTPS (loopback hosts excepted), and the
+  well-known path is built per §3.1 for issuers with a path component.
 - `Register(ctx, httpClient, metadata, req)` → registered client (RFC 7591).
 - `AuthCodeFlow`: PKCE S256 (43-char base64url verifier from 32 random bytes),
   random `state` (validated on callback), loopback HTTP server on
@@ -80,19 +83,26 @@ Pure OAuth client, no viper/cobra dependencies:
 
 ### `internal/credentials`
 
-JSON file store, default `~/.honeybadger-cli-credentials.json`, written with
-`0600` (and `0700` parent creation). Keyed by issuer host so US
-(`app.honeybadger.io`) and EU (`eu-app.honeybadger.io`) logins coexist. Each
+JSON file store, default `~/.honeybadger-cli-credentials.json`, written
+atomically (0600 temp file + rename) with `0700` parent creation; mutations
+go through `Update`, which serializes concurrent CLI processes with an
+interprocess lock (flock / LockFileEx on a sidecar file) and reloads before
+writing so no process loses another's changes. Keyed by canonical issuer URL
+(scheme + host + path) so US and EU logins coexist and an `http://` endpoint
+can never receive a token obtained over `https://`. Each
 entry: `client_id`, `redirect_uri`, `access_token`, `refresh_token`,
 `token_type`, `scope`, `expires_at`. Path overridable via
 `HONEYBADGER_CREDENTIALS_FILE` (used by tests, useful for users too).
 
 ### `cmd/auth.go`
 
-- `hb auth login` — flags: `--device` (force device flow), `--scopes`
+- `hb auth login` — flags: `--device` / `--web` (force a flow), `--scopes`
   (default `read write`). Discovers metadata from the Data API endpoint
-  (after `convertEndpointForDataAPI`), registers/reuses a client, runs the
-  flow, saves credentials, prints identity-free success message.
+  (after `convertEndpointForDataAPI`), picks the flow automatically (device
+  flow in SSH/displayless environments when the server supports it, browser
+  flow otherwise) with a printed hint for the alternate, registers/reuses a
+  client, runs the flow, saves credentials, prints identity-free success
+  message.
 - `hb auth logout` — revokes access + refresh tokens (best-effort), deletes
   the stored entry for the current endpoint.
 - `hb auth status` — reports login state, token expiry, scopes, and whether a
@@ -122,7 +132,9 @@ mechanical replacement of the existing 11-line block.
 - Browser-flow callback errors (`access_denied`) are reported in the terminal;
   the browser tab gets a small self-contained HTML page for both success and
   failure.
-- Credentials file corruption → treated as absent with a warning to stderr.
+- Credentials file corruption → on login, the unreadable file is moved aside
+  to `<file>.corrupt` (never silently overwritten); on reads it is ignored
+  with a warning to stderr.
 
 ## Testing
 

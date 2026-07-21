@@ -1,6 +1,9 @@
 // Package credentials stores OAuth tokens obtained by `hb auth login` in a
 // JSON file, keyed by canonical issuer URL so logins to multiple Honeybadger
 // instances (e.g. US and EU) can coexist.
+//
+// On Unix the file is kept owner-only (0600). On Windows the mode bits are
+// advisory; the file relies on the user profile directory's ACLs instead.
 package credentials
 
 import (

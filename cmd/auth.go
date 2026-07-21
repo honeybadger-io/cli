@@ -156,8 +156,10 @@ func runAuthLogin(cmd *cobra.Command) error {
 	entry.TokenType = token.TokenType
 	entry.Scope = token.Scope
 	entry.ExpiresAt = token.ExpiresAt
-	credsFile.Credentials[issuerKey] = entry
-	if err := credentials.Save(credsPath, credsFile); err != nil {
+	if _, err := credentials.Update(credsPath, func(f *credentials.File) error {
+		f.Credentials[issuerKey] = entry
+		return nil
+	}); err != nil {
 		return err
 	}
 
@@ -418,8 +420,10 @@ func runAuthLogout(cmd *cobra.Command) error {
 		}
 	}
 
-	delete(credsFile.Credentials, issuerKey)
-	if err := credentials.Save(credsPath, credsFile); err != nil {
+	if _, err := credentials.Update(credsPath, func(f *credentials.File) error {
+		delete(f.Credentials, issuerKey)
+		return nil
+	}); err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(out, "✓ Logged out of %s\n", issuerKey)
@@ -522,53 +526,66 @@ func storedAccessToken(issuer string) (string, error) {
 		return "", nil
 	}
 
+	// Fast path: a still-valid token needs no lock.
 	if !entry.Expired(time.Now(), tokenExpirySkew) {
 		return entry.AccessToken, nil
 	}
 	if entry.RefreshToken == "" || entry.TokenEndpoint == "" || entry.ClientID == "" {
-		return "", fmt.Errorf(
-			"your Honeybadger session has expired. Run 'hb auth login' to sign in again",
-		)
+		return "", errSessionExpired
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	httpClient := &http.Client{Timeout: 30 * time.Second}
-	token, err := oauth.Refresh(
-		ctx,
-		httpClient,
-		entry.TokenEndpoint,
-		entry.ClientID,
-		entry.RefreshToken,
-	)
-	if err != nil {
-		return "", fmt.Errorf(
-			"failed to refresh your Honeybadger session (%v). Run 'hb auth login' to sign in again",
-			err,
-		)
-	}
+	// Refresh under the credentials lock so concurrent commands serialize:
+	// one process refreshes and persists (including a rotated refresh
+	// token), and the others see the fresh token when they reload.
+	var accessToken string
+	if _, err := credentials.Update(credsPath, func(f *credentials.File) error {
+		current := f.Credentials[issuerKey]
+		if current == nil || current.AccessToken == "" {
+			return errSessionExpired
+		}
+		if !current.Expired(time.Now(), tokenExpirySkew) {
+			accessToken = current.AccessToken // another process already refreshed
+			return nil
+		}
+		if current.RefreshToken == "" || current.TokenEndpoint == "" || current.ClientID == "" {
+			return errSessionExpired
+		}
 
-	rotated := token.RefreshToken != entry.RefreshToken
-	entry.AccessToken = token.AccessToken
-	entry.RefreshToken = token.RefreshToken
-	entry.TokenType = token.TokenType
-	if token.Scope != "" {
-		entry.Scope = token.Scope
-	}
-	entry.ExpiresAt = token.ExpiresAt
-	if err := credentials.Save(credsPath, credsFile); err != nil {
-		if rotated {
-			// The server invalidated the old refresh token; losing the new
-			// one would silently break every later command.
-			return "", fmt.Errorf(
-				"failed to save refreshed credentials (%v); run 'hb auth login' to sign in again",
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		httpClient := &http.Client{Timeout: 30 * time.Second}
+		token, err := oauth.Refresh(
+			ctx,
+			httpClient,
+			current.TokenEndpoint,
+			current.ClientID,
+			current.RefreshToken,
+		)
+		if err != nil {
+			return fmt.Errorf(
+				"failed to refresh your Honeybadger session (%v). Run 'hb auth login' to sign in again",
 				err,
 			)
 		}
-		_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to save refreshed credentials: %v\n", err)
+
+		current.AccessToken = token.AccessToken
+		current.RefreshToken = token.RefreshToken
+		current.TokenType = token.TokenType
+		if token.Scope != "" {
+			current.Scope = token.Scope
+		}
+		current.ExpiresAt = token.ExpiresAt
+		accessToken = token.AccessToken
+		return nil
+	}); err != nil {
+		return "", err
 	}
-	return token.AccessToken, nil
+	return accessToken, nil
 }
+
+var errSessionExpired = fmt.Errorf(
+	"your Honeybadger session has expired. Run 'hb auth login' to sign in again",
+)
 
 // grantTypesFor returns the grant types to register for a flow, including
 // refresh_token when the server supports it.
