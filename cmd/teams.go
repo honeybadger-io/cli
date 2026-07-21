@@ -9,7 +9,6 @@ import (
 
 	hbapi "github.com/honeybadger-io/api-go"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -41,18 +40,10 @@ var teamsListCmd = &cobra.Command{
 			return fmt.Errorf("account ID is required. Set it using --account-id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		ctx := context.Background()
 		teams, err := client.Teams.List(ctx, teamsAccountID)
@@ -93,18 +84,10 @@ var teamsGetCmd = &cobra.Command{
 			return fmt.Errorf("team ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		ctx := context.Background()
 		team, err := client.Teams.Get(ctx, teamID)
@@ -144,18 +127,10 @@ var teamsCreateCmd = &cobra.Command{
 			return fmt.Errorf("team name is required. Set it using --name flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		ctx := context.Background()
 		team, err := client.Teams.Create(ctx, teamsAccountID, teamName)
@@ -193,18 +168,10 @@ var teamsUpdateCmd = &cobra.Command{
 			return fmt.Errorf("team name is required. Set it using --name flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		ctx := context.Background()
 		if err := client.Teams.Update(ctx, teamID, teamName); err != nil {
@@ -243,21 +210,13 @@ var teamsDeleteCmd = &cobra.Command{
 			return fmt.Errorf("team ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
 
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
 		ctx := context.Background()
-		err := client.Teams.Delete(ctx, teamID)
+		err = client.Teams.Delete(ctx, teamID)
 		if err != nil {
 			return fmt.Errorf("failed to delete team: %w", err)
 		}
@@ -284,18 +243,10 @@ var teamsMembersListCmd = &cobra.Command{
 			return fmt.Errorf("team ID is required. Set it using --team-id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		ctx := context.Background()
 		members, err := client.Teams.ListMembers(ctx, teamID)
@@ -344,18 +295,10 @@ var teamsMembersUpdateCmd = &cobra.Command{
 			return fmt.Errorf("member ID is required. Set it using --member-id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		ctx := context.Background()
 		if err := client.Teams.UpdateMember(
@@ -414,21 +357,13 @@ var teamsMembersRemoveCmd = &cobra.Command{
 			return fmt.Errorf("member ID is required. Set it using --member-id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
 
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
 		ctx := context.Background()
-		err := client.Teams.RemoveMember(ctx, teamID, teamMemberID)
+		err = client.Teams.RemoveMember(ctx, teamID, teamMemberID)
 		if err != nil {
 			return fmt.Errorf("failed to remove team member: %w", err)
 		}
@@ -455,18 +390,10 @@ var teamsInvitationsListCmd = &cobra.Command{
 			return fmt.Errorf("team ID is required. Set it using --team-id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		ctx := context.Background()
 		invitations, err := client.Teams.ListInvitations(ctx, teamID)
@@ -520,18 +447,10 @@ var teamsInvitationsGetCmd = &cobra.Command{
 			return fmt.Errorf("invitation ID is required. Set it using --invitation-id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		ctx := context.Background()
 		invitation, err := client.Teams.GetInvitation(ctx, teamID, teamInvitationID)
@@ -589,18 +508,10 @@ Example JSON payload:
 			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		jsonData, err := readJSONInput(teamCLIInputJSON)
 		if err != nil {
@@ -663,18 +574,10 @@ Example JSON payload:
 			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		jsonData, err := readJSONInput(teamCLIInputJSON)
 		if err != nil {
@@ -734,21 +637,13 @@ var teamsInvitationsDeleteCmd = &cobra.Command{
 			return fmt.Errorf("invitation ID is required. Set it using --invitation-id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
 
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
 		ctx := context.Background()
-		err := client.Teams.DeleteInvitation(ctx, teamID, teamInvitationID)
+		err = client.Teams.DeleteInvitation(ctx, teamID, teamInvitationID)
 		if err != nil {
 			return fmt.Errorf("failed to delete team invitation: %w", err)
 		}

@@ -46,6 +46,34 @@ Run with `--help` for all options including `--version`, `--interval`, and `--in
 
 The CLI can be configured using either command-line flags, environment variables, or a configuration file.
 
+### Authentication
+
+The CLI talks to two Honeybadger APIs with different credentials:
+
+ * **Reporting API** (`deploy`, `agent`, `run`, `check-in`): uses a project API key via `--api-key` or `HONEYBADGER_API_KEY`.
+ * **Data API** (everything else): uses your personal credentials — either OAuth via `hb auth login`, or a personal auth token.
+
+The easiest way to authenticate the Data API commands is OAuth:
+
+```bash
+hb auth login             # opens your browser to authorize the CLI
+hb auth login --device    # sign in from another device (SSH/headless machines)
+hb auth status            # show how you're currently authenticated
+hb auth logout            # revoke and delete the stored credentials
+```
+
+`hb auth login` uses the OAuth 2.0 authorization code flow with PKCE (RFC 8252)
+against the endpoint you've configured (US by default, EU with
+`--endpoint https://eu-api.honeybadger.io`); `--device` uses the device
+authorization flow (RFC 8628) where supported. Tokens are stored in
+`~/.honeybadger-cli-credentials.json` (owner-only permissions; override the
+location with `HONEYBADGER_CREDENTIALS_FILE`) and are refreshed automatically
+when they expire.
+
+Alternatively, set a personal auth token with `--auth-token`,
+`HONEYBADGER_AUTH_TOKEN`, or `auth_token` in the config file. A personal auth
+token always takes precedence over stored OAuth credentials.
+
 ### Configuration File
 
 By default, the CLI looks for a configuration file at `~/.honeybadger-cli.yaml` in your home directory. You can specify a different configuration file using the `--config` flag.
@@ -101,7 +129,7 @@ These commands use `--api-key` or `HONEYBADGER_API_KEY` (project API key):
 
 ### Data API Commands
 
-These commands use `--auth-token` or `HONEYBADGER_AUTH_TOKEN` (personal auth token):
+These commands authenticate with `hb auth login` (OAuth), or with `--auth-token` / `HONEYBADGER_AUTH_TOKEN` (personal auth token):
 
 | Command | Description |
 |---------|-------------|

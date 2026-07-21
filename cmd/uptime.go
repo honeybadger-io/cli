@@ -9,7 +9,6 @@ import (
 
 	hbapi "github.com/honeybadger-io/api-go"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -47,18 +46,10 @@ var uptimeSitesListCmd = &cobra.Command{
 			return err
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		ctx := context.Background()
 		sites, err := client.Uptime.List(ctx, uptimeProjectID)
@@ -109,18 +100,10 @@ var uptimeSitesGetCmd = &cobra.Command{
 			return fmt.Errorf("site ID is required. Set it using --site-id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		ctx := context.Background()
 		site, err := client.Uptime.Get(ctx, uptimeProjectID, uptimeSiteID)
@@ -189,18 +172,10 @@ Available options:
 			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		jsonData, err := readJSONInput(uptimeCLIInputJSON)
 		if err != nil {
@@ -265,18 +240,10 @@ Example JSON payload:
 			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		jsonData, err := readJSONInput(uptimeCLIInputJSON)
 		if err != nil {
@@ -326,21 +293,13 @@ var uptimeSitesDeleteCmd = &cobra.Command{
 			return fmt.Errorf("site ID is required. Set it using --site-id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
 
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
 		ctx := context.Background()
-		err := client.Uptime.Delete(ctx, uptimeProjectID, uptimeSiteID)
+		err = client.Uptime.Delete(ctx, uptimeProjectID, uptimeSiteID)
 		if err != nil {
 			return fmt.Errorf("failed to delete uptime site: %w", err)
 		}
@@ -363,18 +322,10 @@ var uptimeOutagesCmd = &cobra.Command{
 			return fmt.Errorf("site ID is required. Set it using --site-id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		options := hbapi.OutageListOptions{
 			Limit: uptimeLimit,
@@ -447,18 +398,10 @@ var uptimeChecksCmd = &cobra.Command{
 			return fmt.Errorf("site ID is required. Set it using --site-id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		options := hbapi.UptimeCheckListOptions{
 			Limit: uptimeLimit,

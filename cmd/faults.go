@@ -9,7 +9,6 @@ import (
 
 	hbapi "github.com/honeybadger-io/api-go"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -45,19 +44,10 @@ var faultsListCmd = &cobra.Command{
 			return err
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		// Build options
 		options := hbapi.FaultListOptions{
@@ -129,19 +119,10 @@ var faultsGetCmd = &cobra.Command{
 			return fmt.Errorf("fault ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		ctx := context.Background()
 		fault, err := client.Faults.Get(ctx, faultsProjectID, faultID)
@@ -211,19 +192,10 @@ var faultsNoticesCmd = &cobra.Command{
 			return fmt.Errorf("fault ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		// Build options
 		options := hbapi.FaultListNoticesOptions{
@@ -330,19 +302,10 @@ Examples:
 			)
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		ctx := context.Background()
 		result, err := client.Faults.Update(ctx, faultsProjectID, faultID, params)
@@ -366,19 +329,10 @@ var faultsCountsCmd = &cobra.Command{
 			return err
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		ctx := context.Background()
 		counts, err := client.Faults.GetCounts(ctx, faultsProjectID, hbapi.FaultListOptions{})
@@ -428,19 +382,10 @@ var faultsAffectedUsersCmd = &cobra.Command{
 			return fmt.Errorf("fault ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		// Build options
 		options := hbapi.FaultListAffectedUsersOptions{

@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Add `hb auth login` for OAuth sign-in as an alternative to personal auth
+  tokens, using the authorization code flow with PKCE (RFC 8252/7636) in the
+  browser or the device authorization flow (RFC 8628) with `--device`, plus
+  `hb auth status` and `hb auth logout`. Tokens are stored in
+  `~/.honeybadger-cli-credentials.json` and refreshed automatically.
+
 ## [0.9.0] - 2026-07-17
 
 ### Added

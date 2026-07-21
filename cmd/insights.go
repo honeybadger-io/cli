@@ -10,7 +10,6 @@ import (
 
 	hbapi "github.com/honeybadger-io/api-go"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -56,19 +55,10 @@ Examples:
 			return fmt.Errorf("query is required. Set it using --query flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		// Build request
 		request := hbapi.InsightsQueryRequest{

@@ -10,7 +10,6 @@ import (
 
 	hbapi "github.com/honeybadger-io/api-go"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -40,23 +39,13 @@ var projectsListCmd = &cobra.Command{
 	Short: "List all projects",
 	Long:  `List all projects accessible with your API key.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		ctx := context.Background()
 		var response *hbapi.ProjectsResponse
-		var err error
 
 		// List projects by account ID if provided
 		if projectAccountID != "" {
@@ -106,19 +95,10 @@ var projectsGetCmd = &cobra.Command{
 			return fmt.Errorf("project ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		ctx := context.Background()
 		project, err := client.Projects.Get(ctx, projectID)
@@ -207,19 +187,10 @@ Example JSON payload:
 			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		// Parse JSON input
 		jsonData, err := readJSONInput(projectCLIInputJSON)
@@ -284,19 +255,10 @@ Example JSON payload:
 			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		// Parse JSON input
 		jsonData, err := readJSONInput(projectCLIInputJSON)
@@ -333,19 +295,10 @@ var projectsDeleteCmd = &cobra.Command{
 			return fmt.Errorf("project ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		ctx := context.Background()
 		result, err := client.Projects.Delete(ctx, projectID)
@@ -364,19 +317,10 @@ var projectsOccurrencesCmd = &cobra.Command{
 	Short: "Get occurrence counts for projects",
 	Long:  `Get occurrence counts for all projects or a specific project over time.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		options := hbapi.ProjectGetOccurrenceCountsOptions{
 			Period:      projectOccurrencesPeriod,
@@ -451,19 +395,10 @@ var projectsIntegrationsCmd = &cobra.Command{
 			return fmt.Errorf("project ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		ctx := context.Background()
 		integrations, err := client.Projects.GetIntegrations(ctx, projectID)
@@ -521,19 +456,10 @@ var projectsReportsCmd = &cobra.Command{
 			return fmt.Errorf("report type is required. Set it using --type flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
 
 		options := hbapi.ProjectGetReportOptions{
 			Environment: projectReportEnv,
