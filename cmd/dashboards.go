@@ -218,7 +218,8 @@ var dashboardsUpdateCmd = &cobra.Command{
 The --cli-input-json flag accepts either a JSON string or a file path prefixed with 'file://'.
 
 The request replaces the dashboard, so send the complete widget list -- any widget you
-omit is dropped. Fetch the current state first with:
+omit is dropped. Both a title and a widgets list are required; a payload carrying only
+one of them is refused rather than sent. Fetch the current state first with:
 
   hb dashboards get --id <id> --output json > dashboard.json
 
@@ -227,7 +228,7 @@ it straight back with --cli-input-json file://dashboard.json. A {"dashboard": {.
 envelope is accepted too.
 
 Keep each existing widget's id in the payload so it is updated in place rather than
-replaced by a newly assigned one.
+replaced by a newly assigned one. To remove every widget, pass "widgets": [] explicitly.
 
 Example JSON payload:
 {
@@ -264,7 +265,7 @@ Example JSON payload:
 			return err
 		}
 
-		request, err := parseDashboardRequest(dashboardCLIInputJSON)
+		request, err := parseDashboardReplacement(dashboardCLIInputJSON)
 		if err != nil {
 			return err
 		}
@@ -356,6 +357,26 @@ func parseDashboardRequest(input string) (hbapi.DashboardRequest, error) {
 		return hbapi.DashboardRequest{}, fmt.Errorf(
 			"payload contains no dashboard fields: expected a {\"dashboard\": {...}} envelope " +
 				"or a bare dashboard object carrying a title and/or widgets",
+		)
+	}
+
+	return request, nil
+}
+
+// parseDashboardReplacement parses a payload for update, which replaces the dashboard rather
+// than patching it. Neither field is omitempty, so a partial payload sends "widgets": null or
+// "title": "" -- an affirmative wipe. Require both; "widgets": [] still clears deliberately.
+func parseDashboardReplacement(input string) (hbapi.DashboardRequest, error) {
+	request, err := parseDashboardRequest(input)
+	if err != nil {
+		return hbapi.DashboardRequest{}, err
+	}
+
+	if request.Title == "" || request.Widgets == nil {
+		return hbapi.DashboardRequest{}, fmt.Errorf(
+			"update replaces the dashboard, so the payload requires both a title and a widgets " +
+				"list. Fetch the current state with 'hb dashboards get --id <id> --output json' " +
+				"and edit that, or pass \"widgets\": [] to deliberately remove every widget",
 		)
 	}
 

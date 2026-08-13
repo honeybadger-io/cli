@@ -616,6 +616,150 @@ func TestDashboardsUpdateRefusesEmptyPayload(t *testing.T) {
 	assert.Empty(t, captured.method, "no request should reach the API")
 }
 
+// TestParseDashboardReplacementRequiresBothFields covers the update path, which replaces the
+// dashboard. Neither field is omitempty, so a title-only payload wires "widgets": null and a
+// widgets-only payload wires "title": "" -- both destructive. See the captures in PR #36.
+func TestParseDashboardReplacementRequiresBothFields(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         string
+		expectedTitle string
+		expectedCount int
+		errorContains string
+	}{
+		{
+			name:          "title only is refused",
+			input:         `{"dashboard": {"title": "Renamed"}}`,
+			errorContains: "requires both a title and a widgets list",
+		},
+		{
+			name:          "bare title only is refused",
+			input:         `{"title": "Renamed"}`,
+			errorContains: "requires both a title and a widgets list",
+		},
+		{
+			name:          "widgets only is refused",
+			input:         `{"dashboard": {"widgets": [{"type": "insights_vis"}]}}`,
+			errorContains: "requires both a title and a widgets list",
+		},
+		{
+			name:          "explicit empty widgets list is allowed",
+			input:         `{"dashboard": {"title": "Cleared", "widgets": []}}`,
+			expectedTitle: "Cleared",
+			expectedCount: 0,
+		},
+		{
+			name:          "complete payload is allowed",
+			input:         dashboardCreatePayload,
+			expectedTitle: "Request Health",
+			expectedCount: 1,
+		},
+		{
+			name:          "get output round trips",
+			input:         dashboardGetBody,
+			expectedTitle: "Request Health",
+			expectedCount: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			request, err := parseDashboardReplacement(tt.input)
+
+			if tt.errorContains != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorContains)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedTitle, request.Title)
+			assert.Len(t, request.Widgets, tt.expectedCount)
+		})
+	}
+}
+
+// TestDashboardsUpdateRefusesPartialPayload proves the guard reaches the command and that no
+// destructive request escapes: pre-fix, each of these wired a wipe and printed success.
+func TestDashboardsUpdateRefusesPartialPayload(t *testing.T) {
+	for name, payload := range map[string]string{
+		"title only":   `{"dashboard": {"title": "Renamed"}}`,
+		"widgets only": `{"dashboard": {"widgets": [{"type": "insights_vis"}]}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			var captured capturedRequest
+
+			server := newCapturingServer(t, http.StatusOK, "", &captured)
+			defer server.Close()
+
+			viper.Reset()
+			viper.Set("endpoint", server.URL)
+			viper.Set("auth_token", "test-token")
+
+			dashboardsProjectID = 123
+			dashboardID = "abc123"
+			dashboardCLIInputJSON = payload
+
+			err := dashboardsUpdateCmd.RunE(dashboardsUpdateCmd, []string{})
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "requires both a title and a widgets list")
+			assert.Empty(t, captured.method, "no request should reach the API")
+		})
+	}
+}
+
+// TestDashboardsUpdateSendsExplicitEmptyWidgets asserts a deliberate clear still goes through
+// and wires an empty list rather than null.
+func TestDashboardsUpdateSendsExplicitEmptyWidgets(t *testing.T) {
+	var captured capturedRequest
+
+	server := newCapturingServer(t, http.StatusOK, "", &captured)
+	defer server.Close()
+
+	viper.Reset()
+	viper.Set("endpoint", server.URL)
+	viper.Set("auth_token", "test-token")
+
+	dashboardsProjectID = 123
+	dashboardID = "abc123"
+	dashboardCLIInputJSON = `{"dashboard": {"title": "Cleared", "widgets": []}}`
+
+	err := dashboardsUpdateCmd.RunE(dashboardsUpdateCmd, []string{})
+	require.NoError(t, err)
+	assert.Equal(t, "PUT", captured.method)
+
+	dashboard := requireDashboardEnvelope(t, captured)
+	assert.Equal(t, "Cleared", dashboard["title"])
+
+	widgets, ok := dashboard["widgets"].([]interface{})
+	require.True(t, ok, "an explicit clear must wire [] rather than null")
+	assert.Empty(t, widgets)
+}
+
+// TestDashboardsCreateAllowsTitleOnly pins the create path to the looser rule. Create has no
+// prior widgets to destroy, so an empty dashboard is a legitimate payload.
+func TestDashboardsCreateAllowsTitleOnly(t *testing.T) {
+	var captured capturedRequest
+
+	server := newCapturingServer(t, http.StatusCreated, dashboardGetBody, &captured)
+	defer server.Close()
+
+	viper.Reset()
+	viper.Set("endpoint", server.URL)
+	viper.Set("auth_token", "test-token")
+
+	dashboardsProjectID = 123
+	dashboardsOutputFormat = "text"
+	dashboardCLIInputJSON = `{"dashboard": {"title": "Empty Dash"}}`
+
+	err := dashboardsCreateCmd.RunE(dashboardsCreateCmd, []string{})
+	require.NoError(t, err)
+	assert.Equal(t, "POST", captured.method)
+
+	dashboard := requireDashboardEnvelope(t, captured)
+	assert.Equal(t, "Empty Dash", dashboard["title"])
+}
+
 func TestWidgetHelpers(t *testing.T) {
 	widget := map[string]interface{}{
 		"id":           "w1",
