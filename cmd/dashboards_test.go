@@ -516,6 +516,106 @@ func TestDashboardsOutputFormat(t *testing.T) {
 	}
 }
 
+// TestParseDashboardRequestAcceptsGetOutput is the regression guard for the get-to-update
+// workflow the update help text documents. `get --output json` emits a BARE dashboard object
+// carrying read-only fields; parsing it must retain the title and widgets. Before both shapes
+// were accepted this produced a zero-value request, so update sent an empty widget list and
+// still printed "successfully updated" -- a silent wipe.
+func TestParseDashboardRequestAcceptsGetOutput(t *testing.T) {
+	request, err := parseDashboardRequest(dashboardGetBody)
+	require.NoError(t, err)
+
+	assert.Equal(t, "Request Health", request.Title)
+	assert.Len(t, request.Widgets, 2, "widgets must survive a get -> update round trip")
+}
+
+func TestParseDashboardRequestShapes(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         string
+		expectedTitle string
+		expectedCount int
+		errorContains string
+	}{
+		{
+			name:          "enveloped payload",
+			input:         dashboardCreatePayload,
+			expectedTitle: "Request Health",
+			expectedCount: 1,
+		},
+		{
+			name:          "bare dashboard object",
+			input:         `{"title": "Bare", "widgets": [{"type": "insights_vis"}]}`,
+			expectedTitle: "Bare",
+			expectedCount: 1,
+		},
+		{
+			name:          "bare object with explicitly empty widgets is allowed",
+			input:         `{"title": "Cleared", "widgets": []}`,
+			expectedTitle: "Cleared",
+			expectedCount: 0,
+		},
+		{
+			name:          "empty object is refused rather than wiping the dashboard",
+			input:         `{}`,
+			errorContains: "contains no dashboard fields",
+		},
+		{
+			name:          "unrelated object is refused",
+			input:         `{"something_else": true}`,
+			errorContains: "contains no dashboard fields",
+		},
+		{
+			name:          "null envelope is refused",
+			input:         `{"dashboard": null}`,
+			errorContains: "contains no dashboard fields",
+		},
+		{
+			name:          "malformed json",
+			input:         `{not json`,
+			errorContains: "failed to parse JSON payload",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			request, err := parseDashboardRequest(tt.input)
+
+			if tt.errorContains != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorContains)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedTitle, request.Title)
+			assert.Len(t, request.Widgets, tt.expectedCount)
+		})
+	}
+}
+
+// TestDashboardsUpdateRefusesEmptyPayload proves the guard reaches the command, not just the
+// parser: an empty payload must never produce a request.
+func TestDashboardsUpdateRefusesEmptyPayload(t *testing.T) {
+	var captured capturedRequest
+
+	server := newCapturingServer(t, http.StatusOK, "", &captured)
+	defer server.Close()
+
+	viper.Reset()
+	viper.Set("endpoint", server.URL)
+	viper.Set("auth_token", "test-token")
+
+	dashboardsProjectID = 123
+	dashboardID = "abc123"
+	dashboardCLIInputJSON = `{}`
+
+	err := dashboardsUpdateCmd.RunE(dashboardsUpdateCmd, []string{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "contains no dashboard fields")
+	assert.Empty(t, captured.method, "no request should reach the API")
+}
+
 func TestWidgetHelpers(t *testing.T) {
 	widget := map[string]interface{}{
 		"id":           "w1",

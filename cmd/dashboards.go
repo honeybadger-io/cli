@@ -220,7 +220,11 @@ The --cli-input-json flag accepts either a JSON string or a file path prefixed w
 The request replaces the dashboard, so send the complete widget list -- any widget you
 omit is dropped. Fetch the current state first with:
 
-  hb dashboards get --id <id> --output json
+  hb dashboards get --id <id> --output json > dashboard.json
+
+That output is accepted as-is (read-only fields are ignored), so you can edit it and pass
+it straight back with --cli-input-json file://dashboard.json. A {"dashboard": {...}}
+envelope is accepted too.
 
 Keep each existing widget's id in the payload so it is updated in place rather than
 replaced by a newly assigned one.
@@ -322,20 +326,40 @@ func newDashboardsClient() (*hbapi.Client, error) {
 }
 
 // parseDashboardRequest reads and unmarshals a dashboard payload from a JSON string or file://path.
+//
+// Two shapes are accepted: the enveloped form the API uses, {"dashboard": {...}}, and a bare
+// dashboard object. The bare form is what `hb dashboards get --output json` emits, so its
+// output can be edited and fed straight back into create/update.
 func parseDashboardRequest(input string) (hbapi.DashboardRequest, error) {
 	jsonData, err := readJSONInput(input)
 	if err != nil {
 		return hbapi.DashboardRequest{}, fmt.Errorf("failed to read JSON input: %w", err)
 	}
 
-	var payload struct {
-		Dashboard hbapi.DashboardRequest `json:"dashboard"`
+	var enveloped struct {
+		Dashboard *hbapi.DashboardRequest `json:"dashboard"`
 	}
-	if err := json.Unmarshal(jsonData, &payload); err != nil {
+	if err := json.Unmarshal(jsonData, &enveloped); err != nil {
 		return hbapi.DashboardRequest{}, fmt.Errorf("failed to parse JSON payload: %w", err)
 	}
 
-	return payload.Dashboard, nil
+	request := hbapi.DashboardRequest{}
+	if enveloped.Dashboard != nil {
+		request = *enveloped.Dashboard
+	} else if err := json.Unmarshal(jsonData, &request); err != nil {
+		return hbapi.DashboardRequest{}, fmt.Errorf("failed to parse JSON payload: %w", err)
+	}
+
+	// A payload that parses to nothing would send an empty dashboard and report success,
+	// silently dropping every widget. Refuse rather than destroy.
+	if request.Title == "" && request.Widgets == nil {
+		return hbapi.DashboardRequest{}, fmt.Errorf(
+			"payload contains no dashboard fields: expected a {\"dashboard\": {...}} envelope " +
+				"or a bare dashboard object carrying a title and/or widgets",
+		)
+	}
+
+	return request, nil
 }
 
 // checkmark renders a boolean as a table-friendly marker.
