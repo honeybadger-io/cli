@@ -6,6 +6,12 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-08-13
+
+### Added
+
+- Add `dashboards` command for managing Insights dashboards (list, get, create, update, delete)
+
 ## [0.9.0] - 2026-07-17
 
 ### Added

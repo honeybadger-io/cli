@@ -109,6 +109,7 @@ These commands use `--auth-token` or `HONEYBADGER_AUTH_TOKEN` (personal auth tok
 | `hb alarms` | Manage Insights alarms for your projects |
 | `hb check-ins` | Manage check-ins for cron job and scheduled task monitoring |
 | `hb comments` | Manage comments on faults |
+| `hb dashboards` | Manage Insights dashboards for your projects |
 | `hb deployments` | View and manage deployment history |
 | `hb environments` | Manage project environments |
 | `hb faults` | View and manage faults (errors) in your projects |
@@ -154,6 +155,16 @@ hb faults update --project-id 12345 --id 678 --resolved
 
 # List Insights streams for a project
 hb streams list --project-id 12345
+
+# List Insights dashboards for a project
+hb dashboards list --project-id 12345
+
+# Create a dashboard from a JSON file
+hb dashboards create --project-id 12345 --cli-input-json file://dashboard.json
+
+# Update a dashboard (replaces it, so send the complete widget list)
+hb dashboards get --project-id 12345 --id abc123 --output json > dashboard.json
+hb dashboards update --project-id 12345 --id abc123 --cli-input-json file://dashboard.json
 ```
 
 See the [Honeybadger CLI documentation](https://docs.honeybadger.io/resources/cli/) for more information.
