@@ -186,8 +186,9 @@ var alarmsCreateCmd = &cobra.Command{
 The --cli-input-json flag accepts either a JSON string or a file path prefixed with 'file://'.
 
 stream_ids is optional. Omit it and the alarm queries all of the project's Insights
-streams. IDs that don't belong to the project are ignored rather than rejected, so a
-wrong ID fails quietly -- list the real ones with 'hb streams list'.
+streams. If you do supply it, use the opaque IDs from 'hb streams list', not the slugs:
+unrecognized IDs are dropped, and if none survive the API returns 422 "stream_ids:
+cannot be empty".
 
 Example JSON payload:
 {
@@ -195,7 +196,6 @@ Example JSON payload:
     "name": "High Error Rate",
     "description": "Alert when errors spike",
     "query": "filter event_type::str == \"notice\"",
-    "stream_ids": ["<stream-id>"],
     "evaluation_period": "5m",
     "lookback_lag": "1m",
     "trigger_config": {
@@ -270,15 +270,15 @@ var alarmsUpdateCmd = &cobra.Command{
 The --cli-input-json flag accepts either a JSON string or a file path prefixed with 'file://'.
 
 stream_ids is optional. Omit it and the alarm queries all of the project's Insights
-streams. IDs that don't belong to the project are ignored rather than rejected, so a
-wrong ID fails quietly -- list the real ones with 'hb streams list'.
+streams. If you do supply it, use the opaque IDs from 'hb streams list', not the slugs:
+unrecognized IDs are dropped, and if none survive the API returns 422 "stream_ids:
+cannot be empty".
 
 Example JSON payload:
 {
   "alarm": {
     "name": "Updated Alarm Name",
     "query": "filter event_type::str == \"notice\"",
-    "stream_ids": ["<stream-id>"],
     "evaluation_period": "10m",
     "lookback_lag": "1m",
     "trigger_config": {
