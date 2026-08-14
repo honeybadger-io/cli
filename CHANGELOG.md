@@ -8,7 +8,7 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- `alarms create`/`alarms update` help no longer claims `stream_ids` is required; it is optional and defaults to all of the project's streams. The help now explains the `422 stream_ids: cannot be empty` error, which means the supplied IDs weren't recognized (commonly a slug such as `default` passed where a stream ID belongs)
+- `alarms create`/`alarms update` help no longer claims `stream_ids` is required; it is optional and defaults to all of the project's streams. The help now explains that unrecognized IDs are ignored and that a list in which none are recognized is rejected (commonly a slug such as `default` passed where a stream ID belongs)
 
 ## [0.10.0] - 2026-08-13
 

@@ -186,9 +186,9 @@ var alarmsCreateCmd = &cobra.Command{
 The --cli-input-json flag accepts either a JSON string or a file path prefixed with 'file://'.
 
 stream_ids is optional. Omit it and the alarm queries all of the project's Insights
-streams. If you do supply it, use the opaque IDs from 'hb streams list', not the slugs:
-unrecognized IDs are dropped, and if none survive the API returns 422 "stream_ids:
-cannot be empty".
+streams. If you do supply it, use the opaque IDs from 'hb streams list', not the slugs.
+Unrecognized IDs are ignored without an error, and a list in which none are recognized
+is rejected with a 422.
 
 Example JSON payload:
 {
@@ -270,9 +270,9 @@ var alarmsUpdateCmd = &cobra.Command{
 The --cli-input-json flag accepts either a JSON string or a file path prefixed with 'file://'.
 
 stream_ids is optional. Omit it and the alarm queries all of the project's Insights
-streams. If you do supply it, use the opaque IDs from 'hb streams list', not the slugs:
-unrecognized IDs are dropped, and if none survive the API returns 422 "stream_ids:
-cannot be empty".
+streams. If you do supply it, use the opaque IDs from 'hb streams list', not the slugs.
+Unrecognized IDs are ignored without an error, and a list in which none are recognized
+is rejected with a 422.
 
 Example JSON payload:
 {
