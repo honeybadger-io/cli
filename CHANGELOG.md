@@ -6,6 +6,10 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `alarms create`/`alarms update` help no longer claims `stream_ids` is required; it is optional and defaults to all of the project's streams
+
 ## [0.10.0] - 2026-08-13
 
 ### Added
