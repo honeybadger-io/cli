@@ -266,6 +266,46 @@ var checkinsDeleteCmd = &cobra.Command{
 	},
 }
 
+// checkinsEventsCmd represents the check-ins events command
+var checkinsEventsCmd = &cobra.Command{
+	Use:   "events",
+	Short: "List a check-in's events",
+	Long: `List a check-in's most recent events (reporting, missing, paused), newest first.
+JSON output includes each event's payload.`,
+	RunE: func(_ *cobra.Command, _ []string) error {
+		if err := resolveDataAPIProjectID(&checkinsProjectID); err != nil {
+			return err
+		}
+
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
+		}
+
+		response, err := client.CheckIns.ListEvents(
+			context.Background(),
+			checkinsProjectID,
+			checkinID,
+		)
+		if err != nil {
+			return dataAPIError("list check-in events", err)
+		}
+
+		if checkinsOutputFormat == "json" {
+			return printJSON(response.Data)
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		_, _ = fmt.Fprintln(w, "TIME\tSTATE")
+		for _, event := range response.Data {
+			_, _ = fmt.Fprintf(w, "%s\t%s\n",
+				event.CreatedAt.Format("2006-01-02 15:04:05"),
+				event.State)
+		}
+		return w.Flush()
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(checkinsCmd)
 	checkinsCmd.AddCommand(checkinsListCmd)
@@ -306,4 +346,11 @@ func init() {
 	// Flags for delete command
 	checkinsDeleteCmd.Flags().StringVar(&checkinID, "id", "", "Check-in ID")
 	_ = checkinsDeleteCmd.MarkFlagRequired("id")
+
+	// events command
+	checkinsCmd.AddCommand(checkinsEventsCmd)
+	checkinsEventsCmd.Flags().StringVar(&checkinID, "id", "", "Check-in ID")
+	checkinsEventsCmd.Flags().
+		StringVarP(&checkinsOutputFormat, "output", "o", "table", "Output format (table or json)")
+	_ = checkinsEventsCmd.MarkFlagRequired("id")
 }
