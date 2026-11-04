@@ -18,7 +18,7 @@ The Data API commands now use Honeybadger's v3 Data API. This release is a previ
 - `--output json` prints v3's resource JSON, so field names and shapes follow v3 (for example, a fault's `url` is now `links.web`, and an integration's `options` is now `config`). The [v3 Data API reference](https://docs.honeybadger.io/api/v3/) documents each one, and every Data API command's `--help` links to its page. `insights query --output json` prints the query's `results` and `meta`
 - `insights query --ts` is a time range such as `1h` or `P7D`, as v3 defines it, not a timestamp
 - `faults list`, `faults notices`, `deployments list`, `uptime outages` and `uptime checks` accept `--limit` up to 100
-- `check-ins list`, `environments list` and `streams list` return every page instead of the first
+- `check-ins list`, `environments list`, `streams list` and `comments list` return every page instead of the first; `comments list` stays oldest first, as in v2
 - `projects get` no longer shows the project's token, teams, users or sites (use `hb ingestion-keys list` for keys); `faults notices` drops the HOSTNAME column; `environments get` drops Updated; `projects occurrences` prints timestamps as dates
 - The Ingestion Key is still set with `--api-key` / `HONEYBADGER_API_KEY`; `deploy`, `agent`, `run` and `check-in` are unchanged
 - Requires Go 1.27 to build from source

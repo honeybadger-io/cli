@@ -30,7 +30,7 @@ func TestCommentsList(t *testing.T) {
 	req := s.only(t)
 	assert.Equal(t, "GET", req.Method)
 	assert.Equal(t, "/v3/projects/Xk9mZp/faults/Fk7pQ2/comments", req.Path)
-	assert.Empty(t, req.Query)
+	assert.Equal(t, "limit=100", req.Query)
 	assert.Contains(t, out, "Cm7pLx  Jane Doe")
 	assert.Contains(t, out, "Looking into it")
 	assert.Contains(t, out, "Cm8qMy  System")

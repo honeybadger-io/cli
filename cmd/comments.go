@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -41,7 +42,7 @@ func requireCommentFault() error {
 var commentsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List comments for a fault",
-	Long: `List the comments on a specific fault, newest first.` + v3Reference(
+	Long: `List every comment on a specific fault, oldest first.` + v3Reference(
 		"comments/list-comments",
 	),
 	RunE: func(_ *cobra.Command, _ []string) error {
@@ -54,7 +55,7 @@ var commentsListCmd = &cobra.Command{
 			return err
 		}
 
-		response, err := client.Faults.ListComments(
+		comments, err := client.Faults.ListAllComments(
 			context.Background(),
 			commentsProjectID,
 			commentsFaultID,
@@ -62,14 +63,17 @@ var commentsListCmd = &cobra.Command{
 		if err != nil {
 			return dataAPIError("list comments", err)
 		}
+		// v3 pages newest first; a fault's history reads oldest first, as v2
+		// listed it.
+		slices.Reverse(comments)
 
 		if commentsOutputFormat == "json" {
-			return printJSON(response.Data)
+			return printJSON(comments)
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 		_, _ = fmt.Fprintln(w, "ID\tAUTHOR\tEVENT\tCREATED\tBODY")
-		for _, c := range response.Data {
+		for _, c := range comments {
 			author := "System"
 			if name := c.Author.GetOrEmpty().Name.GetOrEmpty(); name != "" {
 				author = name
