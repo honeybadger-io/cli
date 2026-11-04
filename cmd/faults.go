@@ -3,10 +3,13 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/honeybadger-io/api-go/apiv3"
 	"github.com/oapi-codegen/nullable"
@@ -26,6 +29,12 @@ var (
 	faultResolveOnDeploy   bool
 	faultAssigneeID        string
 	faultUnassign          bool
+	faultIDs               []string
+	faultSelectAll         bool
+	faultCreatedAfter      string
+	faultOccurredAfter     string
+	faultOccurredBefore    string
+	faultDryRun            bool
 )
 
 // faultSummary is v3's fault summary, which apiv3 returns untyped.
@@ -377,6 +386,206 @@ var faultsAffectedUsersCmd = &cobra.Command{
 	},
 }
 
+// faultBulkChange is one of v3's bulk fault state changes.
+type faultBulkChange func(
+	*apiv3.FaultsService,
+	context.Context,
+	string,
+	apiv3.FaultSelection,
+) (*apiv3.FaultBulkResult, error)
+
+// faultTimeFilter is a flag that narrows --query or --all, with the selection
+// method it sets.
+type faultTimeFilter struct {
+	flag  string
+	value *string
+	apply func(apiv3.FaultSelection, time.Time) apiv3.FaultSelection
+}
+
+var faultTimeFilters = []faultTimeFilter{
+	{"created-after", &faultCreatedAfter, apiv3.FaultSelection.CreatedAfter},
+	{"occurred-after", &faultOccurredAfter, apiv3.FaultSelection.OccurredAfter},
+	{"occurred-before", &faultOccurredBefore, apiv3.FaultSelection.OccurredBefore},
+}
+
+// faultSelection builds the selection a bulk command's flags describe, with
+// its time filters and --dry-run.
+func faultSelection(cmd *cobra.Command) (apiv3.FaultSelection, error) {
+	sel, err := faultSelector(cmd)
+	if err != nil {
+		return sel, err
+	}
+	for _, f := range faultTimeFilters {
+		if !cmd.Flags().Changed(f.flag) {
+			continue
+		}
+		t, err := parseTimeFlag(*f.value)
+		if err != nil {
+			return sel, fmt.Errorf("invalid --%s: %w", f.flag, err)
+		}
+		// apiv3 sends Unix seconds and treats 0 as unset, so the epoch would
+		// silently drop the filter (and --all would then match every fault).
+		if t.Unix() <= 0 {
+			return sel, fmt.Errorf("invalid --%s: must be after 1970-01-01", f.flag)
+		}
+		sel = f.apply(sel, t)
+	}
+	if faultDryRun {
+		sel = sel.DryRun()
+	}
+	return sel, nil
+}
+
+// faultSelector picks the faults: exactly one of --id, --query or --all, with
+// time filters only on --query or --all. --all needs a time filter, so no single
+// command changes every fault in the project.
+func faultSelector(cmd *cobra.Command) (apiv3.FaultSelection, error) {
+	byID := cmd.Flags().Changed("id")
+	byQuery := cmd.Flags().Changed("query")
+	selectors := 0
+	for _, set := range []bool{byID, byQuery, faultSelectAll} {
+		if set {
+			selectors++
+		}
+	}
+	if selectors != 1 {
+		return apiv3.FaultSelection{}, errors.New("use exactly one of --id, --query or --all")
+	}
+
+	filtered := slices.ContainsFunc(faultTimeFilters, func(f faultTimeFilter) bool {
+		return cmd.Flags().Changed(f.flag)
+	})
+
+	var sel apiv3.FaultSelection
+	switch {
+	case byID:
+		if filtered {
+			return sel, errors.New(
+				"--created-after, --occurred-after and --occurred-before apply to --query or --all, not --id",
+			)
+		}
+		sel = apiv3.SelectFaults(faultIDs...)
+	case byQuery:
+		sel = apiv3.SelectFaultsMatching(faultQuery)
+	default:
+		if !filtered {
+			return sel, errors.New(
+				"--all needs --created-after, --occurred-after or --occurred-before; it won't change every fault in the project at once",
+			)
+		}
+		sel = apiv3.SelectAllFaults()
+	}
+	return sel, nil
+}
+
+// pluralFaults is "1 fault" or "n faults".
+func pluralFaults(n int) string {
+	if n == 1 {
+		return "1 fault"
+	}
+	return fmt.Sprintf("%d faults", n)
+}
+
+// newFaultsBulkCmd builds one of the bulk state commands (resolve, unresolve,
+// ignore, unignore), which share their flags and differ only in the change.
+func newFaultsBulkCmd(verb, past string, change faultBulkChange) *cobra.Command {
+	title := strings.ToUpper(verb[:1]) + verb[1:]
+	cmd := &cobra.Command{
+		Use:   verb,
+		Short: title + " faults",
+		// A stray argument (an unquoted --query "a b") would otherwise be
+		// dropped silently before a change to many faults.
+		Args: cobra.NoArgs,
+		Long: fmt.Sprintf(`%s faults in one request.
+
+Choose the faults with exactly one of:
+  --id       the named faults (repeat the flag for more than one)
+  --query    every fault matching a search, as in faults list
+  --all      every fault in the project that the time filters match
+
+--created-after, --occurred-after and --occurred-before narrow --query or --all;
+they can't be used with --id. --all needs a time filter, so one command can't
+change every fault in the project at once. Times are YYYY-MM-DD or RFC3339.
+
+--dry-run reports what would change without changing anything.
+
+Examples:
+  hb faults %[2]s --project-id Xk9mZp --id Fk7pQ2 --id Fk8qR3
+  hb faults %[2]s --project-id Xk9mZp --query "class:RuntimeError" --dry-run
+  hb faults %[2]s --project-id Xk9mZp --all --occurred-before 2026-01-01`,
+			title, verb),
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
+				return err
+			}
+			sel, err := faultSelection(cmd)
+			if err != nil {
+				return err
+			}
+
+			client, err := newDataAPIClient()
+			if err != nil {
+				return err
+			}
+
+			result, err := change(client.Faults, context.Background(), faultsProjectID, sel)
+			if err != nil {
+				return dataAPIError(verb+" faults", err)
+			}
+
+			if faultOutputFormat == "json" {
+				return printJSON(result)
+			}
+
+			summary := past + " " + pluralFaults(result.Count)
+			if result.DryRun {
+				summary = "Dry run, nothing changed. Would " + verb + " " + pluralFaults(
+					result.Count,
+				)
+			}
+			if len(result.FaultIds) == 0 {
+				fmt.Println(summary)
+				return nil
+			}
+			fmt.Println(summary + ":")
+			for _, id := range result.FaultIds {
+				fmt.Printf("  %s\n", id)
+			}
+			if more := result.Count - len(result.FaultIds); more > 0 {
+				fmt.Printf("  …and %d more\n", more)
+			}
+			return nil
+		},
+	}
+
+	cmd.Flags().StringArrayVar(&faultIDs, "id", nil, "Fault ID (repeatable)")
+	cmd.Flags().StringVar(&faultQuery, "query", "", "Search query selecting the faults")
+	cmd.Flags().BoolVar(&faultSelectAll, "all", false,
+		"Every fault the time filters match (needs a time filter)")
+	cmd.Flags().StringVar(&faultCreatedAfter, "created-after", "",
+		"Only faults first seen after this time (with --query or --all)")
+	cmd.Flags().StringVar(&faultOccurredAfter, "occurred-after", "",
+		"Only faults that occurred after this time (with --query or --all)")
+	cmd.Flags().StringVar(&faultOccurredBefore, "occurred-before", "",
+		"Only faults that haven't occurred since this time (with --query or --all)")
+	cmd.Flags().BoolVar(&faultDryRun, "dry-run", false,
+		"Report what would change without changing anything")
+	cmd.Flags().
+		StringVarP(&faultOutputFormat, "output", "o", "text", "Output format (text or json)")
+	return cmd
+}
+
+var (
+	faultsResolveCmd = newFaultsBulkCmd("resolve", "Resolved",
+		(*apiv3.FaultsService).Resolve)
+	faultsUnresolveCmd = newFaultsBulkCmd("unresolve", "Unresolved",
+		(*apiv3.FaultsService).Unresolve)
+	faultsIgnoreCmd = newFaultsBulkCmd("ignore", "Ignored",
+		(*apiv3.FaultsService).Ignore)
+	faultsUnignoreCmd = newFaultsBulkCmd("unignore", "Unignored",
+		(*apiv3.FaultsService).Unignore)
+)
+
 func init() {
 	rootCmd.AddCommand(faultsCmd)
 	faultsCmd.AddCommand(faultsListCmd)
@@ -385,6 +594,10 @@ func init() {
 	faultsCmd.AddCommand(faultsNoticesCmd)
 	faultsCmd.AddCommand(faultsCountsCmd)
 	faultsCmd.AddCommand(faultsAffectedUsersCmd)
+	faultsCmd.AddCommand(faultsResolveCmd)
+	faultsCmd.AddCommand(faultsUnresolveCmd)
+	faultsCmd.AddCommand(faultsIgnoreCmd)
+	faultsCmd.AddCommand(faultsUnignoreCmd)
 
 	// Common flags
 	faultsCmd.PersistentFlags().StringVar(&faultsProjectID, "project-id", "", "Project ID")
