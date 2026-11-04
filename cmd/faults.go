@@ -700,6 +700,34 @@ var faultsResumeRecordingCmd = &cobra.Command{
 	},
 }
 
+// faultsDeleteCmd represents the faults delete command
+var faultsDeleteCmd = &cobra.Command{
+	Use:   "delete",
+	Short: "Delete a fault",
+	Long:  `Delete a fault and all its notices. This action cannot be undone.`,
+	RunE: func(_ *cobra.Command, _ []string) error {
+		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
+			return err
+		}
+
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
+		}
+
+		if err := client.Faults.Delete(
+			context.Background(),
+			faultsProjectID,
+			faultID,
+		); err != nil {
+			return dataAPIError("delete fault", err)
+		}
+
+		fmt.Println("Fault deleted successfully")
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(faultsCmd)
 	faultsCmd.AddCommand(faultsListCmd)
@@ -792,4 +820,9 @@ func init() {
 	_ = faultsPauseRecordingCmd.MarkFlagRequired("for")
 	faultsResumeRecordingCmd.Flags().StringVar(&faultID, "id", "", "Fault ID")
 	_ = faultsResumeRecordingCmd.MarkFlagRequired("id")
+
+	// delete command
+	faultsCmd.AddCommand(faultsDeleteCmd)
+	faultsDeleteCmd.Flags().StringVar(&faultID, "id", "", "Fault ID")
+	_ = faultsDeleteCmd.MarkFlagRequired("id")
 }
