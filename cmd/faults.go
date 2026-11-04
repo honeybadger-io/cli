@@ -586,6 +586,46 @@ var (
 		(*apiv3.FaultsService).Unignore)
 )
 
+var faultMergeInto string
+
+// faultsMergeCmd represents the faults merge command
+var faultsMergeCmd = &cobra.Command{
+	Use:   "merge",
+	Short: "Merge a fault into another",
+	Long: `Merge the fault named by --id into the fault named by --into.
+
+The --id fault is removed: its notices, comments and history move to the --into
+fault, and its tags, assignee and resolved or ignored state are dropped. The merge
+runs in the background. This action cannot be undone.
+
+Example:
+  hb faults merge --project-id Xk9mZp --id Fk7pQ2 --into Fk8qR3`,
+	RunE: func(_ *cobra.Command, _ []string) error {
+		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
+			return err
+		}
+
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
+		}
+
+		merge, err := client.Faults.Merge(
+			context.Background(),
+			faultsProjectID,
+			faultID,
+			faultMergeInto,
+		)
+		if err != nil {
+			return dataAPIError("merge fault", err)
+		}
+
+		fmt.Printf("Merging fault %s into %s (batch %s). The merge runs in the background.\n",
+			merge.SourceId, merge.TargetId, merge.BatchId)
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(faultsCmd)
 	faultsCmd.AddCommand(faultsListCmd)
@@ -660,4 +700,11 @@ func init() {
 	if err := faultsAffectedUsersCmd.MarkFlagRequired("id"); err != nil {
 		fmt.Printf("error marking id flag as required: %v\n", err)
 	}
+
+	// merge command
+	faultsCmd.AddCommand(faultsMergeCmd)
+	faultsMergeCmd.Flags().StringVar(&faultID, "id", "", "ID of the fault to merge away")
+	faultsMergeCmd.Flags().StringVar(&faultMergeInto, "into", "", "ID of the fault to keep")
+	_ = faultsMergeCmd.MarkFlagRequired("id")
+	_ = faultsMergeCmd.MarkFlagRequired("into")
 }
