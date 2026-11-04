@@ -34,7 +34,10 @@ const (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "hb",
+	Use: "hb",
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+		return checkIDFlags(cmd)
+	},
 	Short: "Honeybadger CLI tool",
 	Long: `A command line interface for interacting with Honeybadger.
 

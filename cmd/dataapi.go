@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/honeybadger-io/api-go/apiv3"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -94,7 +96,40 @@ func resolveDataAPIProjectID(projectID *string) error {
 			"project ID is required. Set it using --project-id flag, HONEYBADGER_PROJECT_ID environment variable, or project_id in your config file",
 		)
 	}
+	if isDotSegment(*projectID) {
+		return fmt.Errorf("invalid project ID: %q isn't an ID", *projectID)
+	}
 	return nil
+}
+
+// isDotSegment reports whether id is "." or "..". apiv3 puts ids into the URL
+// path escaped, but escaping leaves these alone and the URL then resolves to a
+// different resource: deleting Ingestion Key ".." would delete the project.
+func isDotSegment(id string) bool {
+	return id == "." || id == ".."
+}
+
+// checkIDFlags refuses "." and ".." in any id flag (--id, --*-id, --into)
+// before a command runs.
+func checkIDFlags(cmd *cobra.Command) error {
+	var err error
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if err != nil || !f.Changed ||
+			(f.Name != "id" && f.Name != "into" && !strings.HasSuffix(f.Name, "-id")) {
+			return
+		}
+		values := []string{f.Value.String()}
+		if sv, isSlice := f.Value.(pflag.SliceValue); isSlice {
+			values = sv.GetSlice()
+		}
+		for _, v := range values {
+			if isDotSegment(v) {
+				err = fmt.Errorf("invalid --%s: %q isn't an ID", f.Name, v)
+				return
+			}
+		}
+	})
+	return err
 }
 
 // dataAPIError reports a failed Data API call. A 401 gets a hint, since v3 says
