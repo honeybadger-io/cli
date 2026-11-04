@@ -7,7 +7,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	hbapi "github.com/honeybadger-io/api-go"
+	hbapi "github.com/honeybadger-io/api-go/apiv2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
