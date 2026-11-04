@@ -7,6 +7,7 @@ import (
 	"slices"
 	"text/tabwriter"
 
+	"github.com/honeybadger-io/api-go/apiv3"
 	"github.com/spf13/cobra"
 )
 
@@ -79,7 +80,7 @@ var commentsListCmd = &cobra.Command{
 				author = name
 			}
 
-			body := c.Body.GetOrEmpty()
+			body := commentText(c)
 			if len(body) > 40 {
 				body = body[:37] + "..."
 			}
@@ -138,7 +139,7 @@ var commentsGetCmd = &cobra.Command{
 			fmt.Printf("  Author: %s\n", name)
 		}
 		fmt.Printf("  Created: %s\n", comment.CreatedAt.Format("2006-01-02 15:04:05"))
-		fmt.Printf("  Body:\n    %s\n", comment.Body.GetOrEmpty())
+		fmt.Printf("  Body:\n    %s\n", commentText(*comment))
 		return nil
 	},
 }
@@ -296,4 +297,17 @@ func init() {
 	// Flags for delete command
 	commentsDeleteCmd.Flags().StringVar(&commentID, "id", "", "Comment ID")
 	_ = commentsDeleteCmd.MarkFlagRequired("id")
+}
+
+// commentText is the text shown for a comment. One that records a change
+// (resolved, unresolved, ...) has no body in v3, so it reads "marked as
+// resolved", as v2's server wrote it.
+func commentText(c apiv3.Comment) string {
+	if body := c.Body.GetOrEmpty(); body != "" {
+		return body
+	}
+	if event := c.Event.GetOrEmpty(); event != "" {
+		return "marked as " + event
+	}
+	return ""
 }
