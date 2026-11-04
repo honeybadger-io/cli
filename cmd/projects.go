@@ -183,7 +183,7 @@ Example JSON payload:
 			return dataAPIError("update project", err)
 		}
 
-		fmt.Printf("Project %s updated\n", project.Id)
+		fmt.Printf("Project %s was successfully updated\n", project.Id)
 		return nil
 	},
 }
@@ -209,7 +209,7 @@ var projectsDeleteCmd = &cobra.Command{
 			return dataAPIError("delete project", err)
 		}
 
-		fmt.Printf("Project %s deleted\n", projectID)
+		fmt.Printf("Project %s deleted successfully\n", projectID)
 		return nil
 	},
 }

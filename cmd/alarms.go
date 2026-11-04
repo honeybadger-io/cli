@@ -242,16 +242,17 @@ Example JSON payload:
 			return err
 		}
 
-		if _, err := client.Alarms.Update(
+		alarm, err := client.Alarms.Update(
 			context.Background(),
 			alarmsProjectID,
 			alarmID,
 			params,
-		); err != nil {
+		)
+		if err != nil {
 			return dataAPIError("update alarm", err)
 		}
 
-		fmt.Println("Alarm updated successfully")
+		fmt.Printf("Alarm %s was successfully updated\n", alarm.Id)
 		return nil
 	},
 }
@@ -280,7 +281,7 @@ var alarmsDeleteCmd = &cobra.Command{
 			return dataAPIError("delete alarm", err)
 		}
 
-		fmt.Println("Alarm deleted successfully")
+		fmt.Printf("Alarm %s deleted successfully\n", alarmID)
 		return nil
 	},
 }

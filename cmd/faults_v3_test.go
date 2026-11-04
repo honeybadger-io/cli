@@ -140,7 +140,7 @@ func TestFaultsUpdateSendsOnlyTheGivenFields(t *testing.T) {
 			assert.Equal(t, "PATCH", req.Method)
 			assert.Equal(t, "/v3/projects/Xk9mZp/faults/Fk7pQ2", req.Path)
 			assertJSONBody(t, tt.body, req.Body)
-			assert.Contains(t, out, "Fault Fk7pQ2 updated")
+			assert.Contains(t, out, "Fault Fk7pQ2 was successfully updated")
 		})
 	}
 }

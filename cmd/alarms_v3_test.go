@@ -225,7 +225,7 @@ func TestAlarmsUpdateSendsOnlyTheGivenFields(t *testing.T) {
 			assert.Equal(t, "PATCH", req.Method)
 			assert.Equal(t, "/v3/projects/Xk9mZp/alarms/Qx7LmP2vRt9K", req.Path)
 			assertJSONBody(t, tt.input, req.Body)
-			assert.Contains(t, out, "Alarm updated successfully")
+			assert.Contains(t, out, "Alarm Qx7LmP2vRt9K was successfully updated")
 		})
 	}
 }
@@ -251,7 +251,7 @@ func TestAlarmsDelete(t *testing.T) {
 	req := s.only(t)
 	assert.Equal(t, "DELETE", req.Method)
 	assert.Equal(t, "/v3/projects/Xk9mZp/alarms/Qx7LmP2vRt9K", req.Path)
-	assert.Contains(t, out, "Alarm deleted successfully")
+	assert.Contains(t, out, "Alarm Qx7LmP2vRt9K deleted successfully")
 }
 
 func TestAlarmsDeleteRequiresAProjectID(t *testing.T) {

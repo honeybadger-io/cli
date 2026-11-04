@@ -191,7 +191,7 @@ func TestDashboardsUpdateSendsOnlyTheGivenFields(t *testing.T) {
 			assert.Equal(t, "PATCH", req.Method)
 			assert.Equal(t, "/v3/projects/Xk9mZp/dashboards/Db4rKn", req.Path)
 			assertJSONBody(t, tt.input, req.Body)
-			assert.Contains(t, out, "Dashboard updated successfully")
+			assert.Contains(t, out, "Dashboard Db4rKn was successfully updated")
 		})
 	}
 }
@@ -237,7 +237,7 @@ func TestDashboardsDelete(t *testing.T) {
 	req := s.only(t)
 	assert.Equal(t, "DELETE", req.Method)
 	assert.Equal(t, "/v3/projects/Xk9mZp/dashboards/Db4rKn", req.Path)
-	assert.Contains(t, out, "Dashboard deleted successfully")
+	assert.Contains(t, out, "Dashboard Db4rKn deleted successfully")
 }
 
 func TestDashboardsDeleteRequiresAnID(t *testing.T) {

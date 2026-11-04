@@ -244,16 +244,17 @@ Example JSON payload:
 			return err
 		}
 
-		if _, err := client.Dashboards.Update(
+		dashboard, err := client.Dashboards.Update(
 			context.Background(),
 			dashboardsProjectID,
 			dashboardID,
 			params,
-		); err != nil {
+		)
+		if err != nil {
 			return dataAPIError("update dashboard", err)
 		}
 
-		fmt.Println("Dashboard updated successfully")
+		fmt.Printf("Dashboard %s was successfully updated\n", dashboard.Id)
 		return nil
 	},
 }
@@ -286,7 +287,7 @@ var dashboardsDeleteCmd = &cobra.Command{
 			return dataAPIError("delete dashboard", err)
 		}
 
-		fmt.Println("Dashboard deleted successfully")
+		fmt.Printf("Dashboard %s deleted successfully\n", dashboardID)
 		return nil
 	},
 }

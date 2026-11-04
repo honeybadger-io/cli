@@ -298,7 +298,7 @@ Examples:
 			return dataAPIError("update fault", err)
 		}
 
-		fmt.Printf("Fault %s updated\n", fault.Id)
+		fmt.Printf("Fault %s was successfully updated\n", fault.Id)
 		return nil
 	},
 }
