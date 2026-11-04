@@ -2,28 +2,21 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"text/tabwriter"
 	"time"
 
-	hbapi "github.com/honeybadger-io/api-go/apiv2"
+	"github.com/honeybadger-io/api-go/apiv3"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
 	projectOutputFormat      string
-	projectAccountID         string
-	projectID                int
+	projectID                string
 	projectCLIInputJSON      string
 	projectOccurrencesPeriod string
 	projectOccurrencesEnv    string
-	projectReportType        string
-	projectReportStart       string
-	projectReportStop        string
-	projectReportEnv         string
 )
 
 // projectsCmd represents the projects command
@@ -38,61 +31,33 @@ var projectsCmd = &cobra.Command{
 var projectsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all projects",
-	Long:  `List all projects accessible with your API key.`,
+	Long:  `List every project your API Token can reach.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		var response *hbapi.ProjectsResponse
-		var err error
-
-		// List projects by account ID if provided
-		if projectAccountID != "" {
-			response, err = client.Projects.ListByAccountID(ctx, projectAccountID)
-		} else {
-			response, err = client.Projects.ListAll(ctx)
-		}
-
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to list projects: %w", err)
+			return err
 		}
 
-		// Output results based on format
-		switch projectOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(response.Results, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			// Table format
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			_, _ = fmt.Fprintln(w, "ID\tNAME\tACTIVE\tFAULTS\tUNRESOLVED")
-			for _, project := range response.Results {
-				_, _ = fmt.Fprintf(w, "%d\t%s\t%v\t%d\t%d\n",
-					project.ID,
-					project.Name,
-					project.Active,
-					project.FaultCount,
-					project.UnresolvedFaultCount)
-			}
-			_ = w.Flush()
+		projects, err := client.Projects.ListAll(context.Background())
+		if err != nil {
+			return dataAPIError("list projects", err)
 		}
 
-		return nil
+		if projectOutputFormat == "json" {
+			return printJSON(projects)
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		_, _ = fmt.Fprintln(w, "ID\tNAME\tACTIVE\tFAULTS\tUNRESOLVED")
+		for _, project := range projects {
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%v\t%d\t%d\n",
+				project.Id,
+				project.Name,
+				project.Active,
+				project.FaultCount,
+				project.UnresolvedFaultCount)
+		}
+		return w.Flush()
 	},
 }
 
@@ -102,78 +67,37 @@ var projectsGetCmd = &cobra.Command{
 	Short: "Get a project by ID",
 	Long:  `Get detailed information about a specific project.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if projectID == 0 {
+		if projectID == "" {
 			return fmt.Errorf("project ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		project, err := client.Projects.Get(ctx, projectID)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to get project: %w", err)
+			return err
 		}
 
-		// Output result based on format
-		switch projectOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(project, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			// Detailed text format
-			fmt.Printf("Project Details:\n")
-			fmt.Printf("  ID: %d\n", project.ID)
-			fmt.Printf("  Name: %s\n", project.Name)
-			fmt.Printf("  Active: %v\n", project.Active)
-			fmt.Printf("  Created: %s\n", project.CreatedAt.Format("2006-01-02 15:04:05"))
-			fmt.Printf("  Total Faults: %d\n", project.FaultCount)
-			fmt.Printf("  Unresolved Faults: %d\n", project.UnresolvedFaultCount)
-			fmt.Printf("  Token: %s\n", project.Token)
-
-			if len(project.Environments) > 0 {
-				fmt.Printf("  Environments:\n")
-				for _, env := range project.Environments {
-					fmt.Printf("    - %s\n", env)
-				}
-			}
-
-			if len(project.Teams) > 0 {
-				fmt.Printf("  Teams:\n")
-				for _, team := range project.Teams {
-					fmt.Printf("    - %s (ID: %d)\n", team.Name, team.ID)
-				}
-			}
-
-			if len(project.Users) > 0 {
-				fmt.Printf("  Users:\n")
-				for _, user := range project.Users {
-					fmt.Printf("    - %s <%s> (ID: %d)\n", user.Name, user.Email, user.ID)
-				}
-			}
-
-			if len(project.Sites) > 0 {
-				fmt.Printf("  Sites:\n")
-				for _, site := range project.Sites {
-					fmt.Printf("    - %s: %s (State: %s)\n", site.Name, site.URL, site.State)
-				}
-			}
+		project, err := client.Projects.Get(context.Background(), projectID)
+		if err != nil {
+			return dataAPIError("get project", err)
 		}
 
+		if projectOutputFormat == "json" {
+			return printJSON(project)
+		}
+
+		fmt.Printf("Project Details:\n")
+		fmt.Printf("  ID: %s\n", project.Id)
+		fmt.Printf("  Name: %s\n", project.Name)
+		fmt.Printf("  Active: %v\n", project.Active)
+		fmt.Printf("  Created: %s\n", project.CreatedAt.Format("2006-01-02 15:04:05"))
+		fmt.Printf("  Total Faults: %d\n", project.FaultCount)
+		fmt.Printf("  Unresolved Faults: %d\n", project.UnresolvedFaultCount)
+		if len(project.Environments) > 0 {
+			fmt.Printf("  Environments:\n")
+			for _, env := range project.Environments {
+				fmt.Printf("    - %s\n", env)
+			}
+		}
 		return nil
 	},
 }
@@ -182,80 +106,44 @@ var projectsGetCmd = &cobra.Command{
 var projectsCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new project",
-	Long: `Create a new project.
-
-If --account-id is omitted, the project is created in the first account your
-auth token has access to.
+	Long: `Create a new project in the account your API Token belongs to.
 
 The --cli-input-json flag accepts either a JSON string or a file path prefixed with 'file://'.
+It takes the project's fields directly; only name is required.
 
 Example JSON payload:
 {
-  "project": {
-    "name": "My Project",
-    "resolve_errors_on_deploy": true,
-    "disable_public_links": false,
-    "language": "ruby",
-    "user_url": "https://myapp.com/users/[user_id]",
-    "source_url": "https://github.com/myorg/myrepo/blob/main/[filename]#L[line]",
-    "purge_days": 90,
-    "user_search_field": "user_id"
-  }
+  "name": "My Project",
+  "resolve_errors_on_deploy": true,
+  "disable_public_links": false,
+  "language": "ruby",
+  "user_url": "https://myapp.com/users/[user_id]",
+  "source_url": "https://github.com/myorg/myrepo/blob/main/[filename]#L[line]",
+  "purge_days": 90,
+  "user_search_field": "user_id"
 }`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if projectCLIInputJSON == "" {
-			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
-		}
-
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		// Parse JSON input
-		jsonData, err := readJSONInput(projectCLIInputJSON)
+		params, err := decodeInput[apiv3.ProjectCreateParams](projectCLIInputJSON, "project")
 		if err != nil {
-			return fmt.Errorf("failed to read JSON input: %w", err)
+			return err
 		}
 
-		// Parse the payload structure
-		var payload struct {
-			Project hbapi.ProjectRequest `json:"project"`
-		}
-		if err := json.Unmarshal(jsonData, &payload); err != nil {
-			return fmt.Errorf("failed to parse JSON payload: %w", err)
-		}
-
-		ctx := context.Background()
-		project, err := client.Projects.Create(ctx, projectAccountID, payload.Project)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to create project: %w", err)
+			return err
 		}
 
-		// Output result based on format
-		switch projectOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(project, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			fmt.Printf("Project created successfully!\n")
-			fmt.Printf("  ID: %d\n", project.ID)
-			fmt.Printf("  Name: %s\n", project.Name)
-			fmt.Printf("  Token: %s\n", project.Token)
+		project, err := client.Projects.Create(context.Background(), params)
+		if err != nil {
+			return dataAPIError("create project", err)
 		}
 
+		if projectOutputFormat == "json" {
+			return printJSON(project)
+		}
+		fmt.Printf("Project created successfully!\n")
+		fmt.Printf("  ID: %s\n", project.Id)
+		fmt.Printf("  Name: %s\n", project.Name)
 		return nil
 	},
 }
@@ -264,61 +152,36 @@ Example JSON payload:
 var projectsUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update an existing project",
-	Long: `Update an existing project's settings.
+	Long: `Update an existing project's settings. Only the fields you send change.
 
 The --cli-input-json flag accepts either a JSON string or a file path prefixed with 'file://'.
 
 Example JSON payload:
 {
-  "project": {
-    "name": "My Updated Project",
-    "resolve_errors_on_deploy": false,
-    "purge_days": 120
-  }
+  "name": "My Updated Project",
+  "resolve_errors_on_deploy": false,
+  "purge_days": 120
 }`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if projectID == 0 {
+		if projectID == "" {
 			return fmt.Errorf("project ID is required. Set it using --id flag")
 		}
-		if projectCLIInputJSON == "" {
-			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
-		}
-
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		// Parse JSON input
-		jsonData, err := readJSONInput(projectCLIInputJSON)
+		params, err := decodeInput[apiv3.ProjectParams](projectCLIInputJSON, "project")
 		if err != nil {
-			return fmt.Errorf("failed to read JSON input: %w", err)
+			return err
 		}
 
-		// Parse the payload structure
-		var payload struct {
-			Project hbapi.ProjectRequest `json:"project"`
-		}
-		if err := json.Unmarshal(jsonData, &payload); err != nil {
-			return fmt.Errorf("failed to parse JSON payload: %w", err)
-		}
-
-		ctx := context.Background()
-		result, err := client.Projects.Update(ctx, projectID, payload.Project)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to update project: %w", err)
+			return err
 		}
 
-		fmt.Println(result.Message)
+		project, err := client.Projects.Update(context.Background(), projectID, params)
+		if err != nil {
+			return dataAPIError("update project", err)
+		}
+
+		fmt.Printf("Project %s updated\n", project.Id)
 		return nil
 	},
 }
@@ -329,31 +192,20 @@ var projectsDeleteCmd = &cobra.Command{
 	Short: "Delete a project",
 	Long:  `Delete a project by ID. This action cannot be undone.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if projectID == 0 {
+		if projectID == "" {
 			return fmt.Errorf("project ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		result, err := client.Projects.Delete(ctx, projectID)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to delete project: %w", err)
+			return err
 		}
 
-		fmt.Println(result.Message)
+		if err := client.Projects.Delete(context.Background(), projectID); err != nil {
+			return dataAPIError("delete project", err)
+		}
+
+		fmt.Printf("Project %s deleted\n", projectID)
 		return nil
 	},
 }
@@ -364,230 +216,55 @@ var projectsOccurrencesCmd = &cobra.Command{
 	Short: "Get occurrence counts for projects",
 	Long:  `Get occurrence counts for all projects or a specific project over time.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
 
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		options := hbapi.ProjectGetOccurrenceCountsOptions{
-			Period:      projectOccurrencesPeriod,
+		options := apiv3.OccurrenceOptions{
+			Period:      apiv3.OccurrencePeriod(projectOccurrencesPeriod),
 			Environment: projectOccurrencesEnv,
 		}
-
 		ctx := context.Background()
 
-		// If project ID is specified, get occurrences for that project
-		// Otherwise get occurrences for all projects
-		if projectID > 0 {
-			result, err := client.Projects.GetOccurrenceCounts(ctx, projectID, options)
+		var series []apiv3.OccurrenceSeries
+		if projectID != "" {
+			one, err := client.Projects.Occurrences(ctx, projectID, options)
 			if err != nil {
-				return fmt.Errorf("failed to get occurrence counts: %w", err)
+				return dataAPIError("get occurrence counts", err)
 			}
-
-			// Output results based on format
-			switch projectOutputFormat {
-			case "json":
-				jsonBytes, err := json.MarshalIndent(result, "", "  ")
-				if err != nil {
-					return fmt.Errorf("failed to marshal JSON: %w", err)
-				}
-				fmt.Println(string(jsonBytes))
-			default:
-				w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-				_, _ = fmt.Fprintln(w, "TIMESTAMP\tCOUNT")
-				for _, count := range result {
-					_, _ = fmt.Fprintf(w, "%d\t%d\n", count[0], count[1])
-				}
-				_ = w.Flush()
-			}
+			series = []apiv3.OccurrenceSeries{*one}
 		} else {
-			result, err := client.Projects.GetAllOccurrenceCounts(ctx, options)
+			series, err = client.Projects.AccountOccurrences(ctx, options)
 			if err != nil {
-				return fmt.Errorf("failed to get occurrence counts: %w", err)
+				return dataAPIError("get occurrence counts", err)
 			}
+		}
 
-			// Output results based on format
-			switch projectOutputFormat {
-			case "json":
-				jsonBytes, err := json.MarshalIndent(result, "", "  ")
-				if err != nil {
-					return fmt.Errorf("failed to marshal JSON: %w", err)
-				}
-				fmt.Println(string(jsonBytes))
-			default:
-				for projectIDStr, counts := range result {
-					fmt.Printf("Project %s:\n", projectIDStr)
-					w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-					_, _ = fmt.Fprintln(w, "  TIMESTAMP\tCOUNT")
-					for _, count := range counts {
-						_, _ = fmt.Fprintf(w, "  %d\t%d\n", count[0], count[1])
-					}
-					_ = w.Flush()
+		if projectOutputFormat == "json" {
+			if projectID != "" {
+				return printJSON(series[0])
+			}
+			return printJSON(series)
+		}
+
+		for i, s := range series {
+			if projectID == "" {
+				if i > 0 {
 					fmt.Println()
 				}
+				fmt.Printf("Project %s:\n", s.ProjectId)
 			}
-		}
-
-		return nil
-	},
-}
-
-// projectsIntegrationsCmd represents the projects integrations command
-var projectsIntegrationsCmd = &cobra.Command{
-	Use:   "integrations",
-	Short: "Get integrations for a project",
-	Long:  `Get all notification channels/integrations configured for a project.`,
-	RunE: func(_ *cobra.Command, _ []string) error {
-		if projectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --id flag")
-		}
-
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		integrations, err := client.Projects.GetIntegrations(ctx, projectID)
-		if err != nil {
-			return fmt.Errorf("failed to get integrations: %w", err)
-		}
-
-		// Output results based on format
-		switch projectOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(integrations, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			_, _ = fmt.Fprintln(w, "ID\tTYPE\tACTIVE\tEVENTS")
-			for _, integration := range integrations {
-				active := " "
-				if integration.Active {
-					active = "✓"
-				}
-				events := "none"
-				if len(integration.Events) > 0 {
-					events = fmt.Sprintf("%v", integration.Events)
-				}
-				_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\n",
-					integration.ID,
-					integration.Type,
-					active,
-					events)
+			_, _ = fmt.Fprintln(w, "TIMESTAMP\tCOUNT")
+			for _, b := range s.Buckets {
+				_, _ = fmt.Fprintf(w, "%s\t%d\n",
+					time.Unix(b.Timestamp, 0).UTC().Format(time.RFC3339), b.Count)
 			}
-			_ = w.Flush()
-		}
-
-		return nil
-	},
-}
-
-// projectsReportsCmd represents the projects reports command
-var projectsReportsCmd = &cobra.Command{
-	Use:   "reports",
-	Short: "Get report data for a project",
-	Long: `Get report data for a project. Available report types:
-  - notices_by_class: Group notices by error class
-  - notices_by_location: Group notices by location
-  - notices_by_user: Group notices by user
-  - notices_per_day: Count notices per day`,
-	RunE: func(_ *cobra.Command, _ []string) error {
-		if projectID == 0 {
-			return fmt.Errorf("project ID is required. Set it using --id flag")
-		}
-		if projectReportType == "" {
-			return fmt.Errorf("report type is required. Set it using --type flag")
-		}
-
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		options := hbapi.ProjectGetReportOptions{
-			Environment: projectReportEnv,
-		}
-
-		// Parse start and stop times if provided
-		if projectReportStart != "" {
-			startTime, err := time.Parse(time.RFC3339, projectReportStart)
-			if err != nil {
-				return fmt.Errorf("invalid start time format (use RFC3339): %w", err)
+			if err := w.Flush(); err != nil {
+				return err
 			}
-			options.Start = &startTime
 		}
-		if projectReportStop != "" {
-			stopTime, err := time.Parse(time.RFC3339, projectReportStop)
-			if err != nil {
-				return fmt.Errorf("invalid stop time format (use RFC3339): %w", err)
-			}
-			options.Stop = &stopTime
-		}
-
-		ctx := context.Background()
-		report, err := client.Projects.GetReport(
-			ctx,
-			projectID,
-			hbapi.ProjectReportType(projectReportType),
-			options,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to get report: %w", err)
-		}
-
-		// Output results based on format
-		switch projectOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(report, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			for _, row := range report {
-				for i, col := range row {
-					if i > 0 {
-						_, _ = fmt.Fprint(w, "\t")
-					}
-					_, _ = fmt.Fprintf(w, "%v", col)
-				}
-				_, _ = fmt.Fprintln(w)
-			}
-			_ = w.Flush()
-		}
-
 		return nil
 	},
 }
@@ -600,17 +277,13 @@ func init() {
 	projectsCmd.AddCommand(projectsUpdateCmd)
 	projectsCmd.AddCommand(projectsDeleteCmd)
 	projectsCmd.AddCommand(projectsOccurrencesCmd)
-	projectsCmd.AddCommand(projectsIntegrationsCmd)
-	projectsCmd.AddCommand(projectsReportsCmd)
 
 	// Flags for list command
 	projectsListCmd.Flags().
 		StringVarP(&projectOutputFormat, "output", "o", "table", "Output format (table or json)")
-	projectsListCmd.Flags().
-		StringVar(&projectAccountID, "account-id", "", "Filter projects by account ID")
 
 	// Flags for get command
-	projectsGetCmd.Flags().IntVar(&projectID, "id", 0, "Project ID")
+	projectsGetCmd.Flags().StringVar(&projectID, "id", "", "Project ID")
 	projectsGetCmd.Flags().
 		StringVarP(&projectOutputFormat, "output", "o", "text", "Output format (text or json)")
 
@@ -619,8 +292,6 @@ func init() {
 	}
 
 	// Flags for create command
-	projectsCreateCmd.Flags().
-		StringVar(&projectAccountID, "account-id", "", "Account ID to create project in (defaults to the first account your auth token can access)")
 	projectsCreateCmd.Flags().
 		StringVar(&projectCLIInputJSON, "cli-input-json", "", "JSON payload (string or file://path)")
 	projectsCreateCmd.Flags().
@@ -631,7 +302,7 @@ func init() {
 	}
 
 	// Flags for update command
-	projectsUpdateCmd.Flags().IntVar(&projectID, "id", 0, "Project ID")
+	projectsUpdateCmd.Flags().StringVar(&projectID, "id", "", "Project ID")
 	projectsUpdateCmd.Flags().
 		StringVar(&projectCLIInputJSON, "cli-input-json", "", "JSON payload (string or file://path)")
 
@@ -643,7 +314,7 @@ func init() {
 	}
 
 	// Flags for delete command
-	projectsDeleteCmd.Flags().IntVar(&projectID, "id", 0, "Project ID")
+	projectsDeleteCmd.Flags().StringVar(&projectID, "id", "", "Project ID")
 
 	if err := projectsDeleteCmd.MarkFlagRequired("id"); err != nil {
 		fmt.Printf("error marking id flag as required: %v\n", err)
@@ -651,40 +322,11 @@ func init() {
 
 	// Flags for occurrences command
 	projectsOccurrencesCmd.Flags().
-		IntVar(&projectID, "id", 0, "Project ID (optional - if not specified, shows all projects)")
+		StringVar(&projectID, "id", "", "Project ID (optional - if not specified, shows all projects)")
 	projectsOccurrencesCmd.Flags().
 		StringVar(&projectOccurrencesPeriod, "period", "day", "Time period (hour, day, week, or month)")
 	projectsOccurrencesCmd.Flags().
 		StringVar(&projectOccurrencesEnv, "environment", "", "Filter by environment")
 	projectsOccurrencesCmd.Flags().
 		StringVarP(&projectOutputFormat, "output", "o", "table", "Output format (table or json)")
-
-	// Flags for integrations command
-	projectsIntegrationsCmd.Flags().IntVar(&projectID, "id", 0, "Project ID")
-	projectsIntegrationsCmd.Flags().
-		StringVarP(&projectOutputFormat, "output", "o", "table", "Output format (table or json)")
-
-	if err := projectsIntegrationsCmd.MarkFlagRequired("id"); err != nil {
-		fmt.Printf("error marking id flag as required: %v\n", err)
-	}
-
-	// Flags for reports command
-	projectsReportsCmd.Flags().IntVar(&projectID, "id", 0, "Project ID")
-	projectsReportsCmd.Flags().
-		StringVar(&projectReportType, "type", "", "Report type (notices_by_class, notices_by_location, notices_by_user, notices_per_day)")
-	projectsReportsCmd.Flags().
-		StringVar(&projectReportStart, "start", "", "Start time (RFC3339 format)")
-	projectsReportsCmd.Flags().
-		StringVar(&projectReportStop, "stop", "", "Stop time (RFC3339 format)")
-	projectsReportsCmd.Flags().
-		StringVar(&projectReportEnv, "environment", "", "Filter by environment")
-	projectsReportsCmd.Flags().
-		StringVarP(&projectOutputFormat, "output", "o", "table", "Output format (table or json)")
-
-	if err := projectsReportsCmd.MarkFlagRequired("id"); err != nil {
-		fmt.Printf("error marking id flag as required: %v\n", err)
-	}
-	if err := projectsReportsCmd.MarkFlagRequired("type"); err != nil {
-		fmt.Printf("error marking type flag as required: %v\n", err)
-	}
 }

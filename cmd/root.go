@@ -15,6 +15,7 @@ var (
 	cfgFile         string
 	apiKey          string
 	authToken       string
+	apiTokenFlag    string
 	endpoint        string
 	defaultEndpoint = "https://api.honeybadger.io"
 
@@ -41,10 +42,10 @@ var rootCmd = &cobra.Command{
 This tool provides access to two APIs:
 
   Reporting API - For sending data to Honeybadger (deployments, metrics)
-                  Authenticate with --api-key or HONEYBADGER_API_KEY
+                  Authenticate with an Ingestion Key: --api-key or HONEYBADGER_API_KEY
 
   Data API      - For reading and managing your Honeybadger data
-                  Authenticate with --auth-token or HONEYBADGER_AUTH_TOKEN`,
+                  Authenticate with an API Token: --api-token or HONEYBADGER_API_TOKEN`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -64,19 +65,21 @@ func init() {
 	// Add command groups
 	rootCmd.AddGroup(&cobra.Group{
 		ID:    GroupReportingAPI,
-		Title: "Reporting API Commands (use --api-key):",
+		Title: "Reporting API Commands (use --api-key with an Ingestion Key):",
 	})
 	rootCmd.AddGroup(&cobra.Group{
 		ID:    GroupDataAPI,
-		Title: "Data API Commands (use --auth-token):",
+		Title: "Data API Commands (use --api-token):",
 	})
 
 	rootCmd.PersistentFlags().
 		StringVar(&cfgFile, "config", "", "config file (default is ~/.honeybadger-cli.yaml)")
 	rootCmd.PersistentFlags().
-		StringVar(&apiKey, "api-key", "", "Honeybadger API key (for Reporting API)")
+		StringVar(&apiKey, "api-key", "", "Honeybadger Ingestion Key (for Reporting API)")
 	rootCmd.PersistentFlags().
 		StringVar(&authToken, "auth-token", "", "Honeybadger personal auth token (for Data API)")
+	rootCmd.PersistentFlags().
+		StringVar(&apiTokenFlag, "api-token", "", "Honeybadger API Token (for Data API)")
 	rootCmd.PersistentFlags().
 		StringVar(&endpoint, "endpoint", defaultEndpoint, "Honeybadger endpoint")
 
@@ -89,6 +92,12 @@ func init() {
 		rootCmd.PersistentFlags().Lookup("auth-token"),
 	); err != nil {
 		fmt.Printf("error binding auth-token flag: %v\n", err)
+	}
+	if err := viper.BindPFlag(
+		"api_token",
+		rootCmd.PersistentFlags().Lookup("api-token"),
+	); err != nil {
+		fmt.Printf("error binding api-token flag: %v\n", err)
 	}
 	if err := viper.BindPFlag(
 		"endpoint",
@@ -131,6 +140,9 @@ func initConfig() {
 	}
 	if rootCmd.PersistentFlags().Changed("auth-token") {
 		viper.Set("auth_token", authToken)
+	}
+	if rootCmd.PersistentFlags().Changed("api-token") {
+		viper.Set("api_token", apiTokenFlag)
 	}
 	if rootCmd.PersistentFlags().Changed("endpoint") {
 		viper.Set("endpoint", endpoint)
