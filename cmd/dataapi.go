@@ -81,6 +81,22 @@ func hasAPITokenPrefix(token string) bool {
 	return false
 }
 
+// resolveDataAPIProjectID fills in projectID from project_id (the
+// HONEYBADGER_PROJECT_ID environment variable or the config file) when the
+// --project-id flag wasn't given. v3 project ids are strings; a legacy numeric
+// id works too.
+func resolveDataAPIProjectID(projectID *string) error {
+	if *projectID == "" {
+		*projectID = strings.TrimSpace(viper.GetString("project_id"))
+	}
+	if *projectID == "" {
+		return errors.New(
+			"project ID is required. Set it using --project-id flag, HONEYBADGER_PROJECT_ID environment variable, or project_id in your config file",
+		)
+	}
+	return nil
+}
+
 // dataAPIError reports a failed Data API call. A 401 gets a hint, since v3 says
 // only "Access denied" and the usual causes are a revoked token or one from the
 // other region.

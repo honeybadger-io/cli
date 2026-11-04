@@ -5,16 +5,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 
-	hbapi "github.com/honeybadger-io/api-go/apiv2"
+	"github.com/honeybadger-io/api-go/apiv3"
+	"github.com/oapi-codegen/nullable"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
-	faultsProjectID        int
-	faultID                int
+	faultsProjectID        string
+	faultID                string
 	faultQuery             string
 	faultOrder             string
 	faultLimit             int
@@ -23,9 +24,29 @@ var (
 	faultResolved          bool
 	faultIgnored           bool
 	faultResolveOnDeploy   bool
-	faultAssigneeID        int
+	faultAssigneeID        string
 	faultUnassign          bool
 )
+
+// faultSummary is v3's fault summary, which apiv3 returns untyped.
+type faultSummary struct {
+	Total        int `json:"total"`
+	Environments []struct {
+		Environment *string `json:"environment"`
+		Resolved    bool    `json:"resolved"`
+		Ignored     bool    `json:"ignored"`
+		Count       int     `json:"count"`
+	} `json:"environments"`
+}
+
+// deref returns what p points to, or T's zero value when p is nil.
+func deref[T any](p *T) T {
+	if p == nil {
+		var zero T
+		return zero
+	}
+	return *p
+}
 
 // faultsCmd represents the faults command
 var faultsCmd = &cobra.Command{
@@ -41,78 +62,55 @@ var faultsListCmd = &cobra.Command{
 	Short: "List faults for a project",
 	Long:  `List all faults for a specific project with optional filtering.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&faultsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		// Build options
-		options := hbapi.FaultListOptions{
-			Q:     faultQuery,
-			Order: faultOrder,
-			Limit: faultLimit,
-		}
-
-		ctx := context.Background()
-		response, err := client.Faults.List(ctx, faultsProjectID, options)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to list faults: %w", err)
+			return err
 		}
 
-		// Output results based on format
-		switch faultOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(response.Results, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			// Table format
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			_, _ = fmt.Fprintln(w, "ID\tCLASS\tMESSAGE\tENV\tNOTICES\tRESOLVED\tLAST SEEN")
-			for _, fault := range response.Results {
-				lastSeen := "Never"
-				if fault.LastNoticeAt != nil {
-					lastSeen = fault.LastNoticeAt.Format("2006-01-02 15:04")
-				}
-
-				message := fault.Message
-				if len(message) > 50 {
-					message = message[:47] + "..."
-				}
-
-				resolved := " "
-				if fault.Resolved {
-					resolved = "✓"
-				}
-
-				_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%d\t%s\t%s\n",
-					fault.ID,
-					fault.Klass,
-					message,
-					fault.Environment,
-					fault.NoticesCount,
-					resolved,
-					lastSeen)
-			}
-			_ = w.Flush()
+		response, err := client.Faults.List(context.Background(), faultsProjectID,
+			apiv3.Search(faultQuery),
+			apiv3.OrderBy(faultOrder),
+			apiv3.Limit(faultLimit))
+		if err != nil {
+			return dataAPIError("list faults", err)
 		}
 
-		return nil
+		if faultOutputFormat == "json" {
+			return printJSON(response.Data)
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		_, _ = fmt.Fprintln(w, "ID\tCLASS\tMESSAGE\tENV\tNOTICES\tRESOLVED\tLAST SEEN")
+		for _, fault := range response.Data {
+			lastSeen := "Never"
+			if at, err := fault.LastNoticeAt.Get(); err == nil {
+				lastSeen = at.Format("2006-01-02 15:04")
+			}
+
+			message := fault.Message
+			if len(message) > 50 {
+				message = message[:47] + "..."
+			}
+
+			resolved := " "
+			if deref(fault.Resolved) {
+				resolved = "✓"
+			}
+
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\t%s\n",
+				fault.Id,
+				fault.Klass.GetOrEmpty(),
+				message,
+				fault.Environment.GetOrEmpty(),
+				deref(fault.NoticesCount),
+				resolved,
+				lastSeen)
+		}
+		return w.Flush()
 	},
 }
 
@@ -122,78 +120,49 @@ var faultsGetCmd = &cobra.Command{
 	Short: "Get a fault by ID",
 	Long:  `Get detailed information about a specific fault.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&faultsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
 		}
-		if faultID == 0 {
+		if faultID == "" {
 			return fmt.Errorf("fault ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		fault, err := client.Faults.Get(ctx, faultsProjectID, faultID)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to get fault: %w", err)
+			return err
 		}
 
-		// Output result based on format
-		switch faultOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(fault, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			// Detailed text format
-			fmt.Printf("Fault Details:\n")
-			fmt.Printf("  ID: %d\n", fault.ID)
-			fmt.Printf("  Class: %s\n", fault.Klass)
-			fmt.Printf("  Message: %s\n", fault.Message)
-			fmt.Printf("  Environment: %s\n", fault.Environment)
-			fmt.Printf("  Component: %s\n", fault.Component)
-			fmt.Printf("  Action: %s\n", fault.Action)
-			fmt.Printf("  Created: %s\n", fault.CreatedAt.Format("2006-01-02 15:04:05"))
-
-			if fault.LastNoticeAt != nil {
-				fmt.Printf("  Last Noticed: %s\n", fault.LastNoticeAt.Format("2006-01-02 15:04:05"))
-			}
-
-			fmt.Printf("  Notice Count: %d\n", fault.NoticesCount)
-			fmt.Printf("  Comments Count: %d\n", fault.CommentsCount)
-			fmt.Printf("  Resolved: %v\n", fault.Resolved)
-			fmt.Printf("  Ignored: %v\n", fault.Ignored)
-			fmt.Printf("  URL: %s\n", fault.URL)
-
-			if fault.Assignee != nil {
-				fmt.Printf("  Assignee: %s <%s>\n", fault.Assignee.Name, fault.Assignee.Email)
-			}
-
-			if len(fault.Tags) > 0 {
-				fmt.Printf("  Tags: ")
-				for i, tag := range fault.Tags {
-					if i > 0 {
-						fmt.Printf(", ")
-					}
-					fmt.Printf("%s", tag)
-				}
-				fmt.Println()
-			}
+		fault, err := client.Faults.Get(context.Background(), faultsProjectID, faultID)
+		if err != nil {
+			return dataAPIError("get fault", err)
 		}
 
+		if faultOutputFormat == "json" {
+			return printJSON(fault)
+		}
+
+		fmt.Printf("Fault Details:\n")
+		fmt.Printf("  ID: %s\n", fault.Id)
+		fmt.Printf("  Class: %s\n", fault.Klass.GetOrEmpty())
+		fmt.Printf("  Message: %s\n", fault.Message)
+		fmt.Printf("  Environment: %s\n", fault.Environment.GetOrEmpty())
+		fmt.Printf("  Component: %s\n", fault.Component.GetOrEmpty())
+		fmt.Printf("  Action: %s\n", fault.Action.GetOrEmpty())
+		fmt.Printf("  Created: %s\n", fault.CreatedAt.Format("2006-01-02 15:04:05"))
+		if at, err := fault.LastNoticeAt.Get(); err == nil {
+			fmt.Printf("  Last Noticed: %s\n", at.Format("2006-01-02 15:04:05"))
+		}
+		fmt.Printf("  Notice Count: %d\n", deref(fault.NoticesCount))
+		fmt.Printf("  Comments Count: %d\n", deref(fault.CommentsCount))
+		fmt.Printf("  Resolved: %v\n", deref(fault.Resolved))
+		fmt.Printf("  Ignored: %v\n", deref(fault.Ignored))
+		fmt.Printf("  URL: %s\n", fault.Links.Web)
+		if assignee, err := fault.Assignee.Get(); err == nil {
+			fmt.Printf("  Assignee: %s <%s>\n", assignee.Name.GetOrEmpty(), deref(assignee.Email))
+		}
+		if tags := deref(fault.Tags); len(tags) > 0 {
+			fmt.Printf("  Tags: %s\n", strings.Join(tags, ", "))
+		}
 		return nil
 	},
 }
@@ -202,69 +171,45 @@ var faultsGetCmd = &cobra.Command{
 var faultsNoticesCmd = &cobra.Command{
 	Use:   "notices",
 	Short: "List notices for a fault",
-	Long:  `List individual error occurrences (notices) for a specific fault.`,
+	Long:  `List individual error occurrences (notices) for a specific fault, newest first.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&faultsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
 		}
-		if faultID == 0 {
+		if faultID == "" {
 			return fmt.Errorf("fault ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		// Build options
-		options := hbapi.FaultListNoticesOptions{
-			Limit: faultLimit,
-		}
-
-		ctx := context.Background()
-		response, err := client.Faults.ListNotices(ctx, faultsProjectID, faultID, options)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to list notices: %w", err)
+			return err
 		}
 
-		// Output results based on format
-		switch faultOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(response.Results, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			// Table format
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			_, _ = fmt.Fprintln(w, "ID\tMESSAGE\tENVIRONMENT\tHOSTNAME\tCREATED")
-			for _, notice := range response.Results {
-				message := notice.Message
-				if len(message) > 60 {
-					message = message[:57] + "..."
-				}
-
-				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-					notice.ID,
-					message,
-					notice.EnvironmentName,
-					notice.Environment.Hostname,
-					notice.CreatedAt.Format("2006-01-02 15:04:05"))
-			}
-			_ = w.Flush()
+		response, err := client.Faults.ListNotices(context.Background(), faultsProjectID, faultID,
+			apiv3.Limit(faultLimit))
+		if err != nil {
+			return dataAPIError("list notices", err)
 		}
 
-		return nil
+		if faultOutputFormat == "json" {
+			return printJSON(response.Data)
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		_, _ = fmt.Fprintln(w, "ID\tMESSAGE\tENVIRONMENT\tCREATED")
+		for _, notice := range response.Data {
+			message := notice.Message.GetOrEmpty()
+			if len(message) > 60 {
+				message = message[:57] + "..."
+			}
+
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+				notice.Id.String(),
+				message,
+				notice.Environment.GetOrEmpty(),
+				notice.CreatedAt.Format("2006-01-02 15:04:05"))
+		}
+		return w.Flush()
 	},
 }
 
@@ -280,34 +225,34 @@ when --resolved or --ignored is set to true in the same request as
 
 Examples:
   # Resolve a fault
-  hb faults update --project-id 12345 --id 678 --resolved
+  hb faults update --project-id Xk9mZp --id Fk7pQ2 --resolved
 
   # Un-resolve a fault
-  hb faults update --project-id 12345 --id 678 --resolved=false
+  hb faults update --project-id Xk9mZp --id Fk7pQ2 --resolved=false
 
   # Ignore a fault
-  hb faults update --project-id 12345 --id 678 --ignored
+  hb faults update --project-id Xk9mZp --id Fk7pQ2 --ignored
 
   # Mark a fault to be resolved automatically on the next deploy
-  hb faults update --project-id 12345 --id 678 --resolve-on-deploy
+  hb faults update --project-id Xk9mZp --id Fk7pQ2 --resolve-on-deploy
 
   # Assign a fault to a user
-  hb faults update --project-id 12345 --id 678 --assignee-id 42
+  hb faults update --project-id Xk9mZp --id Fk7pQ2 --assignee-id Us3rAb
 
   # Unassign a fault
-  hb faults update --project-id 12345 --id 678 --unassign`,
+  hb faults update --project-id Xk9mZp --id Fk7pQ2 --unassign`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&faultsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
 		}
-		if faultID == 0 {
+		if faultID == "" {
 			return fmt.Errorf("fault ID is required. Set it using --id flag")
 		}
-		if faultAssigneeID != 0 && faultUnassign {
+		if faultAssigneeID != "" && faultUnassign {
 			return fmt.Errorf("--assignee-id and --unassign are mutually exclusive")
 		}
 
-		params := hbapi.FaultUpdateParams{}
+		params := apiv3.FaultParams{}
 		if cmd.Flags().Changed("resolved") {
 			params.Resolved = &faultResolved
 		}
@@ -317,41 +262,30 @@ Examples:
 		if cmd.Flags().Changed("resolve-on-deploy") {
 			params.ResolveOnDeploy = &faultResolveOnDeploy
 		}
-		if faultAssigneeID != 0 {
-			params.AssigneeID = hbapi.Value(faultAssigneeID)
+		if faultAssigneeID != "" {
+			params.AssigneeId = nullable.NewNullableWithValue(faultAssigneeID)
 		} else if faultUnassign {
-			params.AssigneeID = hbapi.Null[int]()
+			params.AssigneeId = nullable.NewNullNullable[string]()
 		}
 
 		if params.Resolved == nil && params.Ignored == nil && params.ResolveOnDeploy == nil &&
-			params.AssigneeID == nil {
+			!params.AssigneeId.IsSpecified() {
 			return fmt.Errorf(
 				"nothing to update. Set at least one of --resolved, --ignored, --resolve-on-deploy, --assignee-id, or --unassign",
 			)
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		result, err := client.Faults.Update(ctx, faultsProjectID, faultID, params)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to update fault: %w", err)
+			return err
 		}
 
-		fmt.Println(result.Message)
+		fault, err := client.Faults.Update(context.Background(), faultsProjectID, faultID, params)
+		if err != nil {
+			return dataAPIError("update fault", err)
+		}
 
+		fmt.Printf("Fault %s updated\n", fault.Id)
 		return nil
 	},
 }
@@ -362,56 +296,47 @@ var faultsCountsCmd = &cobra.Command{
 	Short: "Get fault counts for a project",
 	Long:  `Get summary counts of faults grouped by environment and status.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&faultsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		counts, err := client.Faults.GetCounts(ctx, faultsProjectID, hbapi.FaultListOptions{})
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to get fault counts: %w", err)
+			return err
 		}
 
-		// Output results based on format
-		switch faultOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(counts, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			fmt.Printf("Total Faults: %d\n\n", counts.Total)
-
-			if len(counts.Environments) > 0 {
-				w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-				_, _ = fmt.Fprintln(w, "ENVIRONMENT\tRESOLVED\tIGNORED\tCOUNT")
-				for _, env := range counts.Environments {
-					_, _ = fmt.Fprintf(w, "%s\t%v\t%v\t%d\n",
-						env.Environment,
-						env.Resolved,
-						env.Ignored,
-						env.Count)
-				}
-				_ = w.Flush()
-			}
+		summary, err := client.Faults.Summary(context.Background(), faultsProjectID)
+		if err != nil {
+			return dataAPIError("get fault counts", err)
 		}
 
-		return nil
+		if faultOutputFormat == "json" {
+			return printJSON(summary)
+		}
+
+		raw, err := json.Marshal(summary)
+		if err != nil {
+			return fmt.Errorf("failed to read fault counts: %w", err)
+		}
+		var counts faultSummary
+		if err := json.Unmarshal(raw, &counts); err != nil {
+			return fmt.Errorf("failed to read fault counts: %w", err)
+		}
+
+		fmt.Printf("Total Faults: %d\n\n", counts.Total)
+		if len(counts.Environments) == 0 {
+			return nil
+		}
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		_, _ = fmt.Fprintln(w, "ENVIRONMENT\tRESOLVED\tIGNORED\tCOUNT")
+		for _, env := range counts.Environments {
+			_, _ = fmt.Fprintf(w, "%s\t%v\t%v\t%d\n",
+				deref(env.Environment),
+				env.Resolved,
+				env.Ignored,
+				env.Count)
+		}
+		return w.Flush()
 	},
 }
 
@@ -419,59 +344,36 @@ var faultsCountsCmd = &cobra.Command{
 var faultsAffectedUsersCmd = &cobra.Command{
 	Use:   "affected-users",
 	Short: "List users affected by a fault",
-	Long:  `List all users who have been affected by a specific fault.`,
+	Long:  `List the users a specific fault has affected (at most 500, those with the most notices).`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&faultsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
 		}
-		if faultID == 0 {
+		if faultID == "" {
 			return fmt.Errorf("fault ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		// Create API client
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		// Build options
-		options := hbapi.FaultListAffectedUsersOptions{
-			Q: faultAffectedUserQuery,
-		}
-
-		ctx := context.Background()
-		users, err := client.Faults.ListAffectedUsers(ctx, faultsProjectID, faultID, options)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to list affected users: %w", err)
+			return err
 		}
 
-		// Output results based on format
-		switch faultOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(users, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			// Table format
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			_, _ = fmt.Fprintln(w, "USER\tOCCURRENCES")
-			for _, user := range users {
-				_, _ = fmt.Fprintf(w, "%s\t%d\n", user.User, user.Count)
-			}
-			_ = w.Flush()
+		users, err := client.Faults.AffectedUsers(context.Background(), faultsProjectID, faultID,
+			apiv3.Search(faultAffectedUserQuery))
+		if err != nil {
+			return dataAPIError("list affected users", err)
 		}
 
-		return nil
+		if faultOutputFormat == "json" {
+			return printJSON(users)
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		_, _ = fmt.Fprintln(w, "USER\tOCCURRENCES")
+		for _, user := range users {
+			_, _ = fmt.Fprintf(w, "%s\t%d\n", user.User, user.Count)
+		}
+		return w.Flush()
 	},
 }
 
@@ -485,24 +387,24 @@ func init() {
 	faultsCmd.AddCommand(faultsAffectedUsersCmd)
 
 	// Common flags
-	faultsCmd.PersistentFlags().IntVar(&faultsProjectID, "project-id", 0, "Project ID")
+	faultsCmd.PersistentFlags().StringVar(&faultsProjectID, "project-id", "", "Project ID")
 
 	// Flags for list command
 	faultsListCmd.Flags().StringVarP(&faultQuery, "query", "q", "", "Search query to filter faults")
 	faultsListCmd.Flags().
 		StringVar(&faultOrder, "order", "recent", "Order faults by 'recent' or 'frequent'")
 	faultsListCmd.Flags().
-		IntVar(&faultLimit, "limit", 25, "Maximum number of faults to return (max 25)")
+		IntVar(&faultLimit, "limit", 25, "Maximum number of faults to return (max 100)")
 	faultsListCmd.Flags().
 		StringVarP(&faultOutputFormat, "output", "o", "table", "Output format (table or json)")
 
 	// Flags for get command
-	faultsGetCmd.Flags().IntVar(&faultID, "id", 0, "Fault ID")
+	faultsGetCmd.Flags().StringVar(&faultID, "id", "", "Fault ID")
 	faultsGetCmd.Flags().
 		StringVarP(&faultOutputFormat, "output", "o", "text", "Output format (text or json)")
 
 	// Flags for update command
-	faultsUpdateCmd.Flags().IntVar(&faultID, "id", 0, "Fault ID")
+	faultsUpdateCmd.Flags().StringVar(&faultID, "id", "", "Fault ID")
 	faultsUpdateCmd.Flags().
 		BoolVar(&faultResolved, "resolved", false, "Set the fault's resolved state (use --resolved=false to un-resolve)")
 	faultsUpdateCmd.Flags().
@@ -510,14 +412,14 @@ func init() {
 	faultsUpdateCmd.Flags().
 		BoolVar(&faultResolveOnDeploy, "resolve-on-deploy", false, "Mark the fault to be resolved automatically on the next deploy")
 	faultsUpdateCmd.Flags().
-		IntVar(&faultAssigneeID, "assignee-id", 0, "User ID to assign the fault to")
+		StringVar(&faultAssigneeID, "assignee-id", "", "User ID to assign the fault to")
 	faultsUpdateCmd.Flags().
 		BoolVar(&faultUnassign, "unassign", false, "Remove the fault's assignee")
 
 	// Flags for notices command
-	faultsNoticesCmd.Flags().IntVar(&faultID, "id", 0, "Fault ID")
+	faultsNoticesCmd.Flags().StringVar(&faultID, "id", "", "Fault ID")
 	faultsNoticesCmd.Flags().
-		IntVar(&faultLimit, "limit", 25, "Maximum number of notices to return (max 25)")
+		IntVar(&faultLimit, "limit", 25, "Maximum number of notices to return (max 100)")
 	faultsNoticesCmd.Flags().
 		StringVarP(&faultOutputFormat, "output", "o", "table", "Output format (table or json)")
 
@@ -526,7 +428,7 @@ func init() {
 		StringVarP(&faultOutputFormat, "output", "o", "text", "Output format (text or json)")
 
 	// Flags for affected-users command
-	faultsAffectedUsersCmd.Flags().IntVar(&faultID, "id", 0, "Fault ID")
+	faultsAffectedUsersCmd.Flags().StringVar(&faultID, "id", "", "Fault ID")
 	faultsAffectedUsersCmd.Flags().
 		StringVarP(&faultAffectedUserQuery, "query", "q", "", "Search query to filter users")
 	faultsAffectedUsersCmd.Flags().
