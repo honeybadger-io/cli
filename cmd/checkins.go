@@ -69,7 +69,7 @@ var checkinsListCmd = &cobra.Command{
 
 			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
 				ci.Id,
-				ci.Name.GetOrEmpty(),
+				checkInName(ci),
 				ci.Slug.GetOrEmpty(),
 				ci.ScheduleType,
 				schedule,
@@ -110,14 +110,14 @@ var checkinsGetCmd = &cobra.Command{
 
 		fmt.Printf("Check-in Details:\n")
 		fmt.Printf("  ID: %s\n", checkIn.Id)
-		fmt.Printf("  Name: %s\n", checkIn.Name.GetOrEmpty())
+		fmt.Printf("  Name: %s\n", checkInName(*checkIn))
 		fmt.Printf("  Slug: %s\n", checkIn.Slug.GetOrEmpty())
 		fmt.Printf("  State: %s\n", checkIn.State)
 		fmt.Printf("  Schedule Type: %s\n", checkIn.ScheduleType)
 		if period, err := checkIn.ReportPeriod.Get(); err == nil {
 			fmt.Printf("  Report Period: %s\n", period)
 		}
-		fmt.Printf("  Grace Period: %s\n", checkIn.GracePeriod)
+		fmt.Printf("  Grace Period: %s\n", gracePeriod(*checkIn))
 		if schedule, err := checkIn.CronSchedule.Get(); err == nil {
 			fmt.Printf("  Cron Schedule: %s\n", schedule)
 			fmt.Printf("  Cron Timezone: %s\n", checkIn.CronTimezone)
@@ -181,7 +181,7 @@ Example JSON payload for cron schedule:
 		}
 		fmt.Printf("Check-in created successfully!\n")
 		fmt.Printf("  ID: %s\n", checkIn.Id)
-		fmt.Printf("  Name: %s\n", checkIn.Name.GetOrEmpty())
+		fmt.Printf("  Name: %s\n", checkInName(*checkIn))
 		fmt.Printf("  Slug: %s\n", checkIn.Slug.GetOrEmpty())
 		return nil
 	},
@@ -233,7 +233,7 @@ Example JSON payload:
 		}
 		fmt.Printf("Check-in updated successfully!\n")
 		fmt.Printf("  ID: %s\n", checkIn.Id)
-		fmt.Printf("  Name: %s\n", checkIn.Name.GetOrEmpty())
+		fmt.Printf("  Name: %s\n", checkInName(*checkIn))
 		fmt.Printf("  Slug: %s\n", checkIn.Slug.GetOrEmpty())
 		return nil
 	},
@@ -359,4 +359,22 @@ func init() {
 	checkinsEventsCmd.Flags().
 		StringVarP(&checkinsOutputFormat, "output", "o", "table", "Output format (table or json)")
 	_ = checkinsEventsCmd.MarkFlagRequired("id")
+}
+
+// checkInName is the name shown for a check-in. v3 sends an unnamed one's name
+// as null; v2 showed its id instead, as this does.
+func checkInName(ci apiv3.CheckIn) string {
+	if name := ci.Name.GetOrEmpty(); name != "" {
+		return name
+	}
+	return ci.Id
+}
+
+// gracePeriod is the grace period shown for a check-in. v3 sends an unset one
+// as "00:00:00"; v2 showed it blank, as this does.
+func gracePeriod(ci apiv3.CheckIn) string {
+	if ci.GracePeriod == "00:00:00" {
+		return ""
+	}
+	return ci.GracePeriod
 }
