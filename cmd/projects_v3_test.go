@@ -67,7 +67,7 @@ func TestProjectsCreateSendsTheFlatBody(t *testing.T) {
 		`{"name":"My Project"}`,
 	)
 	require.NoError(t, err)
-	req := s.only(t)
+	req := s.Requests()[0]
 	assert.Equal(t, "POST", req.Method)
 	assert.Equal(t, "/v3/projects", req.Path)
 	assertJSONBody(t, `{"name":"My Project"}`, req.Body)

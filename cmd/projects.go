@@ -135,7 +135,8 @@ Example JSON payload:
 			return err
 		}
 
-		project, err := client.Projects.Create(context.Background(), params)
+		ctx := context.Background()
+		project, err := client.Projects.Create(ctx, params)
 		if err != nil {
 			return dataAPIError("create project", err)
 		}
@@ -146,6 +147,17 @@ Example JSON payload:
 		fmt.Printf("Project created successfully!\n")
 		fmt.Printf("  ID: %s\n", project.Id)
 		fmt.Printf("  Name: %s\n", project.Name)
+
+		// The project exists now, so a token that can create projects but not
+		// read their keys still succeeds; it just can't show the key.
+		keys, err := client.IngestionKeys.ListAll(ctx, project.Id)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Couldn't read the project's Ingestion Key: %v\n", err)
+			return nil
+		}
+		if len(keys) > 0 {
+			fmt.Printf("  Ingestion Key: %s\n", keys[0].Key)
+		}
 		return nil
 	},
 }
