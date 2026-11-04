@@ -14,7 +14,7 @@ import (
 var (
 	cfgFile         string
 	apiKey          string
-	authToken       string
+	apiTokenFlag    string
 	endpoint        string
 	defaultEndpoint = "https://api.honeybadger.io"
 
@@ -34,17 +34,20 @@ const (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "hb",
+	Use: "hb",
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+		return checkIDFlags(cmd)
+	},
 	Short: "Honeybadger CLI tool",
 	Long: `A command line interface for interacting with Honeybadger.
 
 This tool provides access to two APIs:
 
   Reporting API - For sending data to Honeybadger (deployments, metrics)
-                  Authenticate with --api-key or HONEYBADGER_API_KEY
+                  Authenticate with an Ingestion Key: --api-key or HONEYBADGER_API_KEY
 
   Data API      - For reading and managing your Honeybadger data
-                  Authenticate with --auth-token or HONEYBADGER_AUTH_TOKEN`,
+                  Authenticate with an API Token: --api-token or HONEYBADGER_API_TOKEN`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -64,19 +67,19 @@ func init() {
 	// Add command groups
 	rootCmd.AddGroup(&cobra.Group{
 		ID:    GroupReportingAPI,
-		Title: "Reporting API Commands (use --api-key):",
+		Title: "Reporting API Commands (use --api-key with an Ingestion Key):",
 	})
 	rootCmd.AddGroup(&cobra.Group{
 		ID:    GroupDataAPI,
-		Title: "Data API Commands (use --auth-token):",
+		Title: "Data API Commands (use --api-token):",
 	})
 
 	rootCmd.PersistentFlags().
 		StringVar(&cfgFile, "config", "", "config file (default is ~/.honeybadger-cli.yaml)")
 	rootCmd.PersistentFlags().
-		StringVar(&apiKey, "api-key", "", "Honeybadger API key (for Reporting API)")
+		StringVar(&apiKey, "api-key", "", "Honeybadger Ingestion Key (for Reporting API)")
 	rootCmd.PersistentFlags().
-		StringVar(&authToken, "auth-token", "", "Honeybadger personal auth token (for Data API)")
+		StringVar(&apiTokenFlag, "api-token", "", "Honeybadger API Token (for Data API)")
 	rootCmd.PersistentFlags().
 		StringVar(&endpoint, "endpoint", defaultEndpoint, "Honeybadger endpoint")
 
@@ -85,10 +88,10 @@ func init() {
 		fmt.Printf("error binding api-key flag: %v\n", err)
 	}
 	if err := viper.BindPFlag(
-		"auth_token",
-		rootCmd.PersistentFlags().Lookup("auth-token"),
+		"api_token",
+		rootCmd.PersistentFlags().Lookup("api-token"),
 	); err != nil {
-		fmt.Printf("error binding auth-token flag: %v\n", err)
+		fmt.Printf("error binding api-token flag: %v\n", err)
 	}
 	if err := viper.BindPFlag(
 		"endpoint",
@@ -116,7 +119,7 @@ func initConfig() {
 	viper.SetDefault("endpoint", defaultEndpoint)
 
 	// Register project_id for env var lookup (HONEYBADGER_PROJECT_ID).
-	// Unlike api_key/auth_token/endpoint, project_id has no root-level flag
+	// Unlike api_key/api_token/endpoint, project_id has no root-level flag
 	// to bind, so we use BindEnv to make viper aware of it.
 	_ = viper.BindEnv("project_id")
 
@@ -129,8 +132,8 @@ func initConfig() {
 	if rootCmd.PersistentFlags().Changed("api-key") {
 		viper.Set("api_key", apiKey)
 	}
-	if rootCmd.PersistentFlags().Changed("auth-token") {
-		viper.Set("auth_token", authToken)
+	if rootCmd.PersistentFlags().Changed("api-token") {
+		viper.Set("api_token", apiTokenFlag)
 	}
 	if rootCmd.PersistentFlags().Changed("endpoint") {
 		viper.Set("endpoint", endpoint)
@@ -164,20 +167,6 @@ func convertEndpointForDataAPI(endpoint string) string {
 	default:
 		return trimmed
 	}
-}
-
-// resolveProjectID resolves the project ID from the flag value, falling back to viper config/env.
-// Returns an error if no project ID is found from any source.
-func resolveProjectID(projectID *int) error {
-	if *projectID == 0 {
-		*projectID = viper.GetInt("project_id")
-	}
-	if *projectID == 0 {
-		return fmt.Errorf(
-			"project ID is required. Set it using --project-id flag, HONEYBADGER_PROJECT_ID environment variable, or project_id in your config file",
-		)
-	}
-	return nil
 }
 
 // parseTimeFlag parses a user-provided time string into a time.Time.
