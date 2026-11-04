@@ -267,25 +267,31 @@ var projectsOccurrencesCmd = &cobra.Command{
 			return printJSON(series)
 		}
 
+		if projectID != "" {
+			return printOccurrenceTable(series[0], "")
+		}
+		// One table per project, indented under its heading as v2 printed it.
 		for i, s := range series {
-			if projectID == "" {
-				if i > 0 {
-					fmt.Println()
-				}
-				fmt.Printf("Project %s:\n", s.ProjectId)
+			if i > 0 {
+				fmt.Println()
 			}
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			_, _ = fmt.Fprintln(w, "TIMESTAMP\tCOUNT")
-			for _, b := range s.Buckets {
-				_, _ = fmt.Fprintf(w, "%s\t%d\n",
-					time.Unix(b.Timestamp, 0).UTC().Format(time.RFC3339), b.Count)
-			}
-			if err := w.Flush(); err != nil {
+			fmt.Printf("Project %s:\n", s.ProjectId)
+			if err := printOccurrenceTable(s, "  "); err != nil {
 				return err
 			}
 		}
 		return nil
 	},
+}
+
+func printOccurrenceTable(s apiv3.OccurrenceSeries, indent string) error {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(w, indent+"TIMESTAMP\tCOUNT")
+	for _, b := range s.Buckets {
+		_, _ = fmt.Fprintf(w, "%s%s\t%d\n", indent,
+			time.Unix(b.Timestamp, 0).UTC().Format(time.RFC3339), b.Count)
+	}
+	return w.Flush()
 }
 
 func init() {
