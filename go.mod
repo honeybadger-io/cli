@@ -1,6 +1,6 @@
 module github.com/honeybadger-io/cli
 
-go 1.23.0
+go 1.27.0
 
 require (
 	github.com/honeybadger-io/api-go v0.9.0
