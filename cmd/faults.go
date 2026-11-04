@@ -69,7 +69,9 @@ var faultsCmd = &cobra.Command{
 var faultsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List faults for a project",
-	Long:  `List all faults for a specific project with optional filtering.`,
+	Long: `List all faults for a specific project with optional filtering.` + v3Reference(
+		"faults/list-faults",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
@@ -127,7 +129,7 @@ var faultsListCmd = &cobra.Command{
 var faultsGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get a fault by ID",
-	Long:  `Get detailed information about a specific fault.`,
+	Long:  `Get detailed information about a specific fault.` + v3Reference("faults/get-fault"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
@@ -180,7 +182,9 @@ var faultsGetCmd = &cobra.Command{
 var faultsNoticesCmd = &cobra.Command{
 	Use:   "notices",
 	Short: "List notices for a fault",
-	Long:  `List individual error occurrences (notices) for a specific fault, newest first.`,
+	Long: `List individual error occurrences (notices) for a specific fault, newest first.` + v3Reference(
+		"notices/list-notices",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
@@ -249,7 +253,7 @@ Examples:
   hb faults update --project-id Xk9mZp --id Fk7pQ2 --assignee-id Us3rAb
 
   # Unassign a fault
-  hb faults update --project-id Xk9mZp --id Fk7pQ2 --unassign`,
+  hb faults update --project-id Xk9mZp --id Fk7pQ2 --unassign` + v3Reference("faults/update-fault"),
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
@@ -303,7 +307,9 @@ Examples:
 var faultsCountsCmd = &cobra.Command{
 	Use:   "counts",
 	Short: "Get fault counts for a project",
-	Long:  `Get summary counts of faults grouped by environment and status.`,
+	Long: `Get summary counts of faults grouped by environment and status.` + v3Reference(
+		"faults/get-fault-summary",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
@@ -353,7 +359,9 @@ var faultsCountsCmd = &cobra.Command{
 var faultsAffectedUsersCmd = &cobra.Command{
 	Use:   "affected-users",
 	Short: "List users affected by a fault",
-	Long:  `List the users a specific fault has affected (at most 500, those with the most notices).`,
+	Long: `List the users a specific fault has affected (at most 500, those with the most notices).` + v3Reference(
+		"faults/list-fault-affected-users",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
@@ -513,7 +521,7 @@ Examples:
   hb faults %[2]s --project-id Xk9mZp --id Fk7pQ2 --id Fk8qR3
   hb faults %[2]s --project-id Xk9mZp --query "class:RuntimeError" --dry-run
   hb faults %[2]s --project-id Xk9mZp --all --occurred-before 2026-01-01`,
-			title, verb),
+			title, verb) + v3Reference("faults/"+verb+"-faults"),
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 				return err
@@ -599,7 +607,7 @@ fault, and its tags, assignee and resolved or ignored state are dropped. The mer
 runs in the background. This action cannot be undone.
 
 Example:
-  hb faults merge --project-id Xk9mZp --id Fk7pQ2 --into Fk8qR3`,
+  hb faults merge --project-id Xk9mZp --id Fk7pQ2 --into Fk8qR3` + v3Reference("faults/merge-faults"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
@@ -636,7 +644,7 @@ var faultsPauseRecordingCmd = &cobra.Command{
 during the pause are discarded. Pausing again replaces the end time.
 
 Example:
-  hb faults pause-recording --project-id Xk9mZp --id Fk7pQ2 --for day`,
+  hb faults pause-recording --project-id Xk9mZp --id Fk7pQ2 --for day` + v3Reference("faults/pause-fault-recording"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
@@ -675,7 +683,9 @@ Example:
 var faultsResumeRecordingCmd = &cobra.Command{
 	Use:   "resume-recording",
 	Short: "Start recording a fault's notices again",
-	Long:  `Start recording new notices for a fault whose recording was paused.`,
+	Long: `Start recording new notices for a fault whose recording was paused.` + v3Reference(
+		"faults/resume-fault-recording",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
@@ -704,7 +714,9 @@ var faultsResumeRecordingCmd = &cobra.Command{
 var faultsDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a fault",
-	Long:  `Delete a fault and all its notices. This action cannot be undone.`,
+	Long: `Delete a fault and all its notices. This action cannot be undone.` + v3Reference(
+		"faults/delete-fault",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err

@@ -60,7 +60,7 @@ Examples:
   hb insights query --project-id Xk9mZp --query "SELECT * FROM report.system.disk" --ts P7D
 
   # Restrict the query to specific streams (find IDs with 'hb streams list')
-  hb insights query --project-id Xk9mZp --query "fields @ts, @message" --stream-ids "a3f19c02b7de,b4e20d13c8ef"`,
+  hb insights query --project-id Xk9mZp --query "fields @ts, @message" --stream-ids "a3f19c02b7de,b4e20d13c8ef"` + v3Reference("insights/run-insights-query"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&insightsProjectID); err != nil {
 			return err

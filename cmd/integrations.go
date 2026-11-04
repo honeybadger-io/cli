@@ -39,7 +39,9 @@ func integrationEvents(events []string) string {
 var integrationsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List integrations for a project",
-	Long:  `List all notification integrations configured for a specific project.`,
+	Long: `List all notification integrations configured for a specific project.` + v3Reference(
+		"integrations/list-integrations",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&integrationsProjectID); err != nil {
 			return err
@@ -83,7 +85,9 @@ var integrationsListCmd = &cobra.Command{
 var integrationsGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get an integration by ID",
-	Long:  `Get detailed information about a specific notification integration.`,
+	Long: `Get detailed information about a specific notification integration.` + v3Reference(
+		"integrations/get-integration",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&integrationsProjectID); err != nil {
 			return err
@@ -149,7 +153,7 @@ Example JSON payload:
     "url": "https://example.com/hook"
   },
   "events": ["occurred", "resolved"]
-}`,
+}` + v3Reference("integrations/create-integration"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&integrationsProjectID); err != nil {
 			return err
@@ -201,7 +205,7 @@ The --cli-input-json flag accepts either a JSON string or a file path prefixed w
 Example JSON payload:
 {
   "active": false
-}`,
+}` + v3Reference("integrations/update-integration"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&integrationsProjectID); err != nil {
 			return err
@@ -240,7 +244,9 @@ Example JSON payload:
 var integrationsDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete an integration",
-	Long:  `Delete a notification integration by ID. This action cannot be undone.`,
+	Long: `Delete a notification integration by ID. This action cannot be undone.` + v3Reference(
+		"integrations/delete-integration",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&integrationsProjectID); err != nil {
 			return err

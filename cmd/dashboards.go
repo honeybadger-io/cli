@@ -29,7 +29,9 @@ var dashboardsCmd = &cobra.Command{
 var dashboardsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List dashboards for a project",
-	Long:  `List all Insights dashboards configured for a specific project.`,
+	Long: `List all Insights dashboards configured for a specific project.` + v3Reference(
+		"dashboards/list-dashboards",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&dashboardsProjectID); err != nil {
 			return err
@@ -72,7 +74,7 @@ var dashboardsGetCmd = &cobra.Command{
 
 Use --output json to get the full widget definitions. Its widgets list is in the
 form 'hb dashboards update --cli-input-json' takes, so you can edit it and send it
-back as {"widgets": [...]}.`,
+back as {"widgets": [...]}.` + v3Reference("dashboards/get-dashboard"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&dashboardsProjectID); err != nil {
 			return err
@@ -154,7 +156,7 @@ Example JSON payload:
       }
     }
   ]
-}`,
+}` + v3Reference("dashboards/create-dashboard"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&dashboardsProjectID); err != nil {
 			return err
@@ -224,7 +226,7 @@ Example JSON payload:
       }
     }
   ]
-}`,
+}` + v3Reference("dashboards/update-dashboard"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&dashboardsProjectID); err != nil {
 			return err
@@ -260,7 +262,9 @@ Example JSON payload:
 var dashboardsDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a dashboard",
-	Long:  `Delete an Insights dashboard by ID. This action cannot be undone.`,
+	Long: `Delete an Insights dashboard by ID. This action cannot be undone.` + v3Reference(
+		"dashboards/delete-dashboard",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&dashboardsProjectID); err != nil {
 			return err

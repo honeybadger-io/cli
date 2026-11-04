@@ -31,7 +31,9 @@ var deploymentsCmd = &cobra.Command{
 var deploymentsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List deployments for a project",
-	Long:  `List a project's most recent deployments, newest first, with optional filtering.`,
+	Long: `List a project's most recent deployments, newest first, with optional filtering.` + v3Reference(
+		"deploys/list-deploys",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&deploymentsProjectID); err != nil {
 			return err
@@ -77,7 +79,9 @@ var deploymentsListCmd = &cobra.Command{
 var deploymentsGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get a deployment by ID",
-	Long:  `Get detailed information about a specific deployment.`,
+	Long: `Get detailed information about a specific deployment.` + v3Reference(
+		"deploys/get-deploy",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&deploymentsProjectID); err != nil {
 			return err

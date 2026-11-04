@@ -41,7 +41,9 @@ func requireCommentFault() error {
 var commentsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List comments for a fault",
-	Long:  `List the comments on a specific fault, newest first.`,
+	Long: `List the comments on a specific fault, newest first.` + v3Reference(
+		"comments/list-comments",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := requireCommentFault(); err != nil {
 			return err
@@ -93,7 +95,9 @@ var commentsListCmd = &cobra.Command{
 var commentsGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get a comment by ID",
-	Long:  `Get detailed information about a specific comment.`,
+	Long: `Get detailed information about a specific comment.` + v3Reference(
+		"comments/get-comment",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := requireCommentFault(); err != nil {
 			return err
@@ -139,7 +143,7 @@ var commentsGetCmd = &cobra.Command{
 var commentsCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new comment",
-	Long:  `Create a new comment on a fault.`,
+	Long:  `Create a new comment on a fault.` + v3Reference("comments/create-comment"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := requireCommentFault(); err != nil {
 			return err
@@ -177,7 +181,7 @@ var commentsCreateCmd = &cobra.Command{
 var commentsUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update an existing comment",
-	Long:  `Update the body of an existing comment.`,
+	Long:  `Update the body of an existing comment.` + v3Reference("comments/update-comment"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := requireCommentFault(); err != nil {
 			return err
@@ -219,7 +223,9 @@ var commentsUpdateCmd = &cobra.Command{
 var commentsDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a comment",
-	Long:  `Delete a comment by ID. This action cannot be undone.`,
+	Long: `Delete a comment by ID. This action cannot be undone.` + v3Reference(
+		"comments/delete-comment",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := requireCommentFault(); err != nil {
 			return err

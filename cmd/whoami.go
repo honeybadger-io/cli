@@ -14,7 +14,7 @@ var whoamiCmd = &cobra.Command{
 	Short:   "Describe the API Token in use",
 	GroupID: GroupDataAPI,
 	Long: `Show the API Token the Data API commands are using: its kind, name, account,
-scopes, the projects it can reach, when it expires and when it was last used.`,
+scopes, the projects it can reach, when it expires and when it was last used.` + v3Reference("tokens/get-token"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		client, err := newDataAPIClient()
 		if err != nil {

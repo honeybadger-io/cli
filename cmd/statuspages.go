@@ -28,7 +28,9 @@ var statuspagesCmd = &cobra.Command{
 var statuspagesListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List status pages for the account",
-	Long:  `List all status pages in the account your API Token belongs to.`,
+	Long: `List all status pages in the account your API Token belongs to.` + v3Reference(
+		"status-pages/list-status-pages",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		client, err := newDataAPIClient()
 		if err != nil {
@@ -62,7 +64,9 @@ var statuspagesListCmd = &cobra.Command{
 var statuspagesGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get a status page by ID",
-	Long:  `Get detailed information about a specific status page.`,
+	Long: `Get detailed information about a specific status page.` + v3Reference(
+		"status-pages/get-status-page",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if statuspageID == "" {
 			return fmt.Errorf("status page ID is required. Set it using --id flag")
@@ -128,7 +132,7 @@ Example JSON payload:
   "sites": [{"site_id": "9f8b6d2e-4c1a-4b7f-9e35-2a6c8d0f1b47", "display_name": "Website"}],
   "check_ins": [{"check_in_id": "Ci5xWq"}],
   "hide_branding": false
-}`,
+}` + v3Reference("status-pages/create-status-page"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		params, err := decodeInput[apiv3.StatusPageCreateParams](
 			statuspageCLIInputJSON,
@@ -173,7 +177,7 @@ Example JSON payload:
 {
   "name": "Updated Status Page",
   "sites": [{"site_id": "9f8b6d2e-4c1a-4b7f-9e35-2a6c8d0f1b47"}]
-}`,
+}` + v3Reference("status-pages/update-status-page"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if statuspageID == "" {
 			return fmt.Errorf("status page ID is required. Set it using --id flag")
@@ -208,7 +212,9 @@ Example JSON payload:
 var statuspagesDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a status page",
-	Long:  `Delete a status page by ID. This action cannot be undone.`,
+	Long: `Delete a status page by ID. This action cannot be undone.` + v3Reference(
+		"status-pages/delete-status-page",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if statuspageID == "" {
 			return fmt.Errorf("status page ID is required. Set it using --id flag")

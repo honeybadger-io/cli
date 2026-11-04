@@ -50,7 +50,9 @@ func parseSiteID(id string) (apiv3.SiteID, error) {
 var uptimeSitesListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List uptime sites for a project",
-	Long:  `List all uptime monitoring sites configured for a specific project.`,
+	Long: `List all uptime monitoring sites configured for a specific project.` + v3Reference(
+		"uptime-sites/list-sites",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&uptimeProjectID); err != nil {
 			return err
@@ -93,7 +95,9 @@ var uptimeSitesListCmd = &cobra.Command{
 var uptimeSitesGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get an uptime site by ID",
-	Long:  `Get detailed information about a specific uptime site.`,
+	Long: `Get detailed information about a specific uptime site.` + v3Reference(
+		"uptime-sites/get-site",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&uptimeProjectID); err != nil {
 			return err
@@ -158,7 +162,7 @@ Available options:
 - frequency: 1, 2, 5, or 15 (minutes)
 - match_type: "success", "exact", "include", "exclude", "jmespath"
 - request_method: "GET", "POST", "PUT", "PATCH", "DELETE"
-- locations: "Virginia", "Oregon", "Frankfurt", "Singapore", "London"`,
+- locations: "Virginia", "Oregon", "Frankfurt", "Singapore", "London"` + v3Reference("uptime-sites/create-site"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&uptimeProjectID); err != nil {
 			return err
@@ -203,7 +207,7 @@ Example JSON payload:
   "name": "Updated Website",
   "frequency": 15,
   "active": false
-}`,
+}` + v3Reference("uptime-sites/update-site"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&uptimeProjectID); err != nil {
 			return err
@@ -241,7 +245,9 @@ Example JSON payload:
 var uptimeSitesDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete an uptime site",
-	Long:  `Delete an uptime monitoring site by ID. This action cannot be undone.`,
+	Long: `Delete an uptime monitoring site by ID. This action cannot be undone.` + v3Reference(
+		"uptime-sites/delete-site",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&uptimeProjectID); err != nil {
 			return err
@@ -283,7 +289,9 @@ func uptimeListOptions() ([]apiv3.Option, error) {
 var uptimeOutagesCmd = &cobra.Command{
 	Use:   "outages",
 	Short: "List outages for a site",
-	Long:  `List outages recorded for a specific uptime monitoring site, newest first.`,
+	Long: `List outages recorded for a specific uptime monitoring site, newest first.` + v3Reference(
+		"uptime-sites/list-outages",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&uptimeProjectID); err != nil {
 			return err
@@ -348,7 +356,9 @@ var uptimeOutagesCmd = &cobra.Command{
 var uptimeChecksCmd = &cobra.Command{
 	Use:   "checks",
 	Short: "List uptime checks for a site",
-	Long:  `List individual uptime checks performed for a specific site, newest first.`,
+	Long: `List individual uptime checks performed for a specific site, newest first.` + v3Reference(
+		"uptime-sites/list-uptime-checks",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&uptimeProjectID); err != nil {
 			return err

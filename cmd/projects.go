@@ -31,7 +31,7 @@ var projectsCmd = &cobra.Command{
 var projectsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all projects",
-	Long:  `List every project your API Token can reach.`,
+	Long:  `List every project your API Token can reach.` + v3Reference("projects/list-projects"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		client, err := newDataAPIClient()
 		if err != nil {
@@ -65,7 +65,9 @@ var projectsListCmd = &cobra.Command{
 var projectsGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get a project by ID",
-	Long:  `Get detailed information about a specific project.`,
+	Long: `Get detailed information about a specific project.` + v3Reference(
+		"projects/get-project",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if projectID == "" {
 			return fmt.Errorf("project ID is required. Set it using --id flag")
@@ -121,7 +123,7 @@ Example JSON payload:
   "source_url": "https://github.com/myorg/myrepo/blob/main/[filename]#L[line]",
   "purge_days": 90,
   "user_search_field": "user_id"
-}`,
+}` + v3Reference("projects/create-project"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		params, err := decodeInput[apiv3.ProjectCreateParams](projectCLIInputJSON, "project")
 		if err != nil {
@@ -161,7 +163,7 @@ Example JSON payload:
   "name": "My Updated Project",
   "resolve_errors_on_deploy": false,
   "purge_days": 120
-}`,
+}` + v3Reference("projects/update-project"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if projectID == "" {
 			return fmt.Errorf("project ID is required. Set it using --id flag")
@@ -190,7 +192,9 @@ Example JSON payload:
 var projectsDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a project",
-	Long:  `Delete a project by ID. This action cannot be undone.`,
+	Long: `Delete a project by ID. This action cannot be undone.` + v3Reference(
+		"projects/delete-project",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if projectID == "" {
 			return fmt.Errorf("project ID is required. Set it using --id flag")
@@ -214,7 +218,10 @@ var projectsDeleteCmd = &cobra.Command{
 var projectsOccurrencesCmd = &cobra.Command{
 	Use:   "occurrences",
 	Short: "Get occurrence counts for projects",
-	Long:  `Get occurrence counts for all projects or a specific project over time.`,
+	Long: `Get occurrence counts for all projects or a specific project over time.` + v3Reference(
+		"projects/get-project-occurrences",
+		"projects/list-account-occurrences",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		client, err := newDataAPIClient()
 		if err != nil {

@@ -25,6 +25,20 @@ const ingestionKeyPrefix = "hbp_"
 const unauthorizedHint = "Check that the API Token hasn't been revoked or expired, " +
 	"and that it's for this region (US: app.honeybadger.io, EU: eu-app.honeybadger.io)."
 
+const v3ReferenceURL = "https://docs.honeybadger.io/api/v3/"
+
+// v3Reference is the end of a Data API command's help: a line per v3 reference
+// page the command calls, which documents the JSON it takes with
+// --cli-input-json and prints with --output json.
+func v3Reference(pages ...string) string {
+	var b strings.Builder
+	b.WriteString("\n")
+	for _, page := range pages {
+		b.WriteString("\nReference: " + v3ReferenceURL + page + "/")
+	}
+	return b.String()
+}
+
 // dataAPIAppURL is the app host the Data API is served from, derived from the
 // configured endpoint (api.honeybadger.io serves ingestion, app.honeybadger.io
 // the Data API).

@@ -15,7 +15,7 @@ The Data API commands now use Honeybadger's v3 Data API. This release is a previ
 - IDs are strings, as v3 returns them. Numeric IDs from v2 still work for projects, faults, deploys, environments, comments and teams. `uptime` site IDs are UUIDs and are checked before sending
 - `--cli-input-json` takes v3's request body directly: `{"name": "My Project"}`, not `{"project": {"name": "My Project"}}`. The old wrapped form, unknown fields and trailing content are refused before sending. Field names follow v3 (status page `sites` and `check_ins` are lists of objects, for example)
 - Updates are partial: only the fields you send change. `dashboards update` no longer needs the whole dashboard; a sent `widgets` list replaces the widgets, and an alarm's `trigger_config` replaces the stored trigger
-- `--output json` prints v3's resource JSON. `insights query --output json` prints the query's `results` and `meta`
+- `--output json` prints v3's resource JSON, so field names and shapes follow v3 (for example, a fault's `url` is now `links.web`, and an integration's `options` is now `config`). The [v3 Data API reference](https://docs.honeybadger.io/api/v3/) documents each one, and every Data API command's `--help` links to its page. `insights query --output json` prints the query's `results` and `meta`
 - `insights query --ts` is a time range such as `1h` or `P7D`, as v3 defines it, not a timestamp
 - `faults list`, `faults notices`, `deployments list`, `uptime outages` and `uptime checks` accept `--limit` up to 100
 - `check-ins list`, `environments list` and `streams list` return every page instead of the first

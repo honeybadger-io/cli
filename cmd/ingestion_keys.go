@@ -30,7 +30,9 @@ send errors and events to Honeybadger.`,
 var ingestionKeysListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List Ingestion Keys for a project",
-	Long:  `List all Ingestion Keys for a specific project.`,
+	Long: `List all Ingestion Keys for a specific project.` + v3Reference(
+		"ingestion-keys/list-ingestion-keys",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&ingestionKeysProjectID); err != nil {
 			return err
@@ -67,7 +69,9 @@ var ingestionKeysListCmd = &cobra.Command{
 var ingestionKeysGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get an Ingestion Key by ID",
-	Long:  `Get detailed information about a specific Ingestion Key, including its value.`,
+	Long: `Get detailed information about a specific Ingestion Key, including its value.` + v3Reference(
+		"ingestion-keys/get-ingestion-key",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&ingestionKeysProjectID); err != nil {
 			return err
@@ -118,7 +122,7 @@ key without a label.
 Example JSON payload:
 {
   "label": "CI"
-}`,
+}` + v3Reference("ingestion-keys/create-ingestion-key"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&ingestionKeysProjectID); err != nil {
 			return err
@@ -168,7 +172,7 @@ The --cli-input-json flag accepts either a JSON string or a file path prefixed w
 Example JSON payload:
 {
   "label": "Deploys"
-}`,
+}` + v3Reference("ingestion-keys/update-ingestion-key"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&ingestionKeysProjectID); err != nil {
 			return err
@@ -208,7 +212,7 @@ var ingestionKeysDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete an Ingestion Key",
 	Long: `Delete an Ingestion Key by ID. Apps still sending with it stop reporting.
-A project's last key can't be deleted. This action cannot be undone.`,
+A project's last key can't be deleted. This action cannot be undone.` + v3Reference("ingestion-keys/delete-ingestion-key"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&ingestionKeysProjectID); err != nil {
 			return err

@@ -132,6 +132,8 @@ These commands use the v3 Data API and an API Token, set with `--api-token` or `
 | `hb uptime` | Manage uptime monitoring checks |
 | `hb whoami` | Show the API Token in use and what it can reach |
 
+The JSON these commands take with `--cli-input-json` and print with `--output json` is the v3 Data API's, documented in the [v3 Data API reference](https://docs.honeybadger.io/api/v3/). Each command's `--help` links to its page.
+
 ### Examples
 
 ```bash

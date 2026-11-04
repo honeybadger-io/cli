@@ -29,7 +29,9 @@ var environmentsCmd = &cobra.Command{
 var environmentsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List environments for a project",
-	Long:  `List all environments configured for a specific project.`,
+	Long: `List all environments configured for a specific project.` + v3Reference(
+		"environments/list-environments",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&environmentsProjectID); err != nil {
 			return err
@@ -79,7 +81,9 @@ var environmentsListCmd = &cobra.Command{
 var environmentsGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get an environment by ID",
-	Long:  `Get detailed information about a specific environment.`,
+	Long: `Get detailed information about a specific environment.` + v3Reference(
+		"environments/get-environment",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&environmentsProjectID); err != nil {
 			return err
@@ -131,7 +135,7 @@ Example JSON payload:
 {
   "name": "staging",
   "notifications": true
-}`,
+}` + v3Reference("environments/create-environment"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&environmentsProjectID); err != nil {
 			return err
@@ -180,7 +184,7 @@ The --cli-input-json flag accepts either a JSON string or a file path prefixed w
 Example JSON payload:
 {
   "notifications": false
-}`,
+}` + v3Reference("environments/update-environment"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&environmentsProjectID); err != nil {
 			return err
@@ -219,7 +223,9 @@ Example JSON payload:
 var environmentsDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete an environment",
-	Long:  `Delete an environment by ID. This action cannot be undone.`,
+	Long: `Delete an environment by ID. This action cannot be undone.` + v3Reference(
+		"environments/delete-environment",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&environmentsProjectID); err != nil {
 			return err

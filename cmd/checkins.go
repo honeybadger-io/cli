@@ -29,7 +29,9 @@ var checkinsCmd = &cobra.Command{
 var checkinsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List check-ins for a project",
-	Long:  `List all check-ins configured for a specific project.`,
+	Long: `List all check-ins configured for a specific project.` + v3Reference(
+		"check-ins/list-check-ins",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&checkinsProjectID); err != nil {
 			return err
@@ -81,7 +83,9 @@ var checkinsListCmd = &cobra.Command{
 var checkinsGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get a check-in by ID",
-	Long:  `Get detailed information about a specific check-in.`,
+	Long: `Get detailed information about a specific check-in.` + v3Reference(
+		"check-ins/get-check-in",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&checkinsProjectID); err != nil {
 			return err
@@ -152,7 +156,7 @@ Example JSON payload for cron schedule:
   "schedule_type": "cron",
   "cron_schedule": "0 * * * *",
   "cron_timezone": "Eastern Time (US & Canada)"
-}`,
+}` + v3Reference("check-ins/create-check-in"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&checkinsProjectID); err != nil {
 			return err
@@ -196,7 +200,7 @@ Example JSON payload:
 {
   "name": "Updated Name",
   "report_period": "2 days"
-}`,
+}` + v3Reference("check-ins/update-check-in"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&checkinsProjectID); err != nil {
 			return err
@@ -239,7 +243,9 @@ Example JSON payload:
 var checkinsDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a check-in",
-	Long:  `Delete a check-in by ID. This action cannot be undone.`,
+	Long: `Delete a check-in by ID. This action cannot be undone.` + v3Reference(
+		"check-ins/delete-check-in",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&checkinsProjectID); err != nil {
 			return err
@@ -271,7 +277,7 @@ var checkinsEventsCmd = &cobra.Command{
 	Use:   "events",
 	Short: "List a check-in's events",
 	Long: `List a check-in's most recent events (reporting, missing, paused), newest first.
-JSON output includes each event's payload.`,
+JSON output includes each event's payload.` + v3Reference("check-ins/list-check-in-events"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&checkinsProjectID); err != nil {
 			return err

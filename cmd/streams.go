@@ -29,7 +29,7 @@ var streamsListCmd = &cobra.Command{
 	Long: `List all Insights data streams for a specific project.
 
 Stream IDs can be used to scope Insights queries (hb insights query --stream-ids)
-and alarms to specific streams.`,
+and alarms to specific streams.` + v3Reference("streams/list-streams"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&streamsProjectID); err != nil {
 			return err

@@ -32,7 +32,9 @@ var alarmsCmd = &cobra.Command{
 var alarmsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List alarms for a project",
-	Long:  `List all Insights alarms configured for a specific project.`,
+	Long: `List all Insights alarms configured for a specific project.` + v3Reference(
+		"alarms/list-alarms",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&alarmsProjectID); err != nil {
 			return err
@@ -81,7 +83,9 @@ var alarmsListCmd = &cobra.Command{
 var alarmsGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get an alarm by ID",
-	Long:  `Get detailed information about a specific Insights alarm.`,
+	Long: `Get detailed information about a specific Insights alarm.` + v3Reference(
+		"alarms/get-alarm",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&alarmsProjectID); err != nil {
 			return err
@@ -165,7 +169,7 @@ Example JSON payload:
     "type": "alert_result_count",
     "config": {"operator": "gt", "value": 10}
   }
-}`,
+}` + v3Reference("alarms/create-alarm"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&alarmsProjectID); err != nil {
 			return err
@@ -220,7 +224,7 @@ Example JSON payload:
     "type": "alert_result_count",
     "config": {"operator": "gt", "value": 25}
   }
-}`,
+}` + v3Reference("alarms/update-alarm"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&alarmsProjectID); err != nil {
 			return err
@@ -256,7 +260,9 @@ Example JSON payload:
 var alarmsDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete an alarm",
-	Long:  `Delete an Insights alarm by ID. This action cannot be undone.`,
+	Long: `Delete an Insights alarm by ID. This action cannot be undone.` + v3Reference(
+		"alarms/delete-alarm",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&alarmsProjectID); err != nil {
 			return err
@@ -284,7 +290,7 @@ var alarmsHistoryCmd = &cobra.Command{
 	Use:   "history",
 	Short: "Get the trigger history for an alarm",
 	Long: `Get the trigger history for a specific Insights alarm, newest first,
-25 entries per page.`,
+25 entries per page.` + v3Reference("alarms/list-alarm-history"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&alarmsProjectID); err != nil {
 			return err

@@ -28,7 +28,9 @@ var teamsCmd = &cobra.Command{
 var teamsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List teams for the account",
-	Long:  `List all teams in the account your API Token belongs to.`,
+	Long: `List all teams in the account your API Token belongs to.` + v3Reference(
+		"teams/list-teams",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		client, err := newDataAPIClient()
 		if err != nil {
@@ -60,7 +62,7 @@ var teamsListCmd = &cobra.Command{
 var teamsGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get a team by ID",
-	Long:  `Get detailed information about a specific team.`,
+	Long:  `Get detailed information about a specific team.` + v3Reference("teams/get-team"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if teamID == "" {
 			return fmt.Errorf("team ID is required. Set it using --id flag")
@@ -93,7 +95,9 @@ var teamsGetCmd = &cobra.Command{
 var teamsCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new team",
-	Long:  `Create a new team in the account your API Token belongs to.`,
+	Long: `Create a new team in the account your API Token belongs to.` + v3Reference(
+		"teams/create-team",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if teamName == "" {
 			return fmt.Errorf("team name is required. Set it using --name flag")
@@ -126,7 +130,7 @@ var teamsCreateCmd = &cobra.Command{
 var teamsUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update an existing team",
-	Long:  `Update an existing team's name.`,
+	Long:  `Update an existing team's name.` + v3Reference("teams/update-team"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if teamID == "" {
 			return fmt.Errorf("team ID is required. Set it using --id flag")
@@ -163,7 +167,7 @@ var teamsUpdateCmd = &cobra.Command{
 var teamsDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a team",
-	Long:  `Delete a team by ID. This action cannot be undone.`,
+	Long:  `Delete a team by ID. This action cannot be undone.` + v3Reference("teams/delete-team"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if teamID == "" {
 			return fmt.Errorf("team ID is required. Set it using --id flag")
