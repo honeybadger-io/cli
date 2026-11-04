@@ -2,20 +2,17 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"text/tabwriter"
 
-	hbapi "github.com/honeybadger-io/api-go/apiv2"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
-	commentsProjectID    int
-	commentsFaultID      int
-	commentID            int
+	commentsProjectID    string
+	commentsFaultID      string
+	commentID            string
 	commentsOutputFormat string
 	commentBody          string
 )
@@ -28,70 +25,67 @@ var commentsCmd = &cobra.Command{
 	Long:    `View and manage comments on faults in your Honeybadger projects.`,
 }
 
+// requireCommentFault resolves the project id and checks the fault id every
+// comments subcommand needs.
+func requireCommentFault() error {
+	if err := resolveDataAPIProjectID(&commentsProjectID); err != nil {
+		return err
+	}
+	if commentsFaultID == "" {
+		return fmt.Errorf("fault ID is required. Set it using --fault-id flag")
+	}
+	return nil
+}
+
 // commentsListCmd represents the comments list command
 var commentsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List comments for a fault",
-	Long:  `List all comments on a specific fault.`,
+	Long:  `List the comments on a specific fault, newest first.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&commentsProjectID); err != nil {
+		if err := requireCommentFault(); err != nil {
 			return err
 		}
-		if commentsFaultID == 0 {
-			return fmt.Errorf("fault ID is required. Set it using --fault-id flag")
-		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		comments, err := client.Comments.List(ctx, commentsProjectID, commentsFaultID)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to list comments: %w", err)
+			return err
 		}
 
-		switch commentsOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(comments, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			_, _ = fmt.Fprintln(w, "ID\tAUTHOR\tEVENT\tCREATED\tBODY")
-			for _, c := range comments {
-				author := "System"
-				if c.Author != "" {
-					author = c.Author
-				}
-
-				body := c.Body
-				if len(body) > 40 {
-					body = body[:37] + "..."
-				}
-
-				_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n",
-					c.ID,
-					author,
-					c.Event,
-					c.CreatedAt.Format("2006-01-02 15:04"),
-					body)
-			}
-			_ = w.Flush()
+		response, err := client.Faults.ListComments(
+			context.Background(),
+			commentsProjectID,
+			commentsFaultID,
+		)
+		if err != nil {
+			return dataAPIError("list comments", err)
 		}
 
-		return nil
+		if commentsOutputFormat == "json" {
+			return printJSON(response.Data)
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		_, _ = fmt.Fprintln(w, "ID\tAUTHOR\tEVENT\tCREATED\tBODY")
+		for _, c := range response.Data {
+			author := "System"
+			if name := c.Author.GetOrEmpty().Name.GetOrEmpty(); name != "" {
+				author = name
+			}
+
+			body := c.Body.GetOrEmpty()
+			if len(body) > 40 {
+				body = body[:37] + "..."
+			}
+
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+				c.Id,
+				author,
+				c.Event.GetOrEmpty(),
+				c.CreatedAt.Format("2006-01-02 15:04"),
+				body)
+		}
+		return w.Flush()
 	},
 }
 
@@ -101,55 +95,42 @@ var commentsGetCmd = &cobra.Command{
 	Short: "Get a comment by ID",
 	Long:  `Get detailed information about a specific comment.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&commentsProjectID); err != nil {
+		if err := requireCommentFault(); err != nil {
 			return err
 		}
-		if commentsFaultID == 0 {
-			return fmt.Errorf("fault ID is required. Set it using --fault-id flag")
-		}
-		if commentID == 0 {
+		if commentID == "" {
 			return fmt.Errorf("comment ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		comment, err := client.Comments.Get(ctx, commentsProjectID, commentsFaultID, commentID)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to get comment: %w", err)
+			return err
 		}
 
-		switch commentsOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(comment, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			fmt.Printf("Comment Details:\n")
-			fmt.Printf("  ID: %d\n", comment.ID)
-			fmt.Printf("  Fault ID: %d\n", comment.FaultID)
-			fmt.Printf("  Event: %s\n", comment.Event)
-			fmt.Printf("  Source: %s\n", comment.Source)
-			if comment.Author != "" {
-				fmt.Printf("  Author: %s\n", comment.Author)
-			}
-			fmt.Printf("  Created: %s\n", comment.CreatedAt.Format("2006-01-02 15:04:05"))
-			fmt.Printf("  Body:\n    %s\n", comment.Body)
+		comment, err := client.Faults.GetComment(
+			context.Background(),
+			commentsProjectID,
+			commentsFaultID,
+			commentID,
+		)
+		if err != nil {
+			return dataAPIError("get comment", err)
 		}
 
+		if commentsOutputFormat == "json" {
+			return printJSON(comment)
+		}
+
+		fmt.Printf("Comment Details:\n")
+		fmt.Printf("  ID: %s\n", comment.Id)
+		fmt.Printf("  Fault ID: %s\n", comment.FaultId)
+		fmt.Printf("  Event: %s\n", comment.Event.GetOrEmpty())
+		fmt.Printf("  Source: %s\n", comment.Source)
+		if name := comment.Author.GetOrEmpty().Name.GetOrEmpty(); name != "" {
+			fmt.Printf("  Author: %s\n", name)
+		}
+		fmt.Printf("  Created: %s\n", comment.CreatedAt.Format("2006-01-02 15:04:05"))
+		fmt.Printf("  Body:\n    %s\n", comment.Body.GetOrEmpty())
 		return nil
 	},
 }
@@ -160,48 +141,34 @@ var commentsCreateCmd = &cobra.Command{
 	Short: "Create a new comment",
 	Long:  `Create a new comment on a fault.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&commentsProjectID); err != nil {
+		if err := requireCommentFault(); err != nil {
 			return err
-		}
-		if commentsFaultID == 0 {
-			return fmt.Errorf("fault ID is required. Set it using --fault-id flag")
 		}
 		if commentBody == "" {
 			return fmt.Errorf("comment body is required. Set it using --body flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		comment, err := client.Comments.Create(ctx, commentsProjectID, commentsFaultID, commentBody)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to create comment: %w", err)
+			return err
 		}
 
-		switch commentsOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(comment, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			fmt.Printf("Comment created successfully!\n")
-			fmt.Printf("  ID: %d\n", comment.ID)
-			fmt.Printf("  Body: %s\n", comment.Body)
+		comment, err := client.Faults.AddComment(
+			context.Background(),
+			commentsProjectID,
+			commentsFaultID,
+			commentBody,
+		)
+		if err != nil {
+			return dataAPIError("create comment", err)
 		}
 
+		if commentsOutputFormat == "json" {
+			return printJSON(comment)
+		}
+		fmt.Printf("Comment created successfully!\n")
+		fmt.Printf("  ID: %s\n", comment.Id)
+		fmt.Printf("  Body: %s\n", comment.Body.GetOrEmpty())
 		return nil
 	},
 }
@@ -212,61 +179,38 @@ var commentsUpdateCmd = &cobra.Command{
 	Short: "Update an existing comment",
 	Long:  `Update the body of an existing comment.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&commentsProjectID); err != nil {
+		if err := requireCommentFault(); err != nil {
 			return err
 		}
-		if commentsFaultID == 0 {
-			return fmt.Errorf("fault ID is required. Set it using --fault-id flag")
-		}
-		if commentID == 0 {
+		if commentID == "" {
 			return fmt.Errorf("comment ID is required. Set it using --id flag")
 		}
 		if commentBody == "" {
 			return fmt.Errorf("comment body is required. Set it using --body flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
 
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		if err := client.Comments.Update(
-			ctx,
+		comment, err := client.Faults.UpdateComment(
+			context.Background(),
 			commentsProjectID,
 			commentsFaultID,
 			commentID,
 			commentBody,
-		); err != nil {
-			return fmt.Errorf("failed to update comment: %w", err)
-		}
-
-		comment, err := client.Comments.Get(ctx, commentsProjectID, commentsFaultID, commentID)
+		)
 		if err != nil {
-			return fmt.Errorf("failed to fetch updated comment: %w", err)
+			return dataAPIError("update comment", err)
 		}
 
-		switch commentsOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(comment, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			fmt.Printf("Comment updated successfully!\n")
-			fmt.Printf("  ID: %d\n", comment.ID)
-			fmt.Printf("  Body: %s\n", comment.Body)
+		if commentsOutputFormat == "json" {
+			return printJSON(comment)
 		}
-
+		fmt.Printf("Comment updated successfully!\n")
+		fmt.Printf("  ID: %s\n", comment.Id)
+		fmt.Printf("  Body: %s\n", comment.Body.GetOrEmpty())
 		return nil
 	},
 }
@@ -277,33 +221,25 @@ var commentsDeleteCmd = &cobra.Command{
 	Short: "Delete a comment",
 	Long:  `Delete a comment by ID. This action cannot be undone.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&commentsProjectID); err != nil {
+		if err := requireCommentFault(); err != nil {
 			return err
 		}
-		if commentsFaultID == 0 {
-			return fmt.Errorf("fault ID is required. Set it using --fault-id flag")
-		}
-		if commentID == 0 {
+		if commentID == "" {
 			return fmt.Errorf("comment ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
 
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		err := client.Comments.Delete(ctx, commentsProjectID, commentsFaultID, commentID)
-		if err != nil {
-			return fmt.Errorf("failed to delete comment: %w", err)
+		if err := client.Faults.DeleteComment(
+			context.Background(),
+			commentsProjectID,
+			commentsFaultID,
+			commentID,
+		); err != nil {
+			return dataAPIError("delete comment", err)
 		}
 
 		fmt.Println("Comment deleted successfully")
@@ -320,15 +256,15 @@ func init() {
 	commentsCmd.AddCommand(commentsDeleteCmd)
 
 	// Common flags
-	commentsCmd.PersistentFlags().IntVar(&commentsProjectID, "project-id", 0, "Project ID")
-	commentsCmd.PersistentFlags().IntVar(&commentsFaultID, "fault-id", 0, "Fault ID")
+	commentsCmd.PersistentFlags().StringVar(&commentsProjectID, "project-id", "", "Project ID")
+	commentsCmd.PersistentFlags().StringVar(&commentsFaultID, "fault-id", "", "Fault ID")
 
 	// Flags for list command
 	commentsListCmd.Flags().
 		StringVarP(&commentsOutputFormat, "output", "o", "table", "Output format (table or json)")
 
 	// Flags for get command
-	commentsGetCmd.Flags().IntVar(&commentID, "id", 0, "Comment ID")
+	commentsGetCmd.Flags().StringVar(&commentID, "id", "", "Comment ID")
 	commentsGetCmd.Flags().
 		StringVarP(&commentsOutputFormat, "output", "o", "text", "Output format (text or json)")
 	_ = commentsGetCmd.MarkFlagRequired("id")
@@ -340,7 +276,7 @@ func init() {
 	_ = commentsCreateCmd.MarkFlagRequired("body")
 
 	// Flags for update command
-	commentsUpdateCmd.Flags().IntVar(&commentID, "id", 0, "Comment ID")
+	commentsUpdateCmd.Flags().StringVar(&commentID, "id", "", "Comment ID")
 	commentsUpdateCmd.Flags().StringVar(&commentBody, "body", "", "New comment body text")
 	commentsUpdateCmd.Flags().
 		StringVarP(&commentsOutputFormat, "output", "o", "text", "Output format (text or json)")
@@ -348,6 +284,6 @@ func init() {
 	_ = commentsUpdateCmd.MarkFlagRequired("body")
 
 	// Flags for delete command
-	commentsDeleteCmd.Flags().IntVar(&commentID, "id", 0, "Comment ID")
+	commentsDeleteCmd.Flags().StringVar(&commentID, "id", "", "Comment ID")
 	_ = commentsDeleteCmd.MarkFlagRequired("id")
 }
