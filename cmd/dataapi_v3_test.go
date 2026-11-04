@@ -159,3 +159,58 @@ func TestDataAPITrimsWhitespaceAroundTheToken(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "Bearer hbu_test", s.only(t).Auth)
 }
+
+func TestTheAuthTokenFlagIsGone(t *testing.T) {
+	s := newV3Server(t)
+	_, err := runCLI(t, v3Env(s), "projects", "list", "--auth-token", "x")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown flag: --auth-token")
+	assert.Empty(t, s.Requests())
+}
+
+func TestDataAPIRefusesAnAuthTokenInTheConfigFile(t *testing.T) {
+	s := newV3Server(t)
+	cfg := t.TempDir() + "/hb.yaml"
+	require.NoError(t, writeFile(cfg, "auth_token: hbu_old\nendpoint: "+s.URL+"\n"))
+	_, err := runCLI(t, nil, "projects", "list", "--config", cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "auth_token is no longer used")
+	assert.Empty(t, s.Requests())
+}
+
+func TestResolveDataAPIProjectID(t *testing.T) {
+	tests := []struct {
+		name, flag, env, want string
+		wantErr               bool
+	}{
+		{name: "flag wins over the environment", flag: "Xk9mZp", env: "123", want: "Xk9mZp"},
+		{name: "environment when no flag", env: "123", want: "123"},
+		{name: "environment is trimmed", env: " 123\n", want: "123"},
+		{name: "neither is an error", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := newV3Server(
+				t,
+				ok(
+					`{"data":[],"pagination":{"page":1,"per_page":25},"links":{"self":"/v3","next":null}}`,
+				),
+			)
+			env := v3Env(s)
+			env["HONEYBADGER_PROJECT_ID"] = tt.env
+			args := []string{"faults", "list"}
+			if tt.flag != "" {
+				args = append(args, "--project-id", tt.flag)
+			}
+			_, err := runCLI(t, env, args...)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "project ID is required")
+				assert.Empty(t, s.Requests())
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, "/v3/projects/"+tt.want+"/faults", s.only(t).Path)
+		})
+	}
+}

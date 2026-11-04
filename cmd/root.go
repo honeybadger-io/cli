@@ -14,7 +14,6 @@ import (
 var (
 	cfgFile         string
 	apiKey          string
-	authToken       string
 	apiTokenFlag    string
 	endpoint        string
 	defaultEndpoint = "https://api.honeybadger.io"
@@ -77,8 +76,6 @@ func init() {
 	rootCmd.PersistentFlags().
 		StringVar(&apiKey, "api-key", "", "Honeybadger Ingestion Key (for Reporting API)")
 	rootCmd.PersistentFlags().
-		StringVar(&authToken, "auth-token", "", "Honeybadger personal auth token (for Data API)")
-	rootCmd.PersistentFlags().
 		StringVar(&apiTokenFlag, "api-token", "", "Honeybadger API Token (for Data API)")
 	rootCmd.PersistentFlags().
 		StringVar(&endpoint, "endpoint", defaultEndpoint, "Honeybadger endpoint")
@@ -86,12 +83,6 @@ func init() {
 	err := viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key"))
 	if err != nil {
 		fmt.Printf("error binding api-key flag: %v\n", err)
-	}
-	if err := viper.BindPFlag(
-		"auth_token",
-		rootCmd.PersistentFlags().Lookup("auth-token"),
-	); err != nil {
-		fmt.Printf("error binding auth-token flag: %v\n", err)
 	}
 	if err := viper.BindPFlag(
 		"api_token",
@@ -125,7 +116,7 @@ func initConfig() {
 	viper.SetDefault("endpoint", defaultEndpoint)
 
 	// Register project_id for env var lookup (HONEYBADGER_PROJECT_ID).
-	// Unlike api_key/auth_token/endpoint, project_id has no root-level flag
+	// Unlike api_key/api_token/endpoint, project_id has no root-level flag
 	// to bind, so we use BindEnv to make viper aware of it.
 	_ = viper.BindEnv("project_id")
 
@@ -137,9 +128,6 @@ func initConfig() {
 	// This gives command-line flags precedence over environment variables
 	if rootCmd.PersistentFlags().Changed("api-key") {
 		viper.Set("api_key", apiKey)
-	}
-	if rootCmd.PersistentFlags().Changed("auth-token") {
-		viper.Set("auth_token", authToken)
 	}
 	if rootCmd.PersistentFlags().Changed("api-token") {
 		viper.Set("api_token", apiTokenFlag)
@@ -176,20 +164,6 @@ func convertEndpointForDataAPI(endpoint string) string {
 	default:
 		return trimmed
 	}
-}
-
-// resolveProjectID resolves the project ID from the flag value, falling back to viper config/env.
-// Returns an error if no project ID is found from any source.
-func resolveProjectID(projectID *int) error {
-	if *projectID == 0 {
-		*projectID = viper.GetInt("project_id")
-	}
-	if *projectID == 0 {
-		return fmt.Errorf(
-			"project ID is required. Set it using --project-id flag, HONEYBADGER_PROJECT_ID environment variable, or project_id in your config file",
-		)
-	}
-	return nil
 }
 
 // parseTimeFlag parses a user-provided time string into a time.Time.
