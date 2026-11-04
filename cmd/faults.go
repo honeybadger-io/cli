@@ -626,6 +626,80 @@ Example:
 	},
 }
 
+var faultPauseFor string
+
+// faultsPauseRecordingCmd represents the faults pause-recording command
+var faultsPauseRecordingCmd = &cobra.Command{
+	Use:   "pause-recording",
+	Short: "Stop recording a fault's notices for a while",
+	Long: `Stop recording new notices for a fault for an hour, a day or a week. Notices
+during the pause are discarded. Pausing again replaces the end time.
+
+Example:
+  hb faults pause-recording --project-id Xk9mZp --id Fk7pQ2 --for day`,
+	RunE: func(_ *cobra.Command, _ []string) error {
+		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
+			return err
+		}
+		duration := apiv3.PauseDuration(faultPauseFor)
+		if !duration.Valid() {
+			return fmt.Errorf("invalid --for %q: use hour, day or week", faultPauseFor)
+		}
+
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
+		}
+
+		fault, err := client.Faults.PauseRecording(
+			context.Background(),
+			faultsProjectID,
+			faultID,
+			duration,
+		)
+		if err != nil {
+			return dataAPIError("pause recording", err)
+		}
+
+		if until, err := fault.RecordingPausedUntil.Get(); err == nil {
+			fmt.Printf("Recording paused for fault %s until %s\n",
+				fault.Id, until.Format("2006-01-02 15:04:05 MST"))
+			return nil
+		}
+		fmt.Printf("Recording paused for fault %s\n", fault.Id)
+		return nil
+	},
+}
+
+// faultsResumeRecordingCmd represents the faults resume-recording command
+var faultsResumeRecordingCmd = &cobra.Command{
+	Use:   "resume-recording",
+	Short: "Start recording a fault's notices again",
+	Long:  `Start recording new notices for a fault whose recording was paused.`,
+	RunE: func(_ *cobra.Command, _ []string) error {
+		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
+			return err
+		}
+
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
+		}
+
+		fault, err := client.Faults.ResumeRecording(
+			context.Background(),
+			faultsProjectID,
+			faultID,
+		)
+		if err != nil {
+			return dataAPIError("resume recording", err)
+		}
+
+		fmt.Printf("Recording resumed for fault %s\n", fault.Id)
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(faultsCmd)
 	faultsCmd.AddCommand(faultsListCmd)
@@ -707,4 +781,15 @@ func init() {
 	faultsMergeCmd.Flags().StringVar(&faultMergeInto, "into", "", "ID of the fault to keep")
 	_ = faultsMergeCmd.MarkFlagRequired("id")
 	_ = faultsMergeCmd.MarkFlagRequired("into")
+
+	// pause-recording and resume-recording commands
+	faultsCmd.AddCommand(faultsPauseRecordingCmd)
+	faultsCmd.AddCommand(faultsResumeRecordingCmd)
+	faultsPauseRecordingCmd.Flags().StringVar(&faultID, "id", "", "Fault ID")
+	faultsPauseRecordingCmd.Flags().
+		StringVar(&faultPauseFor, "for", "", "How long to pause: hour, day or week")
+	_ = faultsPauseRecordingCmd.MarkFlagRequired("id")
+	_ = faultsPauseRecordingCmd.MarkFlagRequired("for")
+	faultsResumeRecordingCmd.Flags().StringVar(&faultID, "id", "", "Fault ID")
+	_ = faultsResumeRecordingCmd.MarkFlagRequired("id")
 }
