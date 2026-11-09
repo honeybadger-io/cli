@@ -107,7 +107,9 @@ var honeybadgerEnvVars = []string{
 // returns what it printed to stdout.
 func runCLI(t *testing.T, env cliEnv, args ...string) (string, error) {
 	t.Helper()
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // os.UserHomeDir reads this on Windows
 	for _, k := range honeybadgerEnvVars {
 		t.Setenv(k, "")
 	}
