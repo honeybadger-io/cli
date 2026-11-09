@@ -282,6 +282,9 @@ JSON output includes each event's payload.` + v3Reference("check-ins/list-check-
 		if err := resolveDataAPIProjectID(&checkinsProjectID); err != nil {
 			return err
 		}
+		if checkinID == "" {
+			return fmt.Errorf("check-in ID is required. Set it using --id flag")
+		}
 
 		client, err := newDataAPIClient()
 		if err != nil {

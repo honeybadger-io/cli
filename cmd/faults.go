@@ -612,6 +612,12 @@ Example:
 		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
 		}
+		if faultID == "" {
+			return fmt.Errorf("fault ID is required. Set it using --id flag")
+		}
+		if faultMergeInto == "" {
+			return fmt.Errorf("fault ID to merge into is required. Set it using --into flag")
+		}
 
 		client, err := newDataAPIClient()
 		if err != nil {
@@ -648,6 +654,9 @@ Example:
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
+		}
+		if faultID == "" {
+			return fmt.Errorf("fault ID is required. Set it using --id flag")
 		}
 		duration := apiv3.PauseDuration(faultPauseFor)
 		if !duration.Valid() {
@@ -690,6 +699,9 @@ var faultsResumeRecordingCmd = &cobra.Command{
 		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
 		}
+		if faultID == "" {
+			return fmt.Errorf("fault ID is required. Set it using --id flag")
+		}
 
 		client, err := newDataAPIClient()
 		if err != nil {
@@ -720,6 +732,9 @@ var faultsDeleteCmd = &cobra.Command{
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
+		}
+		if faultID == "" {
+			return fmt.Errorf("fault ID is required. Set it using --id flag")
 		}
 
 		client, err := newDataAPIClient()
