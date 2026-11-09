@@ -6,7 +6,7 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-The Data API commands now use Honeybadger's v3 Data API. This release is a preview (`v0.11.0-preview.N`) until scoped API Tokens are generally available.
+The Data API commands now use Honeybadger's v3 Data API. This is a breaking change, released as a minor version (v0.11.0) while the CLI is below 1.0.
 
 ### Changed
 
