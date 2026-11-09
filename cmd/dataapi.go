@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/honeybadger-io/api-go/apiv3"
@@ -186,7 +188,71 @@ func decodeInput[T any](input, wrapper string) (T, error) {
 			"failed to parse JSON payload: unexpected content after the JSON object",
 		)
 	}
+	if err := checkNothingDropped(data, v); err != nil {
+		return v, fmt.Errorf("failed to parse JSON payload: %w", err)
+	}
 	return v, nil
+}
+
+// checkNothingDropped compares the JSON the user gave with the body v will be
+// sent as, and names the first field that didn't make it. The strict decode
+// misses two cases: api-go decodes a nullable field's contents without the
+// unknown-field check, so a typo inside one vanishes, and a null given to a
+// field that can't be null is sent as nothing.
+func checkNothingDropped(data []byte, v any) error {
+	body, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	var given, sent any
+	if err := json.Unmarshal(data, &given); err != nil {
+		return err
+	}
+	if err := json.Unmarshal(body, &sent); err != nil {
+		return err
+	}
+	return droppedField(given, sent, "")
+}
+
+// droppedField walks given and sent together, objects key by key and lists
+// item by item, and reports the first key in given that sent lacks.
+func droppedField(given, sent any, path string) error {
+	switch g := given.(type) {
+	case map[string]any:
+		s, _ := sent.(map[string]any)
+		return droppedObjectField(g, s, path)
+	case []any:
+		s := sent.([]any) // api-go's types encode a list as the same list
+		for i, item := range g {
+			if err := droppedField(item, s[i], fmt.Sprintf("%s[%d]", path, i)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// droppedObjectField is droppedField for one JSON object.
+func droppedObjectField(given, sent map[string]any, path string) error {
+	for _, key := range slices.Sorted(maps.Keys(given)) {
+		keyPath := key
+		if path != "" {
+			keyPath = path + "." + key
+		}
+		value, found := sent[key]
+		switch {
+		case !found && given[key] == nil:
+			return fmt.Errorf("%q: unknown field, or one that can't be null", keyPath)
+		case !found:
+			return fmt.Errorf("unknown field %q", keyPath)
+		case given[key] == nil && value != nil:
+			return fmt.Errorf("field %q can't be null", keyPath)
+		}
+		if err := droppedField(given[key], value, keyPath); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // printJSON prints v as indented JSON.
