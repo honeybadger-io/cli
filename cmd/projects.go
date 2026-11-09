@@ -120,9 +120,9 @@ Example JSON payload:
   "disable_public_links": false,
   "language": "ruby",
   "user_url": "https://myapp.com/users/[user_id]",
-  "source_url": "https://github.com/myorg/myrepo/blob/main/[filename]#L[line]",
+  "source_url": "https://github.com/myorg/myrepo/blob/main/[file]#L[line]",
   "purge_days": 90,
-  "user_search_field": "user_id"
+  "user_search_field": "context.user_id"
 }` + v3Reference("projects/create-project"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		params, err := decodeInput[apiv3.ProjectCreateParams](projectCLIInputJSON, "project")
