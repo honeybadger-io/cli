@@ -77,6 +77,47 @@ func TestANullSentAsZeroIsRefused(t *testing.T) {
 	assert.Empty(t, s.Requests())
 }
 
+// A null list item is sent as its zero value too: an integration's events
+// [null] went out as [""], which v3 drops, leaving the integration with no
+// events. A null payload went out as {}, and ingestion-keys create made a key.
+func TestNullsInListsAndANullPayloadAreRefused(t *testing.T) {
+	tests := []struct {
+		name  string
+		args  []string
+		input string
+		want  string
+	}{
+		{
+			"a null event",
+			[]string{"integrations", "update", "--project-id", "Xk9mZp", "--id", "Ch9wLp"},
+			`{"events":["occurred",null]}`,
+			`field "events[1]" can't be null`,
+		},
+		{
+			"a null filter",
+			[]string{"integrations", "update", "--project-id", "Xk9mZp", "--id", "Ch9wLp"},
+			`{"filters":[null]}`,
+			`field "filters[0]" can't be null`,
+		},
+		{
+			"a null payload",
+			[]string{"ingestion-keys", "create", "--project-id", "Xk9mZp"},
+			`null`,
+			"the JSON payload must be an object, not null",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := newV3Server(t)
+			args := append(tt.args, "--cli-input-json", tt.input)
+			_, err := runCLI(t, v3Env(s), args...)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.want)
+			assert.Empty(t, s.Requests())
+		})
+	}
+}
+
 func TestNestedFieldsThatExistAreSentAsGiven(t *testing.T) {
 	tests := []struct {
 		name  string

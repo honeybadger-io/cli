@@ -215,8 +215,15 @@ func checkNothingDropped(data []byte, v any) error {
 }
 
 // droppedField walks given and sent together, objects key by key and lists
-// item by item, and reports the first key in given that sent lacks.
+// item by item, and reports the first key in given that sent lacks, or the
+// first null in given that sent replaced with a value.
 func droppedField(given, sent any, path string) error {
+	if given == nil && sent != nil {
+		if path == "" {
+			return errors.New("the JSON payload must be an object, not null")
+		}
+		return fmt.Errorf("field %q can't be null", path)
+	}
 	switch g := given.(type) {
 	case map[string]any:
 		s, _ := sent.(map[string]any)
@@ -245,8 +252,6 @@ func droppedObjectField(given, sent map[string]any, path string) error {
 			return fmt.Errorf("%q: unknown field, or one that can't be null", keyPath)
 		case !found:
 			return fmt.Errorf("unknown field %q", keyPath)
-		case given[key] == nil && value != nil:
-			return fmt.Errorf("field %q can't be null", keyPath)
 		}
 		if err := droppedField(given[key], value, keyPath); err != nil {
 			return err
