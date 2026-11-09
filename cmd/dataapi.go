@@ -126,26 +126,36 @@ func isDotSegment(id string) bool {
 }
 
 // checkIDFlags refuses "." and ".." in any id flag (--id, --*-id, --into)
-// before a command runs.
+// before a command runs, and an empty --project-id, which would otherwise be
+// taken as not given and replaced by the default project.
 func checkIDFlags(cmd *cobra.Command) error {
 	var err error
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		if err != nil || !f.Changed ||
-			(f.Name != "id" && f.Name != "into" && !strings.HasSuffix(f.Name, "-id")) {
-			return
-		}
-		values := []string{f.Value.String()}
-		if sv, isSlice := f.Value.(pflag.SliceValue); isSlice {
-			values = sv.GetSlice()
-		}
-		for _, v := range values {
-			if isDotSegment(v) {
-				err = fmt.Errorf("invalid --%s: %q isn't an ID", f.Name, v)
-				return
-			}
+		if err == nil && f.Changed &&
+			(f.Name == "id" || f.Name == "into" || strings.HasSuffix(f.Name, "-id")) {
+			err = checkIDFlag(f)
 		}
 	})
 	return err
+}
+
+// checkIDFlag is checkIDFlags for one id flag the user gave.
+func checkIDFlag(f *pflag.Flag) error {
+	if f.Name == "project-id" && f.Value.String() == "" {
+		return errors.New(
+			"--project-id is empty: give a project ID, or leave the flag out to use HONEYBADGER_PROJECT_ID or project_id in your config file",
+		)
+	}
+	values := []string{f.Value.String()}
+	if sv, isSlice := f.Value.(pflag.SliceValue); isSlice {
+		values = sv.GetSlice()
+	}
+	for _, v := range values {
+		if isDotSegment(v) {
+			return fmt.Errorf("invalid --%s: %q isn't an ID", f.Name, v)
+		}
+	}
+	return nil
 }
 
 // dataAPIError reports a failed Data API call. A 401 gets a hint, since v3 says
