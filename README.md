@@ -83,7 +83,7 @@ The CLI refuses anything else before sending a request: an Ingestion Key (`hbp_`
 
 An API Token can be limited to some scopes and projects. When a command needs a scope the token doesn't have, the error names it (for example `requires faults:read`). `hb whoami` shows what the current token can reach.
 
-Project IDs are the IDs the Data API returns (for example `Xk9mZp`); older numeric project IDs still work.
+Project IDs are the IDs the v3 Data API returns (for example `Xk9mZp`). Run `hb projects list` to find yours; replace older numeric project IDs in your flags, environment variables, and configuration.
 
 ### Command-line Flags
 

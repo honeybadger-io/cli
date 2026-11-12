@@ -101,8 +101,8 @@ func hasAPITokenPrefix(token string) bool {
 
 // resolveDataAPIProjectID fills in projectID from project_id (the
 // HONEYBADGER_PROJECT_ID environment variable or the config file) when the
-// --project-id flag wasn't given. v3 project ids are strings; a legacy numeric
-// id works too.
+// --project-id flag wasn't given. v3 project ids are strings, such as
+// "Xk9mZp"; v2's numeric ids don't resolve.
 func resolveDataAPIProjectID(projectID *string) error {
 	if *projectID == "" {
 		*projectID = strings.TrimSpace(viper.GetString("project_id"))
