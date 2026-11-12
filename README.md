@@ -165,7 +165,7 @@ hb insights query --project-id Xk9mZp --query "fields @ts, @preview | sort @ts" 
 hb faults list --project-id Xk9mZp
 
 # Resolve a fault
-hb faults update --project-id Xk9mZp --id Fk7pQ2 --resolved
+hb faults update --project-id Xk9mZp --id 678 --resolved
 
 # See which faults not seen since July would be resolved, then resolve them
 hb faults resolve --project-id Xk9mZp --all --occurred-before 2026-07-01 --dry-run

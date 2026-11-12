@@ -238,22 +238,22 @@ when --resolved or --ignored is set to true in the same request as
 
 Examples:
   # Resolve a fault
-  hb faults update --project-id Xk9mZp --id Fk7pQ2 --resolved
+  hb faults update --project-id Xk9mZp --id 678 --resolved
 
   # Un-resolve a fault
-  hb faults update --project-id Xk9mZp --id Fk7pQ2 --resolved=false
+  hb faults update --project-id Xk9mZp --id 678 --resolved=false
 
   # Ignore a fault
-  hb faults update --project-id Xk9mZp --id Fk7pQ2 --ignored
+  hb faults update --project-id Xk9mZp --id 678 --ignored
 
   # Mark a fault to be resolved automatically on the next deploy
-  hb faults update --project-id Xk9mZp --id Fk7pQ2 --resolve-on-deploy
+  hb faults update --project-id Xk9mZp --id 678 --resolve-on-deploy
 
   # Assign a fault to a user
-  hb faults update --project-id Xk9mZp --id Fk7pQ2 --assignee-id Us3rAb
+  hb faults update --project-id Xk9mZp --id 678 --assignee-id Us3rAb
 
   # Unassign a fault
-  hb faults update --project-id Xk9mZp --id Fk7pQ2 --unassign` + v3Reference("faults/update-fault"),
+  hb faults update --project-id Xk9mZp --id 678 --unassign` + v3Reference("faults/update-fault"),
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
@@ -518,7 +518,7 @@ change every fault in the project at once. Times are YYYY-MM-DD or RFC3339.
 --dry-run reports what would change without changing anything.
 
 Examples:
-  hb faults %[2]s --project-id Xk9mZp --id Fk7pQ2 --id Fk8qR3
+  hb faults %[2]s --project-id Xk9mZp --id 678 --id 679
   hb faults %[2]s --project-id Xk9mZp --query "class:RuntimeError" --dry-run
   hb faults %[2]s --project-id Xk9mZp --all --occurred-before 2026-01-01`,
 			title, verb) + v3Reference("faults/"+verb+"-faults"),
@@ -607,7 +607,7 @@ fault, and its tags, assignee and resolved or ignored state are dropped. The mer
 runs in the background. This action cannot be undone.
 
 Example:
-  hb faults merge --project-id Xk9mZp --id Fk7pQ2 --into Fk8qR3` + v3Reference("faults/merge-faults"),
+  hb faults merge --project-id Xk9mZp --id 678 --into 679` + v3Reference("faults/merge-faults"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
@@ -650,7 +650,7 @@ var faultsPauseRecordingCmd = &cobra.Command{
 during the pause are discarded. Pausing again replaces the end time.
 
 Example:
-  hb faults pause-recording --project-id Xk9mZp --id Fk7pQ2 --for day` + v3Reference("faults/pause-fault-recording"),
+  hb faults pause-recording --project-id Xk9mZp --id 678 --for day` + v3Reference("faults/pause-fault-recording"),
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
 			return err
