@@ -118,6 +118,19 @@ func TestNullsInListsAndANullPayloadAreRefused(t *testing.T) {
 	}
 }
 
+// Go matches JSON keys to fields ignoring case, Unicode folding included, so
+// "widgetſ" (long s) also lands in widgets and the last one wins. The list the
+// user wrote under "widgets" is then not the list that would be sent; that is
+// refused, not compared item by item past the end of the shorter list.
+func TestAKeyThatFoldsOntoAnotherIsRefused(t *testing.T) {
+	s := newV3Server(t)
+	_, err := runCLI(t, v3Env(s), "dashboards", "update", "--project-id", "Xk9mZp",
+		"--id", "Db4nVc", "--cli-input-json", `{"widgets":[{}],"widgetſ":[]}`)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `field "widgets" can't be sent as given`)
+	assert.Empty(t, s.Requests())
+}
+
 func TestNestedFieldsThatExistAreSentAsGiven(t *testing.T) {
 	tests := []struct {
 		name  string

@@ -236,14 +236,26 @@ func droppedField(given, sent any, path string) error {
 	}
 	switch g := given.(type) {
 	case map[string]any:
-		s, _ := sent.(map[string]any)
-		return droppedObjectField(g, s, path)
+		if s, isObject := sent.(map[string]any); isObject {
+			return droppedObjectField(g, s, path)
+		}
 	case []any:
-		s := sent.([]any) // api-go's types encode a list as the same list
-		for i, item := range g {
-			if err := droppedField(item, s[i], fmt.Sprintf("%s[%d]", path, i)); err != nil {
-				return err
-			}
+		if s, isList := sent.([]any); isList && len(s) == len(g) {
+			return droppedListField(g, s, path)
+		}
+	default:
+		return nil
+	}
+	// The shapes differ when another key folded onto the same field, since Go
+	// matches keys ignoring case: "widgetſ" lands in widgets too.
+	return fmt.Errorf("field %q can't be sent as given", path)
+}
+
+// droppedListField is droppedField for two lists of the same length.
+func droppedListField(given, sent []any, path string) error {
+	for i, item := range given {
+		if err := droppedField(item, sent[i], fmt.Sprintf("%s[%d]", path, i)); err != nil {
+			return err
 		}
 	}
 	return nil
