@@ -31,6 +31,7 @@ The Data API commands now use Honeybadger's v3 Data API. This is a breaking chan
 - `faults merge`, `faults pause-recording`, `faults resume-recording` and `faults delete`
 - `check-ins events` to list a check-in's recent events
 - `whoami` to show the API Token in use, its scopes and the projects it can reach
+- `deployments list --before` and `--after` to page through deployments; each page prints the cursor for the next one to stderr
 
 ### Removed
 
@@ -38,7 +39,7 @@ The Data API commands now use Honeybadger's v3 Data API. This is a breaking chan
 - `projects reports`: v3 has no reports. Use `insights query`; for example notices by class over the last week: `hb insights query --project-id ID --ts P7D --query 'filter event_type::str == "notice" | stats count() as notices by klass::str as klass | sort notices desc'`
 - `projects integrations` (use `integrations list`)
 - `--account-id` on `projects list`, `projects create`, `teams` and `statuspages`: the account comes from the API Token
-- `deployments list --created-after` and `--created-before`, and `uptime outages`/`uptime checks --created-after`: v3 has no such filters
+- `deployments list --created-after` and `--created-before`, and `uptime outages`/`uptime checks --created-after`: v3 has no such filters. Page back through deployments with `--before` instead
 
 ## [0.10.1] - 2026-08-14
 

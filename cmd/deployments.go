@@ -17,6 +17,8 @@ var (
 	deploymentsEnvironment  string
 	deploymentsLocalUser    string
 	deploymentsLimit        int
+	deploymentsBefore       string
+	deploymentsAfter        string
 )
 
 // deploymentsCmd represents the deployments command
@@ -31,7 +33,14 @@ var deploymentsCmd = &cobra.Command{
 var deploymentsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List deployments for a project",
-	Long: `List a project's most recent deployments, newest first, with optional filtering.` + v3Reference(
+	Long: `List a project's most recent deployments, newest first, with optional filtering.
+
+When there are more, it prints the cursor for the next page to stderr: pass it
+with --before for older deployments, or --after for newer ones.
+
+Example:
+  hb deployments list --project-id Xk9mZp --limit 100
+  hb deployments list --project-id Xk9mZp --limit 100 --before <cursor>` + v3Reference(
 		"deploys/list-deploys",
 	),
 	RunE: func(_ *cobra.Command, _ []string) error {
@@ -44,16 +53,29 @@ var deploymentsListCmd = &cobra.Command{
 			return err
 		}
 
-		response, err := client.Deploys.List(context.Background(), deploymentsProjectID,
+		opts := []apiv3.Option{
 			apiv3.InEnvironment(deploymentsEnvironment),
 			apiv3.DeployedBy(deploymentsLocalUser),
-			apiv3.Limit(deploymentsLimit))
+			apiv3.Limit(deploymentsLimit),
+		}
+		// Before and After each set both cursors, so only the one given is passed.
+		if deploymentsBefore != "" {
+			opts = append(opts, apiv3.Before(deploymentsBefore))
+		}
+		if deploymentsAfter != "" {
+			opts = append(opts, apiv3.After(deploymentsAfter))
+		}
+		response, err := client.Deploys.List(context.Background(), deploymentsProjectID, opts...)
 		if err != nil {
 			return dataAPIError("list deployments", err)
 		}
 
 		if deploymentsOutputFormat == "json" {
-			return printJSON(response.Data)
+			if err := printJSON(response.Data); err != nil {
+				return err
+			}
+			printDeployCursors(response.TimeSeries)
+			return nil
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
@@ -71,8 +93,35 @@ var deploymentsListCmd = &cobra.Command{
 				d.LocalUsername.GetOrEmpty(),
 				d.CreatedAt.Format("2006-01-02 15:04"))
 		}
-		return w.Flush()
+		if err := w.Flush(); err != nil {
+			return err
+		}
+		printDeployCursors(response.TimeSeries)
+		return nil
 	},
+}
+
+// printDeployCursors tells the user how to fetch the pages either side of
+// this one. v3 has no date filters for deploys, so the cursors are the only
+// way to older ones. They go to stderr to keep the table and JSON clean.
+func printDeployCursors(page *apiv3.TimeSeriesPagination) {
+	if page == nil {
+		return
+	}
+	if cursor := page.OldestCursor.GetOrEmpty(); page.HasOlder && cursor != "" {
+		fmt.Fprintf(
+			os.Stderr,
+			"Older deployments: rerun with --before %s in place of any --before or --after\n",
+			cursor,
+		)
+	}
+	if cursor := page.NewestCursor.GetOrEmpty(); page.HasNewer && cursor != "" {
+		fmt.Fprintf(
+			os.Stderr,
+			"Newer deployments: rerun with --after %s in place of any --before or --after\n",
+			cursor,
+		)
+	}
 }
 
 // deploymentsGetCmd represents the deployments get command
@@ -138,6 +187,11 @@ func init() {
 		StringVar(&deploymentsLocalUser, "local-user", "", "Filter by local username")
 	deploymentsListCmd.Flags().
 		IntVar(&deploymentsLimit, "limit", 25, "Maximum number of deployments to return (max 100)")
+	deploymentsListCmd.Flags().
+		StringVar(&deploymentsBefore, "before", "", "Show older deployments: the cursor a previous page printed")
+	deploymentsListCmd.Flags().
+		StringVar(&deploymentsAfter, "after", "", "Show newer deployments: the cursor a previous page printed")
+	deploymentsListCmd.MarkFlagsMutuallyExclusive("before", "after")
 
 	// Flags for get command
 	deploymentsGetCmd.Flags().StringVar(&deploymentID, "id", "", "Deployment ID")

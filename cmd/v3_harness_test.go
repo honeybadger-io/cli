@@ -154,6 +154,12 @@ func captureStdout(t *testing.T) func() string {
 	return captureOutput(t, &os.Stdout)
 }
 
+// captureStderr is captureStdout for os.Stderr.
+func captureStderr(t *testing.T) func() string {
+	t.Helper()
+	return captureOutput(t, &os.Stderr)
+}
+
 func captureOutput(t *testing.T, file **os.File) func() string {
 	t.Helper()
 	orig := *file
