@@ -2,18 +2,16 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"text/tabwriter"
 
-	hbapi "github.com/honeybadger-io/api-go"
+	"github.com/honeybadger-io/api-go/apiv3"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
-	checkinsProjectID    int
+	checkinsProjectID    string
 	checkinID            string
 	checkinsOutputFormat string
 	checkinCLIInputJSON  string
@@ -31,66 +29,53 @@ var checkinsCmd = &cobra.Command{
 var checkinsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List check-ins for a project",
-	Long:  `List all check-ins configured for a specific project.`,
+	Long: `List all check-ins configured for a specific project.` + v3Reference(
+		"check-ins/list-check-ins",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&checkinsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&checkinsProjectID); err != nil {
 			return err
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		checkIns, err := client.CheckIns.List(ctx, checkinsProjectID)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to list check-ins: %w", err)
+			return err
 		}
 
-		switch checkinsOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(checkIns, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			_, _ = fmt.Fprintln(w, "ID\tNAME\tSLUG\tTYPE\tSCHEDULE\tLAST CHECK-IN")
-			for _, ci := range checkIns {
-				schedule := ""
-				if ci.ScheduleType == "simple" && ci.ReportPeriod != nil {
-					schedule = *ci.ReportPeriod
-				} else if ci.ScheduleType == "cron" && ci.CronSchedule != nil {
-					schedule = *ci.CronSchedule
-				}
-
-				lastCheckIn := "Never"
-				if ci.ReportedAt != nil {
-					lastCheckIn = ci.ReportedAt.Format("2006-01-02 15:04")
-				}
-
-				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
-					ci.ID,
-					ci.Name,
-					ci.Slug,
-					ci.ScheduleType,
-					schedule,
-					lastCheckIn)
-			}
-			_ = w.Flush()
+		checkIns, err := client.CheckIns.ListAll(context.Background(), checkinsProjectID)
+		if err != nil {
+			return dataAPIError("list check-ins", err)
 		}
 
-		return nil
+		if checkinsOutputFormat == "json" {
+			return printJSON(checkIns)
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		_, _ = fmt.Fprintln(w, "ID\tNAME\tSLUG\tTYPE\tSCHEDULE\tLAST CHECK-IN")
+		for _, ci := range checkIns {
+			schedule := ""
+			switch ci.ScheduleType {
+			case apiv3.ScheduleSimple:
+				schedule = ci.ReportPeriod.GetOrEmpty()
+			case apiv3.ScheduleCron:
+				schedule = ci.CronSchedule.GetOrEmpty()
+			}
+
+			lastCheckIn := "Never"
+			if at, err := ci.ReportedAt.Get(); err == nil {
+				lastCheckIn = at.Format("2006-01-02 15:04")
+			}
+
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+				ci.Id,
+				checkInName(ci),
+				ci.Slug.GetOrEmpty(),
+				ci.ScheduleType,
+				schedule,
+				lastCheckIn)
+		}
+		return w.Flush()
 	},
 }
 
@@ -98,68 +83,48 @@ var checkinsListCmd = &cobra.Command{
 var checkinsGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get a check-in by ID",
-	Long:  `Get detailed information about a specific check-in.`,
+	Long: `Get detailed information about a specific check-in.` + v3Reference(
+		"check-ins/get-check-in",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&checkinsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&checkinsProjectID); err != nil {
 			return err
 		}
 		if checkinID == "" {
 			return fmt.Errorf("check-in ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		checkIn, err := client.CheckIns.Get(ctx, checkinsProjectID, checkinID)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to get check-in: %w", err)
+			return err
 		}
 
-		switch checkinsOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(checkIn, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			fmt.Printf("Check-in Details:\n")
-			fmt.Printf("  ID: %s\n", checkIn.ID)
-			fmt.Printf("  Name: %s\n", checkIn.Name)
-			fmt.Printf("  Slug: %s\n", checkIn.Slug)
-			fmt.Printf("  State: %s\n", checkIn.State)
-			fmt.Printf("  Schedule Type: %s\n", checkIn.ScheduleType)
-			if checkIn.ReportPeriod != nil {
-				fmt.Printf("  Report Period: %s\n", *checkIn.ReportPeriod)
-			}
-			if checkIn.GracePeriod != nil {
-				fmt.Printf("  Grace Period: %s\n", *checkIn.GracePeriod)
-			}
-			if checkIn.CronSchedule != nil {
-				fmt.Printf("  Cron Schedule: %s\n", *checkIn.CronSchedule)
-			}
-			if checkIn.CronTimezone != nil {
-				fmt.Printf("  Cron Timezone: %s\n", *checkIn.CronTimezone)
-			}
-			if checkIn.ReportedAt != nil {
-				fmt.Printf(
-					"  Last Check-in: %s\n",
-					checkIn.ReportedAt.Format("2006-01-02 15:04:05"),
-				)
-			}
+		checkIn, err := client.CheckIns.Get(context.Background(), checkinsProjectID, checkinID)
+		if err != nil {
+			return dataAPIError("get check-in", err)
 		}
 
+		if checkinsOutputFormat == "json" {
+			return printJSON(checkIn)
+		}
+
+		fmt.Printf("Check-in Details:\n")
+		fmt.Printf("  ID: %s\n", checkIn.Id)
+		fmt.Printf("  Name: %s\n", checkInName(*checkIn))
+		fmt.Printf("  Slug: %s\n", checkIn.Slug.GetOrEmpty())
+		fmt.Printf("  State: %s\n", checkIn.State)
+		fmt.Printf("  Schedule Type: %s\n", checkIn.ScheduleType)
+		if period, err := checkIn.ReportPeriod.Get(); err == nil {
+			fmt.Printf("  Report Period: %s\n", period)
+		}
+		fmt.Printf("  Grace Period: %s\n", gracePeriod(*checkIn))
+		if schedule, err := checkIn.CronSchedule.Get(); err == nil {
+			fmt.Printf("  Cron Schedule: %s\n", schedule)
+			fmt.Printf("  Cron Timezone: %s\n", checkIn.CronTimezone)
+		}
+		if at, err := checkIn.ReportedAt.Get(); err == nil {
+			fmt.Printf("  Last Check-in: %s\n", at.Format("2006-01-02 15:04:05"))
+		}
 		return nil
 	},
 }
@@ -171,81 +136,53 @@ var checkinsCreateCmd = &cobra.Command{
 	Long: `Create a new check-in for a project.
 
 The --cli-input-json flag accepts either a JSON string or a file path prefixed with 'file://'.
+It takes the check-in's fields directly. A simple schedule needs report_period; a cron
+schedule needs cron_schedule. cron_timezone is a Rails time zone name such as
+"Eastern Time (US & Canada)", not an IANA name such as "America/New_York".
 
 Example JSON payload for simple schedule:
 {
-  "check_in": {
-    "name": "Daily Backup",
-    "slug": "daily-backup",
-    "schedule_type": "simple",
-    "report_period": "1 day",
-    "grace_period": "15 minutes"
-  }
+  "name": "Daily Backup",
+  "slug": "daily-backup",
+  "schedule_type": "simple",
+  "report_period": "1 day",
+  "grace_period": "15 minutes"
 }
 
 Example JSON payload for cron schedule:
 {
-  "check_in": {
-    "name": "Hourly Task",
-    "slug": "hourly-task",
-    "schedule_type": "cron",
-    "cron_schedule": "0 * * * *",
-    "cron_timezone": "America/New_York"
-  }
-}`,
+  "name": "Hourly Task",
+  "slug": "hourly-task",
+  "schedule_type": "cron",
+  "cron_schedule": "0 * * * *",
+  "cron_timezone": "Eastern Time (US & Canada)"
+}` + v3Reference("check-ins/create-check-in"),
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&checkinsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&checkinsProjectID); err != nil {
 			return err
 		}
-		if checkinCLIInputJSON == "" {
-			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
-		}
-
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		jsonData, err := readJSONInput(checkinCLIInputJSON)
+		params, err := decodeInput[apiv3.CheckInCreateParams](checkinCLIInputJSON, "check_in")
 		if err != nil {
-			return fmt.Errorf("failed to read JSON input: %w", err)
+			return err
 		}
 
-		var payload struct {
-			CheckIn hbapi.CheckInParams `json:"check_in"`
-		}
-		if err := json.Unmarshal(jsonData, &payload); err != nil {
-			return fmt.Errorf("failed to parse JSON payload: %w", err)
-		}
-
-		ctx := context.Background()
-		checkIn, err := client.CheckIns.Create(ctx, checkinsProjectID, payload.CheckIn)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to create check-in: %w", err)
+			return err
 		}
 
-		switch checkinsOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(checkIn, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			fmt.Printf("Check-in created successfully!\n")
-			fmt.Printf("  ID: %s\n", checkIn.ID)
-			fmt.Printf("  Name: %s\n", checkIn.Name)
-			fmt.Printf("  Slug: %s\n", checkIn.Slug)
+		checkIn, err := client.CheckIns.Create(context.Background(), checkinsProjectID, params)
+		if err != nil {
+			return dataAPIError("create check-in", err)
 		}
 
+		if checkinsOutputFormat == "json" {
+			return printJSON(checkIn)
+		}
+		fmt.Printf("Check-in created successfully!\n")
+		fmt.Printf("  ID: %s\n", checkIn.Id)
+		fmt.Printf("  Name: %s\n", checkInName(*checkIn))
+		fmt.Printf("  Slug: %s\n", checkIn.Slug.GetOrEmpty())
 		return nil
 	},
 }
@@ -254,82 +191,50 @@ Example JSON payload for cron schedule:
 var checkinsUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update an existing check-in",
-	Long: `Update an existing check-in's settings.
+	Long: `Update an existing check-in's settings. Only the fields you send change;
+a field sent as null is cleared.
 
 The --cli-input-json flag accepts either a JSON string or a file path prefixed with 'file://'.
 
 Example JSON payload:
 {
-  "check_in": {
-    "name": "Updated Name",
-    "report_period": "2 days"
-  }
-}`,
+  "name": "Updated Name",
+  "report_period": "2 days"
+}` + v3Reference("check-ins/update-check-in"),
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&checkinsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&checkinsProjectID); err != nil {
 			return err
 		}
 		if checkinID == "" {
 			return fmt.Errorf("check-in ID is required. Set it using --id flag")
 		}
-		if checkinCLIInputJSON == "" {
-			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
-		}
-
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		jsonData, err := readJSONInput(checkinCLIInputJSON)
+		params, err := decodeInput[apiv3.CheckInUpdateParams](checkinCLIInputJSON, "check_in")
 		if err != nil {
-			return fmt.Errorf("failed to read JSON input: %w", err)
+			return err
 		}
 
-		var payload struct {
-			CheckIn hbapi.CheckInParams `json:"check_in"`
-		}
-		if err := json.Unmarshal(jsonData, &payload); err != nil {
-			return fmt.Errorf("failed to parse JSON payload: %w", err)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
 
-		ctx := context.Background()
-		if err := client.CheckIns.Update(
-			ctx,
+		checkIn, err := client.CheckIns.Update(
+			context.Background(),
 			checkinsProjectID,
 			checkinID,
-			payload.CheckIn,
-		); err != nil {
-			return fmt.Errorf("failed to update check-in: %w", err)
-		}
-
-		checkIn, err := client.CheckIns.Get(ctx, checkinsProjectID, checkinID)
+			params,
+		)
 		if err != nil {
-			return fmt.Errorf("failed to fetch updated check-in: %w", err)
+			return dataAPIError("update check-in", err)
 		}
 
-		switch checkinsOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(checkIn, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			fmt.Printf("Check-in updated successfully!\n")
-			fmt.Printf("  ID: %s\n", checkIn.ID)
-			fmt.Printf("  Name: %s\n", checkIn.Name)
-			fmt.Printf("  Slug: %s\n", checkIn.Slug)
+		if checkinsOutputFormat == "json" {
+			return printJSON(checkIn)
 		}
-
+		fmt.Printf("Check-in updated successfully!\n")
+		fmt.Printf("  ID: %s\n", checkIn.Id)
+		fmt.Printf("  Name: %s\n", checkInName(*checkIn))
+		fmt.Printf("  Slug: %s\n", checkIn.Slug.GetOrEmpty())
 		return nil
 	},
 }
@@ -338,36 +243,75 @@ Example JSON payload:
 var checkinsDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a check-in",
-	Long:  `Delete a check-in by ID. This action cannot be undone.`,
+	Long: `Delete a check-in by ID. This action cannot be undone.` + v3Reference(
+		"check-ins/delete-check-in",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&checkinsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&checkinsProjectID); err != nil {
 			return err
 		}
 		if checkinID == "" {
 			return fmt.Errorf("check-in ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
 		}
 
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		err := client.CheckIns.Delete(ctx, checkinsProjectID, checkinID)
-		if err != nil {
-			return fmt.Errorf("failed to delete check-in: %w", err)
+		if err := client.CheckIns.Delete(
+			context.Background(),
+			checkinsProjectID,
+			checkinID,
+		); err != nil {
+			return dataAPIError("delete check-in", err)
 		}
 
 		fmt.Println("Check-in deleted successfully")
 		return nil
+	},
+}
+
+// checkinsEventsCmd represents the check-ins events command
+var checkinsEventsCmd = &cobra.Command{
+	Use:   "events",
+	Short: "List a check-in's events",
+	Long: `List a check-in's most recent events (reporting, missing, paused), newest first.
+JSON output includes each event's payload.` + v3Reference("check-ins/list-check-in-events"),
+	RunE: func(_ *cobra.Command, _ []string) error {
+		if err := resolveDataAPIProjectID(&checkinsProjectID); err != nil {
+			return err
+		}
+		if checkinID == "" {
+			return fmt.Errorf("check-in ID is required. Set it using --id flag")
+		}
+
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
+		}
+
+		response, err := client.CheckIns.ListEvents(
+			context.Background(),
+			checkinsProjectID,
+			checkinID,
+		)
+		if err != nil {
+			return dataAPIError("list check-in events", err)
+		}
+
+		if checkinsOutputFormat == "json" {
+			return printJSON(response.Data)
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		_, _ = fmt.Fprintln(w, "TIME\tSTATE")
+		for _, event := range response.Data {
+			_, _ = fmt.Fprintf(w, "%s\t%s\n",
+				event.CreatedAt.Format("2006-01-02 15:04:05"),
+				event.State)
+		}
+		return w.Flush()
 	},
 }
 
@@ -380,7 +324,7 @@ func init() {
 	checkinsCmd.AddCommand(checkinsDeleteCmd)
 
 	// Common flags
-	checkinsCmd.PersistentFlags().IntVar(&checkinsProjectID, "project-id", 0, "Project ID")
+	checkinsCmd.PersistentFlags().StringVar(&checkinsProjectID, "project-id", "", "Project ID")
 
 	// Flags for list command
 	checkinsListCmd.Flags().
@@ -411,4 +355,29 @@ func init() {
 	// Flags for delete command
 	checkinsDeleteCmd.Flags().StringVar(&checkinID, "id", "", "Check-in ID")
 	_ = checkinsDeleteCmd.MarkFlagRequired("id")
+
+	// events command
+	checkinsCmd.AddCommand(checkinsEventsCmd)
+	checkinsEventsCmd.Flags().StringVar(&checkinID, "id", "", "Check-in ID")
+	checkinsEventsCmd.Flags().
+		StringVarP(&checkinsOutputFormat, "output", "o", "table", "Output format (table or json)")
+	_ = checkinsEventsCmd.MarkFlagRequired("id")
+}
+
+// checkInName is the name shown for a check-in. v3 sends an unnamed one's name
+// as null; v2 showed its id instead, as this does.
+func checkInName(ci apiv3.CheckIn) string {
+	if name := ci.Name.GetOrEmpty(); name != "" {
+		return name
+	}
+	return ci.Id
+}
+
+// gracePeriod is the grace period shown for a check-in. v3 sends an unset one
+// as "00:00:00"; v2 showed it blank, as this does.
+func gracePeriod(ci apiv3.CheckIn) string {
+	if ci.GracePeriod == "00:00:00" {
+		return ""
+	}
+	return ci.GracePeriod
 }

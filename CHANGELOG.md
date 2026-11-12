@@ -6,6 +6,41 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+The Data API commands now use Honeybadger's v3 Data API. This is a breaking change, released as a minor version (v0.11.0) while the CLI is below 1.0.
+
+### Changed
+
+- Data API commands authenticate with an API Token (`hbu_` personal, older `hbt_`, or `hba_` account), set with `--api-token`, `HONEYBADGER_API_TOKEN` or `api_token` in the config file. `--auth-token`, `HONEYBADGER_AUTH_TOKEN` and `auth_token` are removed, and v2 personal auth tokens no longer work; the CLI says so before sending a request, and also refuses an Ingestion Key (`hbp_`)
+- A 401 from the Data API adds a hint to check the token hasn't been revoked and belongs to this region (US or EU); a missing scope is named in the error
+- IDs are strings, as v3 returns them. Fault IDs keep their v2 numbers; every other v2 ID (projects, deploys, environments, comments, teams and the rest) is replaced by v3's, so update scripts, `HONEYBADGER_PROJECT_ID` and `project_id` in config files (`hb projects list` shows the new project IDs). `uptime` site IDs are UUIDs and are checked before sending
+- `--cli-input-json` takes v3's request body directly: `{"name": "My Project"}`, not `{"project": {"name": "My Project"}}`. The old wrapped form, unknown fields (nested ones too), a null on a field that can't be null, and trailing content are refused before sending. Field names follow v3 (status page `sites` and `check_ins` are lists of objects, for example)
+- Updates are partial: only the fields you send change. `dashboards update` no longer needs the whole dashboard; a sent `widgets` list replaces the widgets, and an alarm's `trigger_config` replaces the stored trigger
+- `--output json` prints v3's resource JSON, so field names and shapes follow v3 (for example, a fault's `url` is now `links.web`, and an integration's `options` is now `config`). The [v3 Data API reference](https://docs.honeybadger.io/api/v3/) documents each one, and every Data API command's `--help` links to its page. `insights query --output json` prints the query's `results` and `meta`
+- `insights query --ts` is a time range such as `1h` or `P7D`, as v3 defines it, not a timestamp
+- `faults list`, `faults notices`, `deployments list`, `uptime outages` and `uptime checks` accept `--limit` up to 100
+- `check-ins list`, `environments list`, `streams list` and `comments list` return every page instead of the first; `comments list` stays oldest first, as in v2
+- `projects get` no longer shows the project's token, teams, users or sites (use `hb ingestion-keys list` for keys); `faults notices` drops the HOSTNAME column; `environments get` drops Updated; `projects occurrences` prints timestamps as dates
+- The Ingestion Key is still set with `--api-key` / `HONEYBADGER_API_KEY`; `deploy`, `agent`, `run` and `check-in` are unchanged
+- Requires Go 1.27 to build from source
+
+### Added
+
+- `integrations` command to manage a project's notification integrations (replaces `projects integrations`)
+- `ingestion-keys` command to manage a project's Ingestion Keys
+- `faults resolve`, `unresolve`, `ignore` and `unignore` for many faults at once, by `--id`, `--query`, or `--all` with a time filter, with `--dry-run`
+- `faults merge`, `faults pause-recording`, `faults resume-recording` and `faults delete`
+- `check-ins events` to list a check-in's recent events
+- `whoami` to show the API Token in use, its scopes and the projects it can reach
+- `deployments list --before` and `--after` to page through deployments; each page prints the cursor for the next one to stderr
+
+### Removed
+
+- `accounts` (all subcommands), `teams members` and `teams invitations`, and `deployments delete`: the v3 client this release uses doesn't support them yet; they return in a later release
+- `projects reports`: v3 has no reports. Use `insights query`; for example notices by class over the last week: `hb insights query --project-id ID --ts P7D --query 'filter event_type::str == "notice" | stats count() as notices by klass::str as klass | sort notices desc'`
+- `projects integrations` (use `integrations list`)
+- `--account-id` on `projects list`, `projects create`, `teams` and `statuspages`: the account comes from the API Token
+- `deployments list --created-after` and `--created-before`, and `uptime outages`/`uptime checks --created-after`: v3 has no such filters. Page back through deployments with `--before` instead
+
 ## [0.10.1] - 2026-08-14
 
 ### Fixed

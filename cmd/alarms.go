@@ -8,13 +8,12 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	hbapi "github.com/honeybadger-io/api-go"
+	"github.com/honeybadger-io/api-go/apiv3"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
-	alarmsProjectID    int
+	alarmsProjectID    string
 	alarmID            string
 	alarmsOutputFormat string
 	alarmCLIInputJSON  string
@@ -33,64 +32,50 @@ var alarmsCmd = &cobra.Command{
 var alarmsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List alarms for a project",
-	Long:  `List all Insights alarms configured for a specific project.`,
+	Long: `List all Insights alarms configured for a specific project.` + v3Reference(
+		"alarms/list-alarms",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&alarmsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&alarmsProjectID); err != nil {
 			return err
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		response, err := client.Alarms.List(ctx, alarmsProjectID)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to list alarms: %w", err)
+			return err
 		}
 
-		switch alarmsOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(response.Results, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			_, _ = fmt.Fprintln(w, "ID\tNAME\tSTATE\tQUERY\tEVAL PERIOD\tLAST CHECKED")
-			for _, alarm := range response.Results {
-				query := alarm.Query
-				if len(query) > 50 {
-					query = query[:47] + "..."
-				}
-
-				lastChecked := "Never"
-				if alarm.LastCheckedAt != nil {
-					lastChecked = alarm.LastCheckedAt.Format("2006-01-02 15:04")
-				}
-
-				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
-					alarm.ID,
-					alarm.Name,
-					alarm.State,
-					query,
-					alarm.EvaluationPeriod,
-					lastChecked)
-			}
-			_ = w.Flush()
+		response, err := client.Alarms.List(context.Background(), alarmsProjectID)
+		if err != nil {
+			return dataAPIError("list alarms", err)
 		}
 
-		return nil
+		if alarmsOutputFormat == "json" {
+			return printJSON(response.Data)
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		_, _ = fmt.Fprintln(w, "ID\tNAME\tSTATE\tQUERY\tEVAL PERIOD\tLAST CHECKED")
+		for _, alarm := range response.Data {
+			query := alarm.Query.GetOrEmpty()
+			if len(query) > 50 {
+				query = query[:47] + "..."
+			}
+
+			lastChecked := "Never"
+			if at, err := alarm.LastCheckedAt.Get(); err == nil {
+				lastChecked = at.Format("2006-01-02 15:04")
+			}
+
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+				alarm.Id,
+				alarm.Name,
+				alarm.State,
+				query,
+				alarm.EvaluationPeriod.GetOrEmpty(),
+				lastChecked)
+		}
+		return w.Flush()
 	},
 }
 
@@ -98,81 +83,63 @@ var alarmsListCmd = &cobra.Command{
 var alarmsGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get an alarm by ID",
-	Long:  `Get detailed information about a specific Insights alarm.`,
+	Long: `Get detailed information about a specific Insights alarm.` + v3Reference(
+		"alarms/get-alarm",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&alarmsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&alarmsProjectID); err != nil {
 			return err
 		}
 		if alarmID == "" {
 			return fmt.Errorf("alarm ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		alarm, err := client.Alarms.Get(ctx, alarmsProjectID, alarmID)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to get alarm: %w", err)
+			return err
 		}
 
-		switch alarmsOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(alarm, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			fmt.Printf("Alarm Details:\n")
-			fmt.Printf("  ID: %s\n", alarm.ID)
-			fmt.Printf("  Name: %s\n", alarm.Name)
-			if alarm.Description != "" {
-				fmt.Printf("  Description: %s\n", alarm.Description)
-			}
-			fmt.Printf("  State: %s\n", alarm.State)
-			fmt.Printf("  Query: %s\n", alarm.Query)
-			if len(alarm.StreamIDs) > 0 {
-				fmt.Printf("  Stream IDs: %s\n", strings.Join(alarm.StreamIDs, ", "))
-			}
-			fmt.Printf("  Evaluation Period: %s\n", alarm.EvaluationPeriod)
-			if alarm.LookbackLag != "" {
-				fmt.Printf("  Lookback Lag: %s\n", alarm.LookbackLag)
-			}
-			if alarm.TriggerConfig != nil {
-				if triggerConfigJSON, err := json.Marshal(alarm.TriggerConfig); err == nil {
-					fmt.Printf("  Trigger Config: %s\n", string(triggerConfigJSON))
-				}
-			}
-			if alarm.Error != "" {
-				fmt.Printf("  Error: %s\n", alarm.Error)
-			}
-			if alarm.LastCheckedAt != nil {
-				fmt.Printf(
-					"  Last Checked: %s\n",
-					alarm.LastCheckedAt.Format("2006-01-02 15:04:05"),
-				)
-			}
-			if alarm.NextCheckAt != nil {
-				fmt.Printf("  Next Check: %s\n", alarm.NextCheckAt.Format("2006-01-02 15:04:05"))
-			}
-			fmt.Printf("  Created: %s\n", alarm.CreatedAt.Format("2006-01-02 15:04:05"))
-			fmt.Printf("  Updated: %s\n", alarm.UpdatedAt.Format("2006-01-02 15:04:05"))
-			if alarm.URL != "" {
-				fmt.Printf("  URL: %s\n", alarm.URL)
-			}
+		alarm, err := client.Alarms.Get(context.Background(), alarmsProjectID, alarmID)
+		if err != nil {
+			return dataAPIError("get alarm", err)
 		}
 
+		if alarmsOutputFormat == "json" {
+			return printJSON(alarm)
+		}
+
+		fmt.Printf("Alarm Details:\n")
+		fmt.Printf("  ID: %s\n", alarm.Id)
+		fmt.Printf("  Name: %s\n", alarm.Name)
+		if description := alarm.Description.GetOrEmpty(); description != "" {
+			fmt.Printf("  Description: %s\n", description)
+		}
+		fmt.Printf("  State: %s\n", alarm.State)
+		fmt.Printf("  Query: %s\n", alarm.Query.GetOrEmpty())
+		if streamIDs := alarm.StreamIds.GetOrEmpty(); len(streamIDs) > 0 {
+			fmt.Printf("  Stream IDs: %s\n", strings.Join(streamIDs, ", "))
+		}
+		fmt.Printf("  Evaluation Period: %s\n", alarm.EvaluationPeriod.GetOrEmpty())
+		if lag := alarm.LookbackLag.GetOrEmpty(); lag != "" {
+			fmt.Printf("  Lookback Lag: %s\n", lag)
+		}
+		if trigger, err := alarm.TriggerConfig.Get(); err == nil {
+			if triggerJSON, err := json.Marshal(trigger); err == nil {
+				fmt.Printf("  Trigger Config: %s\n", triggerJSON)
+			}
+		}
+		if alarmError := alarm.Error.GetOrEmpty(); alarmError != "" {
+			fmt.Printf("  Error: %s\n", alarmError)
+		}
+		if at, err := alarm.LastCheckedAt.Get(); err == nil {
+			fmt.Printf("  Last Checked: %s\n", at.Format("2006-01-02 15:04:05"))
+		}
+		if at, err := alarm.NextCheckAt.Get(); err == nil {
+			fmt.Printf("  Next Check: %s\n", at.Format("2006-01-02 15:04:05"))
+		}
+		fmt.Printf("  Created: %s\n", alarm.CreatedAt.Format("2006-01-02 15:04:05"))
+		fmt.Printf("  Updated: %s\n", alarm.UpdatedAt.Format("2006-01-02 15:04:05"))
+		fmt.Printf("  URL: %s\n", alarm.Links.Web)
 		return nil
 	},
 }
@@ -184,79 +151,51 @@ var alarmsCreateCmd = &cobra.Command{
 	Long: `Create a new Insights alarm for a project.
 
 The --cli-input-json flag accepts either a JSON string or a file path prefixed with 'file://'.
+It takes the alarm's fields directly. name, query, evaluation_period, lookback_lag and
+trigger_config are required.
 
 stream_ids is optional. Omit it and the alarm queries all of the project's Insights
 streams. If you do supply it, use the opaque IDs from 'hb streams list', not the slugs.
-Unrecognized IDs are ignored without an error, and a list in which none are recognized
-is rejected with a 422.
+It can't be empty, and an ID that isn't one of the project's streams is rejected with a 422.
 
 Example JSON payload:
 {
-  "alarm": {
-    "name": "High Error Rate",
-    "description": "Alert when errors spike",
-    "query": "filter event_type::str == \"notice\"",
-    "evaluation_period": "5m",
-    "lookback_lag": "1m",
-    "trigger_config": {
-      "type": "alert_result_count",
-      "config": {"operator": "gt", "value": 10}
-    }
+  "name": "High Error Rate",
+  "description": "Alert when errors spike",
+  "query": "filter event_type::str == \"notice\"",
+  "evaluation_period": "5m",
+  "lookback_lag": "1m",
+  "trigger_config": {
+    "type": "alert_result_count",
+    "config": {"operator": "gt", "value": 10}
   }
-}`,
+}` + v3Reference("alarms/create-alarm"),
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&alarmsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&alarmsProjectID); err != nil {
 			return err
 		}
-		if alarmCLIInputJSON == "" {
-			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
-		}
-
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		jsonData, err := readJSONInput(alarmCLIInputJSON)
+		params, err := decodeInput[apiv3.AlarmCreateParams](alarmCLIInputJSON, "alarm")
 		if err != nil {
-			return fmt.Errorf("failed to read JSON input: %w", err)
+			return err
 		}
 
-		var payload struct {
-			Alarm hbapi.AlarmRequest `json:"alarm"`
-		}
-		if err := json.Unmarshal(jsonData, &payload); err != nil {
-			return fmt.Errorf("failed to parse JSON payload: %w", err)
-		}
-
-		ctx := context.Background()
-		alarm, err := client.Alarms.Create(ctx, alarmsProjectID, payload.Alarm)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to create alarm: %w", err)
+			return err
 		}
 
-		switch alarmsOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(alarm, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			fmt.Printf("Alarm created successfully!\n")
-			fmt.Printf("  ID: %s\n", alarm.ID)
-			fmt.Printf("  Name: %s\n", alarm.Name)
-			fmt.Printf("  State: %s\n", alarm.State)
+		alarm, err := client.Alarms.Create(context.Background(), alarmsProjectID, params)
+		if err != nil {
+			return dataAPIError("create alarm", err)
 		}
 
+		if alarmsOutputFormat == "json" {
+			return printJSON(alarm)
+		}
+		fmt.Printf("Alarm created successfully!\n")
+		fmt.Printf("  ID: %s\n", alarm.Id)
+		fmt.Printf("  Name: %s\n", alarm.Name)
+		fmt.Printf("  State: %s\n", alarm.State)
 		return nil
 	},
 }
@@ -265,71 +204,55 @@ Example JSON payload:
 var alarmsUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update an existing alarm",
-	Long: `Update an existing Insights alarm's settings.
+	Long: `Update an existing Insights alarm's settings. Only the fields you send change;
+a description sent as null is cleared.
+
+A trigger_config you send replaces the stored one rather than merging into it,
+so send its type and config together.
 
 The --cli-input-json flag accepts either a JSON string or a file path prefixed with 'file://'.
 
-stream_ids is optional. Omit it and the alarm queries all of the project's Insights
-streams. If you do supply it, use the opaque IDs from 'hb streams list', not the slugs.
-Unrecognized IDs are ignored without an error, and a list in which none are recognized
-is rejected with a 422.
+stream_ids left out keeps the alarm's streams; a list replaces them (use the opaque IDs
+from 'hb streams list', not the slugs; it can't be empty), and null resets them to all of
+the project's Insights streams.
 
 Example JSON payload:
 {
-  "alarm": {
-    "name": "Updated Alarm Name",
-    "query": "filter event_type::str == \"notice\"",
-    "evaluation_period": "10m",
-    "lookback_lag": "1m",
-    "trigger_config": {
-      "type": "alert_result_count",
-      "config": {"operator": "gt", "value": 25}
-    }
+  "name": "Updated Alarm Name",
+  "evaluation_period": "10m",
+  "trigger_config": {
+    "type": "alert_result_count",
+    "config": {"operator": "gt", "value": 25}
   }
-}`,
+}` + v3Reference("alarms/update-alarm"),
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&alarmsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&alarmsProjectID); err != nil {
 			return err
 		}
 		if alarmID == "" {
 			return fmt.Errorf("alarm ID is required. Set it using --id flag")
 		}
-		if alarmCLIInputJSON == "" {
-			return fmt.Errorf("JSON payload is required. Set it using --cli-input-json flag")
-		}
-
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		jsonData, err := readJSONInput(alarmCLIInputJSON)
+		params, err := decodeInput[apiv3.AlarmUpdateParams](alarmCLIInputJSON, "alarm")
 		if err != nil {
-			return fmt.Errorf("failed to read JSON input: %w", err)
+			return err
 		}
 
-		var payload struct {
-			Alarm hbapi.AlarmRequest `json:"alarm"`
-		}
-		if err := json.Unmarshal(jsonData, &payload); err != nil {
-			return fmt.Errorf("failed to parse JSON payload: %w", err)
-		}
-
-		ctx := context.Background()
-		result, err := client.Alarms.Update(ctx, alarmsProjectID, alarmID, payload.Alarm)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to update alarm: %w", err)
+			return err
 		}
 
-		fmt.Println(result.Message)
+		alarm, err := client.Alarms.Update(
+			context.Background(),
+			alarmsProjectID,
+			alarmID,
+			params,
+		)
+		if err != nil {
+			return dataAPIError("update alarm", err)
+		}
+
+		fmt.Printf("Alarm %s was successfully updated\n", alarm.Id)
 		return nil
 	},
 }
@@ -338,35 +261,27 @@ Example JSON payload:
 var alarmsDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete an alarm",
-	Long:  `Delete an Insights alarm by ID. This action cannot be undone.`,
+	Long: `Delete an Insights alarm by ID. This action cannot be undone.` + v3Reference(
+		"alarms/delete-alarm",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&alarmsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&alarmsProjectID); err != nil {
 			return err
 		}
 		if alarmID == "" {
 			return fmt.Errorf("alarm ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		result, err := client.Alarms.Delete(ctx, alarmsProjectID, alarmID)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to delete alarm: %w", err)
+			return err
 		}
 
-		fmt.Println(result.Message)
+		if err := client.Alarms.Delete(context.Background(), alarmsProjectID, alarmID); err != nil {
+			return dataAPIError("delete alarm", err)
+		}
+
+		fmt.Printf("Alarm %s deleted successfully\n", alarmID)
 		return nil
 	},
 }
@@ -375,54 +290,44 @@ var alarmsDeleteCmd = &cobra.Command{
 var alarmsHistoryCmd = &cobra.Command{
 	Use:   "history",
 	Short: "Get the trigger history for an alarm",
-	Long:  `Get the trigger history for a specific Insights alarm.`,
+	Long: `Get the trigger history for a specific Insights alarm, newest first,
+25 entries per page.` + v3Reference("alarms/list-alarm-history"),
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&alarmsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&alarmsProjectID); err != nil {
 			return err
 		}
 		if alarmID == "" {
 			return fmt.Errorf("alarm ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		response, err := client.Alarms.History(ctx, alarmsProjectID, alarmID, alarmHistoryPage)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to get alarm history: %w", err)
+			return err
 		}
 
-		switch alarmsOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(response.Triggers, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			_, _ = fmt.Fprintln(w, "ID\tSTATE\tCREATED AT")
-			for _, trigger := range response.Triggers {
-				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n",
-					trigger.ID,
-					trigger.State,
-					trigger.CreatedAt.Format("2006-01-02 15:04:05"))
-			}
-			_ = w.Flush()
+		response, err := client.Alarms.ListHistory(
+			context.Background(),
+			alarmsProjectID,
+			alarmID,
+			apiv3.Page(alarmHistoryPage, 0),
+		)
+		if err != nil {
+			return dataAPIError("get alarm history", err)
 		}
 
-		return nil
+		if alarmsOutputFormat == "json" {
+			return printJSON(response.Data)
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		_, _ = fmt.Fprintln(w, "ID\tSTATE\tCREATED AT")
+		for _, entry := range response.Data {
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n",
+				entry.Id,
+				entry.Status.GetOrEmpty(),
+				entry.CreatedAt.Format("2006-01-02 15:04:05"))
+		}
+		return w.Flush()
 	},
 }
 
@@ -436,7 +341,7 @@ func init() {
 	alarmsCmd.AddCommand(alarmsHistoryCmd)
 
 	// Common flags
-	alarmsCmd.PersistentFlags().IntVar(&alarmsProjectID, "project-id", 0, "Project ID")
+	alarmsCmd.PersistentFlags().StringVar(&alarmsProjectID, "project-id", "", "Project ID")
 
 	// Flags for list command
 	alarmsListCmd.Flags().
@@ -468,7 +373,8 @@ func init() {
 
 	// Flags for history command
 	alarmsHistoryCmd.Flags().StringVar(&alarmID, "id", "", "Alarm ID")
-	alarmsHistoryCmd.Flags().IntVar(&alarmHistoryPage, "page", 0, "Page number for pagination")
+	alarmsHistoryCmd.Flags().
+		IntVar(&alarmHistoryPage, "page", 0, "Page number for pagination (25 entries per page)")
 	alarmsHistoryCmd.Flags().
 		StringVarP(&alarmsOutputFormat, "output", "o", "table", "Output format (table or json)")
 	_ = alarmsHistoryCmd.MarkFlagRequired("id")

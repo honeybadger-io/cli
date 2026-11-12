@@ -2,201 +2,169 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"text/tabwriter"
 
-	hbapi "github.com/honeybadger-io/api-go"
+	"github.com/honeybadger-io/api-go/apiv3"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
-	deploymentsProjectID     int
-	deploymentID             int
-	deploymentsOutputFormat  string
-	deploymentsEnvironment   string
-	deploymentsLocalUser     string
-	deploymentsCreatedAfter  string
-	deploymentsCreatedBefore string
-	deploymentsLimit         int
+	deploymentsProjectID    string
+	deploymentID            string
+	deploymentsOutputFormat string
+	deploymentsEnvironment  string
+	deploymentsLocalUser    string
+	deploymentsLimit        int
+	deploymentsBefore       string
+	deploymentsAfter        string
 )
 
 // deploymentsCmd represents the deployments command
 var deploymentsCmd = &cobra.Command{
 	Use:     "deployments",
-	Short:   "View and manage deployments",
+	Short:   "View deployments",
 	GroupID: GroupDataAPI,
-	Long:    `View and manage deployment records for your Honeybadger projects.`,
+	Long:    `View deployment records for your Honeybadger projects.`,
 }
 
 // deploymentsListCmd represents the deployments list command
 var deploymentsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List deployments for a project",
-	Long:  `List all deployments for a specific project with optional filtering.`,
+	Long: `List a project's most recent deployments, newest first, with optional filtering.
+
+When there are more, it prints the cursor for the next page to stderr: pass it
+with --before for older deployments, or --after for newer ones.
+
+Example:
+  hb deployments list --project-id Xk9mZp --limit 100
+  hb deployments list --project-id Xk9mZp --limit 100 --before <cursor>` + v3Reference(
+		"deploys/list-deploys",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&deploymentsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&deploymentsProjectID); err != nil {
 			return err
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		options := hbapi.DeploymentListOptions{
-			Environment:   deploymentsEnvironment,
-			LocalUsername: deploymentsLocalUser,
-			Limit:         deploymentsLimit,
-		}
-		if deploymentsCreatedAfter != "" {
-			t, err := parseTimeFlag(deploymentsCreatedAfter)
-			if err != nil {
-				return fmt.Errorf("invalid --created-after: %w", err)
-			}
-			options.CreatedAfter = t
-		}
-		if deploymentsCreatedBefore != "" {
-			t, err := parseTimeFlag(deploymentsCreatedBefore)
-			if err != nil {
-				return fmt.Errorf("invalid --created-before: %w", err)
-			}
-			options.CreatedBefore = t
-		}
-
-		ctx := context.Background()
-		deployments, err := client.Deployments.List(ctx, deploymentsProjectID, options)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to list deployments: %w", err)
+			return err
 		}
 
-		switch deploymentsOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(deployments, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			_, _ = fmt.Fprintln(w, "ID\tENVIRONMENT\tREVISION\tUSER\tCREATED")
-			for _, d := range deployments {
-				revision := d.Revision
-				if len(revision) > 12 {
-					revision = revision[:12]
-				}
-
-				_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n",
-					d.ID,
-					d.Environment,
-					revision,
-					d.LocalUsername,
-					d.CreatedAt.Format("2006-01-02 15:04"))
-			}
-			_ = w.Flush()
+		opts := []apiv3.Option{
+			apiv3.InEnvironment(deploymentsEnvironment),
+			apiv3.DeployedBy(deploymentsLocalUser),
+			apiv3.Limit(deploymentsLimit),
+		}
+		// Before and After each set both cursors, so only the one given is passed.
+		if deploymentsBefore != "" {
+			opts = append(opts, apiv3.Before(deploymentsBefore))
+		}
+		if deploymentsAfter != "" {
+			opts = append(opts, apiv3.After(deploymentsAfter))
+		}
+		response, err := client.Deploys.List(context.Background(), deploymentsProjectID, opts...)
+		if err != nil {
+			return dataAPIError("list deployments", err)
 		}
 
+		if deploymentsOutputFormat == "json" {
+			if err := printJSON(response.Data); err != nil {
+				return err
+			}
+			printDeployCursors(response.TimeSeries)
+			return nil
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		_, _ = fmt.Fprintln(w, "ID\tENVIRONMENT\tREVISION\tUSER\tCREATED")
+		for _, d := range response.Data {
+			revision := d.Revision.GetOrEmpty()
+			if len(revision) > 12 {
+				revision = revision[:12]
+			}
+
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+				d.Id,
+				d.Environment.GetOrEmpty(),
+				revision,
+				d.LocalUsername.GetOrEmpty(),
+				d.CreatedAt.Format("2006-01-02 15:04"))
+		}
+		if err := w.Flush(); err != nil {
+			return err
+		}
+		printDeployCursors(response.TimeSeries)
 		return nil
 	},
+}
+
+// printDeployCursors tells the user how to fetch the pages either side of
+// this one. v3 has no date filters for deploys, so the cursors are the only
+// way to older ones. They go to stderr to keep the table and JSON clean.
+func printDeployCursors(page *apiv3.TimeSeriesPagination) {
+	if page == nil {
+		return
+	}
+	if cursor := page.OldestCursor.GetOrEmpty(); page.HasOlder && cursor != "" {
+		fmt.Fprintf(
+			os.Stderr,
+			"Older deployments: rerun with --before %s in place of any --before or --after\n",
+			cursor,
+		)
+	}
+	if cursor := page.NewestCursor.GetOrEmpty(); page.HasNewer && cursor != "" {
+		fmt.Fprintf(
+			os.Stderr,
+			"Newer deployments: rerun with --after %s in place of any --before or --after\n",
+			cursor,
+		)
+	}
 }
 
 // deploymentsGetCmd represents the deployments get command
 var deploymentsGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get a deployment by ID",
-	Long:  `Get detailed information about a specific deployment.`,
+	Long: `Get detailed information about a specific deployment.` + v3Reference(
+		"deploys/get-deploy",
+	),
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&deploymentsProjectID); err != nil {
+		if err := resolveDataAPIProjectID(&deploymentsProjectID); err != nil {
 			return err
 		}
-		if deploymentID == 0 {
+		if deploymentID == "" {
 			return fmt.Errorf("deployment ID is required. Set it using --id flag")
 		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		deployment, err := client.Deployments.Get(ctx, deploymentsProjectID, deploymentID)
+		client, err := newDataAPIClient()
 		if err != nil {
-			return fmt.Errorf("failed to get deployment: %w", err)
-		}
-
-		switch deploymentsOutputFormat {
-		case "json":
-			jsonBytes, err := json.MarshalIndent(deployment, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
-			}
-			fmt.Println(string(jsonBytes))
-		default:
-			fmt.Printf("Deployment Details:\n")
-			fmt.Printf("  ID: %d\n", deployment.ID)
-			fmt.Printf("  Environment: %s\n", deployment.Environment)
-			fmt.Printf("  Revision: %s\n", deployment.Revision)
-			fmt.Printf("  Repository: %s\n", deployment.Repository)
-			fmt.Printf("  Local Username: %s\n", deployment.LocalUsername)
-			fmt.Printf("  Project ID: %d\n", deployment.ProjectID)
-			fmt.Printf("  Created: %s\n", deployment.CreatedAt.Format("2006-01-02 15:04:05"))
-		}
-
-		return nil
-	},
-}
-
-// deploymentsDeleteCmd represents the deployments delete command
-var deploymentsDeleteCmd = &cobra.Command{
-	Use:   "delete",
-	Short: "Delete a deployment",
-	Long:  `Delete a deployment record by ID. This action cannot be undone.`,
-	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := resolveProjectID(&deploymentsProjectID); err != nil {
 			return err
 		}
-		if deploymentID == 0 {
-			return fmt.Errorf("deployment ID is required. Set it using --id flag")
-		}
 
-		authToken := viper.GetString("auth_token")
-		if authToken == "" {
-			return fmt.Errorf(
-				"auth token is required. Set it using --auth-token flag or HONEYBADGER_AUTH_TOKEN environment variable",
-			)
-		}
-
-		endpoint := convertEndpointForDataAPI(viper.GetString("endpoint"))
-
-		client := hbapi.NewClient().
-			WithBaseURL(endpoint).
-			WithAuthToken(authToken)
-
-		ctx := context.Background()
-		err := client.Deployments.Delete(ctx, deploymentsProjectID, deploymentID)
+		deployment, err := client.Deploys.Get(
+			context.Background(),
+			deploymentsProjectID,
+			deploymentID,
+		)
 		if err != nil {
-			return fmt.Errorf("failed to delete deployment: %w", err)
+			return dataAPIError("get deployment", err)
 		}
 
-		fmt.Println("Deployment deleted successfully")
+		if deploymentsOutputFormat == "json" {
+			return printJSON(deployment)
+		}
+
+		fmt.Printf("Deployment Details:\n")
+		fmt.Printf("  ID: %s\n", deployment.Id)
+		fmt.Printf("  Environment: %s\n", deployment.Environment.GetOrEmpty())
+		fmt.Printf("  Revision: %s\n", deployment.Revision.GetOrEmpty())
+		fmt.Printf("  Repository: %s\n", deployment.Repository.GetOrEmpty())
+		fmt.Printf("  Local Username: %s\n", deployment.LocalUsername.GetOrEmpty())
+		fmt.Printf("  Project ID: %s\n", deployment.ProjectId)
+		fmt.Printf("  Created: %s\n", deployment.CreatedAt.Format("2006-01-02 15:04:05"))
 		return nil
 	},
 }
@@ -205,10 +173,10 @@ func init() {
 	rootCmd.AddCommand(deploymentsCmd)
 	deploymentsCmd.AddCommand(deploymentsListCmd)
 	deploymentsCmd.AddCommand(deploymentsGetCmd)
-	deploymentsCmd.AddCommand(deploymentsDeleteCmd)
 
 	// Common flags
-	deploymentsCmd.PersistentFlags().IntVar(&deploymentsProjectID, "project-id", 0, "Project ID")
+	deploymentsCmd.PersistentFlags().
+		StringVar(&deploymentsProjectID, "project-id", "", "Project ID")
 
 	// Flags for list command
 	deploymentsListCmd.Flags().
@@ -218,19 +186,16 @@ func init() {
 	deploymentsListCmd.Flags().
 		StringVar(&deploymentsLocalUser, "local-user", "", "Filter by local username")
 	deploymentsListCmd.Flags().
-		StringVar(&deploymentsCreatedAfter, "created-after", "", "Filter by creation time (YYYY-MM-DD or RFC3339)")
+		IntVar(&deploymentsLimit, "limit", 25, "Maximum number of deployments to return (max 100)")
 	deploymentsListCmd.Flags().
-		StringVar(&deploymentsCreatedBefore, "created-before", "", "Filter by creation time (YYYY-MM-DD or RFC3339)")
+		StringVar(&deploymentsBefore, "before", "", "Show older deployments: the cursor a previous page printed")
 	deploymentsListCmd.Flags().
-		IntVar(&deploymentsLimit, "limit", 25, "Maximum number of deployments to return (max 25)")
+		StringVar(&deploymentsAfter, "after", "", "Show newer deployments: the cursor a previous page printed")
+	deploymentsListCmd.MarkFlagsMutuallyExclusive("before", "after")
 
 	// Flags for get command
-	deploymentsGetCmd.Flags().IntVar(&deploymentID, "id", 0, "Deployment ID")
+	deploymentsGetCmd.Flags().StringVar(&deploymentID, "id", "", "Deployment ID")
 	deploymentsGetCmd.Flags().
 		StringVarP(&deploymentsOutputFormat, "output", "o", "text", "Output format (text or json)")
 	_ = deploymentsGetCmd.MarkFlagRequired("id")
-
-	// Flags for delete command
-	deploymentsDeleteCmd.Flags().IntVar(&deploymentID, "id", 0, "Deployment ID")
-	_ = deploymentsDeleteCmd.MarkFlagRequired("id")
 }

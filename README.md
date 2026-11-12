@@ -37,7 +37,7 @@ No `sudo` required — the binary installs to `~/.local/bin` by default. When ru
 To also set up a systemd service for the [metrics agent](#reporting-api-commands):
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --service --api-key YOUR_API_KEY
+curl -sSL https://raw.githubusercontent.com/honeybadger-io/cli/main/install.sh | sudo bash -s -- --service --api-key YOUR_INGESTION_KEY
 ```
 
 Run with `--help` for all options including `--version`, `--interval`, and `--install-dir`.
@@ -52,9 +52,9 @@ By default, the CLI looks for a configuration file at `~/.honeybadger-cli.yaml` 
 
 Example configuration file:
 ```yaml
-api_key: your-project-api-key-here      # For Reporting API (deploy, agent commands)
-auth_token: your-personal-auth-token    # For Data API (projects, faults, insights commands)
-project_id: 12345                       # Optional, default project ID for Data API commands
+api_key: hbp_your-ingestion-key        # Ingestion Key, for the Reporting API (deploy, agent, run, check-in)
+api_token: hbu_your-api-token           # API Token, for the Data API (projects, faults, insights, ...)
+project_id: Xk9mZp                      # Optional, default project ID for Data API commands
 endpoint: https://api.honeybadger.io    # Optional, use https://eu-api.honeybadger.io for EU region
 
 # Optional tags for the metrics agent (added to every event)
@@ -69,18 +69,28 @@ agent:
 You can set configuration using environment variables prefixed with `HONEYBADGER_`:
 
 ```bash
-export HONEYBADGER_API_KEY=your-project-api-key-here       # For Reporting API (deploy, agent)
-export HONEYBADGER_AUTH_TOKEN=your-personal-auth-token     # For Data API (projects, faults, insights)
-export HONEYBADGER_PROJECT_ID=12345                        # Optional, default project ID for Data API commands
+export HONEYBADGER_API_KEY=hbp_your-ingestion-key         # Ingestion Key, for the Reporting API
+export HONEYBADGER_API_TOKEN=hbu_your-api-token            # API Token, for the Data API
+export HONEYBADGER_PROJECT_ID=Xk9mZp                       # Optional, default project ID for Data API commands
 export HONEYBADGER_ENDPOINT=https://eu-api.honeybadger.io  # Optional, for EU region
 ```
+
+### API Tokens
+
+Data API commands authenticate with an API Token: a personal one (`hbu_`, or an older `hbt_`) or an account one (`hba_`). Create one in your user settings at https://app.honeybadger.io/users/edit#authentication (EU: https://eu-app.honeybadger.io/users/edit#authentication). A token works only in the region it was created in.
+
+The CLI refuses anything else before sending a request: an Ingestion Key (`hbp_`) only sends errors and events, and the v2 personal auth token, which `auth_token` / `HONEYBADGER_AUTH_TOKEN` / `--auth-token` used to hold, isn't accepted by the v3 Data API.
+
+An API Token can be limited to some scopes and projects. When a command needs a scope the token doesn't have, the error names it (for example `requires faults:read`). `hb whoami` shows what the current token can reach.
+
+Project IDs are the IDs the v3 Data API returns (for example `Xk9mZp`). Run `hb projects list` to find yours; replace older numeric project IDs in your flags, environment variables, and configuration.
 
 ### Command-line Flags
 
 Global flags that apply to all commands:
 
- * `--api-key`: Your Honeybadger project API key (for Reporting API)
- * `--auth-token`: Your Honeybadger personal auth token (for Data API)
+ * `--api-key`: Your project's Ingestion Key (for the Reporting API)
+ * `--api-token`: Your API Token (for the Data API)
  * `--endpoint`: Honeybadger endpoint (default: https://api.honeybadger.io)
  * `--config`: Path to configuration file
 
@@ -90,7 +100,7 @@ Use `hb <command> --help` to see detailed usage information for any command.
 
 ### Reporting API Commands
 
-These commands use `--api-key` or `HONEYBADGER_API_KEY` (project API key):
+These commands use an Ingestion Key, set with `--api-key` or `HONEYBADGER_API_KEY`:
 
 | Command | Description |
 |---------|-------------|
@@ -101,24 +111,28 @@ These commands use `--api-key` or `HONEYBADGER_API_KEY` (project API key):
 
 ### Data API Commands
 
-These commands use `--auth-token` or `HONEYBADGER_AUTH_TOKEN` (personal auth token):
+These commands use the v3 Data API and an API Token, set with `--api-token` or `HONEYBADGER_API_TOKEN`:
 
 | Command | Description |
 |---------|-------------|
-| `hb accounts` | Manage Honeybadger accounts and team members |
 | `hb alarms` | Manage Insights alarms for your projects |
 | `hb check-ins` | Manage check-ins for cron job and scheduled task monitoring |
 | `hb comments` | Manage comments on faults |
 | `hb dashboards` | Manage Insights dashboards for your projects |
-| `hb deployments` | View and manage deployment history |
+| `hb deployments` | View deployment history |
 | `hb environments` | Manage project environments |
-| `hb faults` | View and manage faults (errors) in your projects |
+| `hb faults` | View and manage faults (errors) in your projects, including bulk resolve and ignore |
+| `hb ingestion-keys` | Manage a project's Ingestion Keys |
 | `hb insights` | Execute BadgerQL queries against your Insights data |
+| `hb integrations` | Manage a project's notification integrations |
 | `hb projects` | Manage Honeybadger projects |
 | `hb statuspages` | Manage public status pages |
 | `hb streams` | View Insights data streams for your projects |
-| `hb teams` | Manage teams and team memberships |
+| `hb teams` | Manage teams |
 | `hb uptime` | Manage uptime monitoring checks |
+| `hb whoami` | Show the API Token in use and what it can reach |
+
+The JSON these commands take with `--cli-input-json` and print with `--output json` is the v3 Data API's, documented in the [v3 Data API reference](https://docs.honeybadger.io/api/v3/). Each command's `--help` links to its page.
 
 ### Examples
 
@@ -145,26 +159,33 @@ hb check-in --slug daily-backup
 hb projects list
 
 # Query Insights data
-hb insights query --project-id 12345 --query "fields @ts, @preview | sort @ts"
+hb insights query --project-id Xk9mZp --query "fields @ts, @preview | sort @ts" --ts P7D
 
 # List faults for a project
-hb faults list --project-id 12345
+hb faults list --project-id Xk9mZp
 
 # Resolve a fault
-hb faults update --project-id 12345 --id 678 --resolved
+hb faults update --project-id Xk9mZp --id 678 --resolved
+
+# See which faults not seen since July would be resolved, then resolve them
+hb faults resolve --project-id Xk9mZp --all --occurred-before 2026-07-01 --dry-run
+hb faults resolve --project-id Xk9mZp --all --occurred-before 2026-07-01
 
 # List Insights streams for a project
-hb streams list --project-id 12345
+hb streams list --project-id Xk9mZp
 
 # List Insights dashboards for a project
-hb dashboards list --project-id 12345
+hb dashboards list --project-id Xk9mZp
 
 # Create a dashboard from a JSON file
-hb dashboards create --project-id 12345 --cli-input-json file://dashboard.json
+hb dashboards create --project-id Xk9mZp --cli-input-json file://dashboard.json
 
-# Update a dashboard (replaces it, so send the complete widget list)
-hb dashboards get --project-id 12345 --id abc123 --output json > dashboard.json
-hb dashboards update --project-id 12345 --id abc123 --cli-input-json file://dashboard.json
+# Rename a dashboard (updates change only the fields you send)
+hb dashboards update --project-id Xk9mZp --id abc123 --cli-input-json '{"title":"Checkout"}'
+
+# Replace a dashboard's widgets: send the widgets list from `get`, edited
+hb dashboards get --project-id Xk9mZp --id abc123 --output json | jq '{widgets}' > widgets.json
+hb dashboards update --project-id Xk9mZp --id abc123 --cli-input-json file://widgets.json
 ```
 
 See the [Honeybadger CLI documentation](https://docs.honeybadger.io/resources/cli/) for more information.
