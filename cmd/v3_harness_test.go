@@ -151,12 +151,17 @@ func resetFlags(cmd *cobra.Command) {
 // which restores it and returns what was written.
 func captureStdout(t *testing.T) func() string {
 	t.Helper()
-	orig := os.Stdout
+	return captureOutput(t, &os.Stdout)
+}
+
+func captureOutput(t *testing.T, file **os.File) func() string {
+	t.Helper()
+	orig := *file
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
 	}
-	os.Stdout = w
+	*file = w
 	done := make(chan string)
 	go func() {
 		var buf bytes.Buffer
@@ -170,7 +175,7 @@ func captureStdout(t *testing.T) func() string {
 		}
 		restored = true
 		_ = w.Close()
-		os.Stdout = orig
+		*file = orig
 		return <-done
 	}
 	t.Cleanup(func() { restore() })
