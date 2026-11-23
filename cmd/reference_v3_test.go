@@ -55,6 +55,8 @@ var v3ReferencePages = map[string][]string{
 	"faults merge":            {"faults/merge-faults"},
 	"faults pause-recording":  {"faults/pause-fault-recording"},
 	"faults resume-recording": {"faults/resume-fault-recording"},
+	"faults snooze":           {"faults/snooze-fault"},
+	"faults unsnooze":         {"faults/unsnooze-fault"},
 	"faults delete":           {"faults/delete-fault"},
 	"ingestion-keys list":     {"ingestion-keys/list-ingestion-keys"},
 	"ingestion-keys get":      {"ingestion-keys/get-ingestion-key"},
