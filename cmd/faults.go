@@ -722,6 +722,105 @@ var faultsResumeRecordingCmd = &cobra.Command{
 	},
 }
 
+var (
+	faultSnoozeFor         string
+	faultSnoozeOccurrences int
+)
+
+// faultsSnoozeCmd represents the faults snooze command
+var faultsSnoozeCmd = &cobra.Command{
+	Use:   "snooze",
+	Short: "Stop a fault's notifications for a while",
+	Long: `Stop notifications for a fault for an hour, a day or a week (--for), or
+until 10, 100 or 1000 more occurrences arrive (--occurrences). Notices are still
+recorded while a fault is snoozed; only the notifications stop. Snoozing again
+replaces the earlier snooze. The web UI calls this "pause", which is not the
+same as pause-recording.
+
+Examples:
+  hb faults snooze --project-id Xk9mZp --id 678 --for day
+  hb faults snooze --project-id Xk9mZp --id 678 --occurrences 100` + v3Reference("faults/snooze-fault"),
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
+			return err
+		}
+		if faultID == "" {
+			return fmt.Errorf("fault ID is required. Set it using --id flag")
+		}
+
+		var snooze func(*apiv3.Client) (*apiv3.Fault, error)
+		var span string
+		if cmd.Flags().Changed("for") {
+			duration := apiv3.PauseDuration(faultSnoozeFor)
+			if !duration.Valid() {
+				return fmt.Errorf("invalid --for %q: use hour, day or week", faultSnoozeFor)
+			}
+			span = "for a " + faultSnoozeFor
+			snooze = func(c *apiv3.Client) (*apiv3.Fault, error) {
+				return c.Faults.Snooze(context.Background(), faultsProjectID, faultID, duration)
+			}
+		} else {
+			count := apiv3.SnoozeCount(faultSnoozeOccurrences)
+			if !count.Valid() {
+				return fmt.Errorf("invalid --occurrences %d: use 10, 100 or 1000",
+					faultSnoozeOccurrences)
+			}
+			span = fmt.Sprintf("for the next %d occurrences", faultSnoozeOccurrences)
+			snooze = func(c *apiv3.Client) (*apiv3.Fault, error) {
+				return c.Faults.SnoozeOccurrences(
+					context.Background(),
+					faultsProjectID,
+					faultID,
+					count,
+				)
+			}
+		}
+
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
+		}
+
+		fault, err := snooze(client)
+		if err != nil {
+			return dataAPIError("snooze fault", err)
+		}
+
+		fmt.Printf("Fault %s snoozed %s\n", fault.Id, span)
+		return nil
+	},
+}
+
+// faultsUnsnoozeCmd represents the faults unsnooze command
+var faultsUnsnoozeCmd = &cobra.Command{
+	Use:   "unsnooze",
+	Short: "Turn a fault's notifications back on",
+	Long: `End a fault's snooze, so its notifications start again.` + v3Reference(
+		"faults/unsnooze-fault",
+	),
+	RunE: func(_ *cobra.Command, _ []string) error {
+		if err := resolveDataAPIProjectID(&faultsProjectID); err != nil {
+			return err
+		}
+		if faultID == "" {
+			return fmt.Errorf("fault ID is required. Set it using --id flag")
+		}
+
+		client, err := newDataAPIClient()
+		if err != nil {
+			return err
+		}
+
+		fault, err := client.Faults.Unsnooze(context.Background(), faultsProjectID, faultID)
+		if err != nil {
+			return dataAPIError("unsnooze fault", err)
+		}
+
+		fmt.Printf("Fault %s unsnoozed\n", fault.Id)
+		return nil
+	},
+}
+
 // faultsDeleteCmd represents the faults delete command
 var faultsDeleteCmd = &cobra.Command{
 	Use:   "delete",
@@ -847,6 +946,20 @@ func init() {
 	_ = faultsPauseRecordingCmd.MarkFlagRequired("for")
 	faultsResumeRecordingCmd.Flags().StringVar(&faultID, "id", "", "Fault ID")
 	_ = faultsResumeRecordingCmd.MarkFlagRequired("id")
+
+	// snooze and unsnooze commands
+	faultsCmd.AddCommand(faultsSnoozeCmd)
+	faultsCmd.AddCommand(faultsUnsnoozeCmd)
+	faultsSnoozeCmd.Flags().StringVar(&faultID, "id", "", "Fault ID")
+	faultsSnoozeCmd.Flags().
+		StringVar(&faultSnoozeFor, "for", "", "How long to snooze: hour, day or week")
+	faultsSnoozeCmd.Flags().
+		IntVar(&faultSnoozeOccurrences, "occurrences", 0, "Snooze until this many more occurrences: 10, 100 or 1000")
+	_ = faultsSnoozeCmd.MarkFlagRequired("id")
+	faultsSnoozeCmd.MarkFlagsOneRequired("for", "occurrences")
+	faultsSnoozeCmd.MarkFlagsMutuallyExclusive("for", "occurrences")
+	faultsUnsnoozeCmd.Flags().StringVar(&faultID, "id", "", "Fault ID")
+	_ = faultsUnsnoozeCmd.MarkFlagRequired("id")
 
 	// delete command
 	faultsCmd.AddCommand(faultsDeleteCmd)

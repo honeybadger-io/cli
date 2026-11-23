@@ -167,6 +167,10 @@ hb faults list --project-id Xk9mZp
 # Resolve a fault
 hb faults update --project-id Xk9mZp --id 678 --resolved
 
+# Stop a fault's notifications for a day, then turn them back on
+hb faults snooze --project-id Xk9mZp --id 678 --for day
+hb faults unsnooze --project-id Xk9mZp --id 678
+
 # See which faults not seen since July would be resolved, then resolve them
 hb faults resolve --project-id Xk9mZp --all --occurred-before 2026-07-01 --dry-run
 hb faults resolve --project-id Xk9mZp --all --occurred-before 2026-07-01
